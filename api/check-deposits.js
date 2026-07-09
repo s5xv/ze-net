@@ -28,7 +28,6 @@ export default async function handler(req, res) {
     const rawData = await response.json();
     const transactions = rawData.items || [];
 
-    // Get pending verifications, sorted newest first
     const { data: pendingVerifications } = await supabase
       .from('pending_verifications')
       .select('*')
@@ -36,12 +35,11 @@ export default async function handler(req, res) {
       .order('requested_at', { ascending: false });
 
     let actionsTaken = 0;
-    let skippedTransactions = [];
     let debugInfo = { 
       totalTransactions: transactions.length, 
       pendingVerifications: pendingVerifications?.length || 0, 
       lookingForIGN: ign,
-      expectedAmounts: pendingVerifications ? pendingVerifications.map(v => v.expected_amount) : []
+      processed: []
     };
 
     for (const t of transactions) {
@@ -50,55 +48,71 @@ export default async function handler(req, res) {
       const memo = (t.memo || t.message || "").trim().toLowerCase();
       const pluginSystem = t.pluginSystem;
 
-      let skipReason = null;
+      // 1. Skip internal/plugin transactions
+      if (pluginSystem !== null) continue;
 
-      if (pluginSystem !== null) {
-        skipReason = `Skipped because pluginSystem is "${pluginSystem}"`;
+      // 2. Check if we already processed this transaction
+      const { data: existing } = await supabase.from('processed_deposits').select('txn_id').eq('txn_id', txnId).single();
+      if (existing) continue;
+
+      // 3. Extract the sender's IGN from the memo
+      // Memo format: "payment from escudos to business zen corporate account"
+      const nameMatch = memo.match(/payment from ([a-z0-9_]+) to business zen corporate account/);
+      if (!nameMatch) continue; 
+      
+      const senderIgn = nameMatch[1];
+
+      // 4. Find if this sender is linked to a Discord account
+      // We check both exact case and lowercase just in case
+      const { data: linkedUser } = await supabase
+        .from('treasury_tokens')
+        .select('user_id')
+        .or(`account_id.eq.${senderIgn},account_id.eq.${senderIgn.charAt(0).toUpperCase() + senderIgn.slice(1)}`)
+        .single();
+
+      if (!linkedUser) continue; // Sender is not linked, skip
+
+      // 5. Check if this is a Verification Payment (Linking)
+      const verificationMatch = pendingVerifications.find(v => Math.abs(parseFloat(v.expected_amount) - amount) < 0.001);
+
+      if (verificationMatch) {
+        // It's a verification payment! Link the account.
+        await supabase.from('treasury_tokens').insert({
+          user_id: verificationMatch.discord_user_id,
+          token: 'verified_via_payment',
+          account_id: senderIgn.charAt(0).toUpperCase() + senderIgn.slice(1) // Store with proper casing
+        });
+        await supabase.from('pending_verifications').update({ status: 'verified' }).eq('id', verificationMatch.id);
+        debugInfo.processed.push(`Linked account for ${senderIgn}`);
+        actionsTaken++;
       } else {
-        // Find a match by amount
-        const amountMatch = pendingVerifications.find(v => Math.abs(parseFloat(v.expected_amount) - amount) < 0.001);
+        // It's a standard deposit! Add money to their site balance.
+        const { data: balData } = await supabase
+          .from('site_balances')
+          .select('balance')
+          .eq('user_id', linkedUser.user_id)
+          .single();
+
+        const newBalance = (balData?.balance || 0) + amount;
         
-        if (!amountMatch) {
-          skipReason = `Amount ${amount} does not match. (Looking for: ${debugInfo.expectedAmounts.join(', ')})`;
-        } else {
-          const expectedMemo = `payment from ${ign.toLowerCase()} to business ${BUSINESS_NAME} corporate account`;
-          if (memo !== expectedMemo) {
-            skipReason = `Memo mismatch!\nActual:   "${memo}"\nExpected: "${expectedMemo}"`;
-          }
-        }
-
-        if (!skipReason && amountMatch) {
-          // SUCCESS! Link the account
-          let playerUuid = null;
-          try {
-            const playerRes = await fetch(`${TREASURY_API_BASE}/accounts/by-player?name=${ign}`, {
-              headers: { 'Authorization': `Bearer ${BUSINESS_API_TOKEN}` }
-            });
-            if (playerRes.ok) {
-              const playerData = await playerRes.json();
-              playerUuid = playerData.playerUuid;
-            }
-          } catch (e) { /* ignore */ }
-
-          await supabase.from('treasury_tokens').insert({
-            user_id: amountMatch.discord_user_id,
-            token: 'verified_via_payment',
-            account_id: playerUuid || ign 
-          });
-
-          await supabase.from('pending_verifications').update({ status: 'verified' }).eq('id', amountMatch.id);
-          actionsTaken++;
-          continue; // Move to next transaction
-        }
+        await supabase.from('site_balances').upsert({ 
+          user_id: linkedUser.user_id, 
+          balance: newBalance 
+        });
+        
+        debugInfo.processed.push(`Added $${amount} to ${senderIgn}'s balance`);
+        actionsTaken++;
       }
 
-      if (skipReason) {
-        skippedTransactions.push({ txnId, amount, memo, reason: skipReason });
-      }
+      // 6. Mark transaction as processed so it's never counted twice
+      await supabase.from('processed_deposits').insert({
+        txn_id: txnId,
+        amount: amount,
+        user_id: linkedUser.user_id
+      });
     }
 
-    debugInfo.skippedTransactions = skippedTransactions;
-    return res.status(200).json({ message: `Processed ${actionsTaken} verifications`, debug: debugInfo });
+    return res.status(200).json({ message: `Processed ${actionsTaken} actions`, debug: debugInfo });
 
   } catch (error) {
     console.error('Deposit check error:', error);
