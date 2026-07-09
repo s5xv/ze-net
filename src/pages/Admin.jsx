@@ -85,7 +85,6 @@ export default function Admin({ user }) {
     const { data: analyticsData } = await supabase.from('search_analytics').select('*').order('created_at', { ascending: false }).limit(50);
     setAnalytics(analyticsData || []);
 
-    // Calculate stats
     const totalViews = sitesData?.reduce((sum, s) => sum + (s.view_count || 0), 0) || 0;
     const totalClicks = sitesData?.reduce((sum, s) => sum + (s.click_count || 0), 0) || 0;
     
@@ -101,6 +100,20 @@ export default function Admin({ user }) {
     e.preventDefault();
     const { error } = await supabase.from('sites').insert(newSite);
     if (!error) {
+      // Send Discord notification
+      try {
+        await fetch('/api/discord-webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: `**New Site Added:** ${newSite.name}\nCategory: ${newSite.category}\nOwner: ${newSite.owner_name || 'Unknown'}`,
+            color: 0x22c55e
+          })
+        });
+      } catch (err) {
+        console.error('Failed to send Discord notification', err);
+      }
+
       setShowAddSite(false);
       setNewSite({ name: '', slug: '', description: '', url: '', category: 'Government', owner_name: '', is_verified: false, is_sponsored: false });
       fetchData();
@@ -204,7 +217,6 @@ export default function Admin({ user }) {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200">
-      {/* Header */}
       <div className="bg-white dark:bg-[#111111] border-b border-neutral-200 dark:border-white/5 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -220,7 +232,6 @@ export default function Admin({ user }) {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white dark:bg-[#111111] rounded-xl p-6 border border-neutral-200 dark:border-white/5">
             <div className="flex items-center justify-between mb-2">
@@ -264,7 +275,6 @@ export default function Admin({ user }) {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-neutral-200 dark:border-white/5">
           {['sites', 'ads', 'withdrawals', 'analytics'].map((tab) => (
             <button
@@ -281,7 +291,6 @@ export default function Admin({ user }) {
           ))}
         </div>
 
-        {/* Sites Tab */}
         {activeTab === 'sites' && (
           <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
             <div className="flex items-center justify-between mb-6">
@@ -435,7 +444,6 @@ export default function Admin({ user }) {
           </div>
         )}
 
-        {/* Ads Tab */}
         {activeTab === 'ads' && (
           <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
             <div className="flex items-center justify-between mb-6">
@@ -533,7 +541,6 @@ export default function Admin({ user }) {
           </div>
         )}
 
-        {/* Withdrawals Tab */}
         {activeTab === 'withdrawals' && (
           <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
             <h2 className="text-xl font-bold mb-6">Pending Withdrawals</h2>
@@ -571,7 +578,6 @@ export default function Admin({ user }) {
           </div>
         )}
 
-        {/* Analytics Tab */}
         {activeTab === 'analytics' && (
           <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
             <h2 className="text-xl font-bold mb-6">Recent Search Analytics</h2>

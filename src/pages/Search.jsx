@@ -6,29 +6,59 @@ import { supabase } from '../services/supabase';
 export default function Search({ user }) {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
+  const categoryFilter = searchParams.get('category') || '';
+  const verifiedFilter = searchParams.get('verified') === 'true';
+  const sponsoredFilter = searchParams.get('sponsored') === 'true';
+  const sortBy = searchParams.get('sort') || 'view_count';
+
   const [q, setQ] = useState(query);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (query) {
+    if (query || categoryFilter || verifiedFilter || sponsoredFilter) {
       fetchResults();
     }
-  }, [query]);
+  }, [query, categoryFilter, verifiedFilter, sponsoredFilter, sortBy]);
 
   const fetchResults = async () => {
     setLoading(true);
     
-    const { data } = await supabase
-      .from('sites')
-      .select('*')
-      .or(`name.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
-      .order('is_sponsored', { ascending: false })
-      .order('is_verified', { ascending: false })
-      .order('view_count', { ascending: false });
+    let queryBuilder = supabase.from('sites').select('*');
 
+    // Text search
+    if (query) {
+      queryBuilder = queryBuilder.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
+    }
+
+    // Category filter
+    if (categoryFilter) {
+      queryBuilder = queryBuilder.eq('category', categoryFilter);
+    }
+
+    // Verified filter
+    if (verifiedFilter) {
+      queryBuilder = queryBuilder.eq('is_verified', true);
+    }
+
+    // Sponsored filter
+    if (sponsoredFilter) {
+      queryBuilder = queryBuilder.eq('is_sponsored', true);
+    }
+
+    // Sort
+    if (sortBy === 'view_count') {
+      queryBuilder = queryBuilder.order('view_count', { ascending: false });
+    } else if (sortBy === 'created_at') {
+      queryBuilder = queryBuilder.order('created_at', { ascending: false });
+    } else if (sortBy === 'name') {
+      queryBuilder = queryBuilder.order('name', { ascending: true });
+    }
+
+    const { data } = await queryBuilder;
     setResults(data || []);
 
     await supabase.from('search_analytics').insert({
@@ -43,9 +73,23 @@ export default function Search({ user }) {
   const handleSearch = (e) => {
     e.preventDefault();
     if (q.trim()) {
-      navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+      const params = new URLSearchParams(searchParams);
+      params.set('q', q.trim());
+      navigate(`/search?${params.toString()}`);
     }
   };
+
+  const updateFilter = (key, value) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    navigate(`/search?${params.toString()}`);
+  };
+
+  const categories = ['Government', 'Corporate', 'Service', 'Charity', 'Community', 'Business', 'Build Project', 'Event', 'Politics', 'Creative', 'Emergency', 'Other'];
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200">
@@ -77,6 +121,68 @@ export default function Search({ user }) {
       </div>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Filters */}
+        <div className="mb-6">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="px-4 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg text-sm font-medium hover:border-orange-500/50 transition-colors"
+          >
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
+
+          {showFilters && (
+            <div className="mt-4 p-4 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Category</label>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => updateFilter('category', e.target.value)}
+                  className="w-full px-3 py-2 bg-neutral-100 dark:bg-[#09090b] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                >
+                  <option value="">All Categories</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={verifiedFilter}
+                    onChange={(e) => updateFilter('verified', e.target.checked ? 'true' : '')}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">Verified only</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sponsoredFilter}
+                    onChange={(e) => updateFilter('sponsored', e.target.checked ? 'true' : '')}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">Sponsored only</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Sort by</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => updateFilter('sort', e.target.value)}
+                  className="w-full px-3 py-2 bg-neutral-100 dark:bg-[#09090b] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                >
+                  <option value="view_count">Most Popular</option>
+                  <option value="created_at">Newest</option>
+                  <option value="name">Name (A-Z)</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="mb-6">
           <h2 className="text-xl sm:text-2xl font-semibold mb-1">Search Results</h2>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
