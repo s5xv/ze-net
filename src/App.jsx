@@ -1,15 +1,46 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
+import { useEffect } from 'react';
+import { supabase } from './services/supabase';
 
 import Home from './pages/Home';
 import Search from './pages/Search';
 import Login from './pages/Login';
-import LinkAccount from './pages/LinkAccount';
-import Category from './pages/Category';
 import Account from './pages/Account';
 import Admin from './pages/Admin';
+import LinkAccount from './pages/LinkAccount';
 import NotFound from './pages/NotFound';
+
+// This component handles the OAuth callback code
+function AuthHandler() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleCallback = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+
+      if (code) {
+        console.log('Found auth code, exchanging for session...');
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          console.error('Failed to exchange code:', error);
+        } else {
+          console.log('Session established successfully');
+          // Clean up the URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          // Redirect to account page
+          navigate('/account');
+        }
+      }
+    };
+
+    handleCallback();
+  }, [navigate]);
+
+  return null;
+}
 
 function App() {
   useTheme();
@@ -25,14 +56,14 @@ function App() {
 
   return (
     <BrowserRouter>
+      <AuthHandler />
       <Routes>
         <Route path="/" element={<Home user={user} />} />
         <Route path="/search" element={<Search user={user} />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/link-account" element={<LinkAccount user={user} />} />
-        <Route path="/category/:category" element={<Category user={user} />} />
         <Route path="/account" element={<Account user={user} />} />
         <Route path="/admin" element={<Admin user={user} />} />
+        <Route path="/link-account" element={<LinkAccount user={user} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
