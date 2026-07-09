@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
-import { useBookmarks } from '../hooks/useBookmarks';
-import { useRecentlyViewed } from '../hooks/useRecentlyViewed';
 
 export default function Account({ user }) {
   const navigate = useNavigate();
@@ -13,12 +11,13 @@ export default function Account({ user }) {
   const [mcUuid, setMcUuid] = useState('');
   const [checkingDeposits, setCheckingDeposits] = useState(false);
   const [lastChecked, setLastChecked] = useState('Never');
-  const { bookmarks } = useBookmarks(user);
-  const { recentlyViewed, clearRecentlyViewed } = useRecentlyViewed();
+  const [bookmarks, setBookmarks] = useState([]);
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
     fetchData();
+    loadRecentlyViewed();
     
     const interval = setInterval(() => verifyDeposits(true), 10000);
     return () => clearInterval(interval);
@@ -30,6 +29,26 @@ export default function Account({ user }) {
 
     const { data: mcData } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', user.id).single();
     if (mcData) { setMcLinked(true); setMcUuid(mcData.account_id); }
+
+    // Load bookmarks
+    const { data: bookmarkData } = await supabase
+      .from('bookmarks')
+      .select('site_id, sites(name, slug, category)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    setBookmarks(bookmarkData || []);
+  };
+
+  const loadRecentlyViewed = () => {
+    const stored = localStorage.getItem('recentlyViewed');
+    if (stored) {
+      setRecentlyViewed(JSON.parse(stored));
+    }
+  };
+
+  const clearRecentlyViewed = () => {
+    localStorage.removeItem('recentlyViewed');
+    setRecentlyViewed([]);
   };
 
   const verifyDeposits = async (silent = false) => {
@@ -96,10 +115,9 @@ export default function Account({ user }) {
             </div>
           </div>
 
-          {/* Bookmarks */}
           {bookmarks.length > 0 && (
             <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
-              <h2 className="text-lg font-semibold mb-4">Your Bookmarks</h2>
+              <h2 className="text-lg font-semibold mb-4">Your Bookmarks ({bookmarks.length})</h2>
               <div className="space-y-2">
                 {bookmarks.map((bookmark) => (
                   <div 
@@ -117,16 +135,15 @@ export default function Account({ user }) {
             </div>
           )}
 
-          {/* Recently Viewed */}
           {recentlyViewed.length > 0 && (
             <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Recently Viewed</h2>
+                <h2 className="text-lg font-semibold">Recently Viewed ({recentlyViewed.length})</h2>
                 <button 
                   onClick={clearRecentlyViewed}
                   className="text-xs text-neutral-500 hover:text-red-500 transition-colors"
                 >
-                  Clear
+                  Clear All
                 </button>
               </div>
               <div className="space-y-2">
