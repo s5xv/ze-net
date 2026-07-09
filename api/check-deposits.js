@@ -28,10 +28,12 @@ export default async function handler(req, res) {
     const rawData = await response.json();
     const transactions = rawData.items || [];
 
+    // Get pending verifications, sorted newest first
     const { data: pendingVerifications } = await supabase
       .from('pending_verifications')
       .select('*')
-      .eq('status', 'waiting');
+      .eq('status', 'waiting')
+      .order('requested_at', { ascending: false });
 
     let actionsTaken = 0;
     let skippedTransactions = [];
@@ -50,54 +52,52 @@ export default async function handler(req, res) {
 
       let skipReason = null;
 
-      // Check 1: Plugin System
       if (pluginSystem !== null) {
-        skipReason = `Skipped because pluginSystem is "${pluginSystem}" (must be null)`;
-      } 
-      // Check 2: Amount Match
-      else {
+        skipReason = `Skipped because pluginSystem is "${pluginSystem}"`;
+      } else {
+        // Find a match by amount
         const amountMatch = pendingVerifications.find(v => Math.abs(parseFloat(v.expected_amount) - amount) < 0.001);
+        
         if (!amountMatch) {
-          skipReason = `Amount ${amount} does not match any pending verification. (Looking for: ${debugInfo.expectedAmounts.join(', ')})`;
-        } 
-        // Check 3: Memo Match
-        else {
+          skipReason = `Amount ${amount} does not match. (Looking for: ${debugInfo.expectedAmounts.join(', ')})`;
+        } else {
           const expectedMemo = `payment from ${ign.toLowerCase()} to business ${BUSINESS_NAME} corporate account`;
           if (memo !== expectedMemo) {
             skipReason = `Memo mismatch!\nActual:   "${memo}"\nExpected: "${expectedMemo}"`;
           }
         }
+
+        if (!skipReason && amountMatch) {
+          // SUCCESS! Link the account
+          let playerUuid = null;
+          try {
+            const playerRes = await fetch(`${TREASURY_API_BASE}/accounts/by-player?name=${ign}`, {
+              headers: { 'Authorization': `Bearer ${BUSINESS_API_TOKEN}` }
+            });
+            if (playerRes.ok) {
+              const playerData = await playerRes.json();
+              playerUuid = playerData.playerUuid;
+            }
+          } catch (e) { /* ignore */ }
+
+          await supabase.from('treasury_tokens').insert({
+            user_id: amountMatch.discord_user_id,
+            token: 'verified_via_payment',
+            account_id: playerUuid || ign 
+          });
+
+          await supabase.from('pending_verifications').update({ status: 'verified' }).eq('id', amountMatch.id);
+          actionsTaken++;
+          continue; // Move to next transaction
+        }
       }
 
       if (skipReason) {
         skippedTransactions.push({ txnId, amount, memo, reason: skipReason });
-        continue;
       }
-
-      // If we get here, it's a match!
-      let playerUuid = null;
-      try {
-        const playerRes = await fetch(`${TREASURY_API_BASE}/accounts/by-player?name=${ign}`, {
-          headers: { 'Authorization': `Bearer ${BUSINESS_API_TOKEN}` }
-        });
-        if (playerRes.ok) {
-          const playerData = await playerRes.json();
-          playerUuid = playerData.playerUuid;
-        }
-      } catch (e) { /* ignore */ }
-
-      await supabase.from('treasury_tokens').insert({
-        user_id: amountMatch.discord_user_id,
-        token: 'verified_via_payment',
-        account_id: playerUuid || ign 
-      });
-
-      await supabase.from('pending_verifications').update({ status: 'verified' }).eq('id', amountMatch.id);
-      actionsTaken++;
     }
 
     debugInfo.skippedTransactions = skippedTransactions;
-
     return res.status(200).json({ message: `Processed ${actionsTaken} verifications`, debug: debugInfo });
 
   } catch (error) {
