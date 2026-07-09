@@ -12,7 +12,8 @@ export default function Search({ user }) {
   const sortBy = searchParams.get('sort') || 'view_count';
 
   const [q, setQ] = useState(query);
-  const [results, setResults] = useState([]);
+  const [siteResults, setSiteResults] = useState([]);
+  const [wikiResults, setWikiResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const { isDark, toggleTheme } = useTheme();
@@ -27,6 +28,7 @@ export default function Search({ user }) {
   const fetchResults = async () => {
     setLoading(true);
     
+    // 1. Search sites
     let queryBuilder = supabase.from('sites').select('*');
 
     if (query) {
@@ -53,13 +55,24 @@ export default function Search({ user }) {
       queryBuilder = queryBuilder.order('name', { ascending: true });
     }
 
-    const { data } = await queryBuilder;
-    setResults(data || []);
+    const { data: sitesData } = await queryBuilder;
+    setSiteResults(sitesData || []);
 
+    // 2. Search wiki pages
+    let wikiQueryBuilder = supabase.from('wiki_pages').select('*');
+    
+    if (query) {
+      wikiQueryBuilder = wikiQueryBuilder.or(`title.ilike.%${query}%,content.ilike.%${query}%`);
+    }
+
+    const { data: wikiData } = await wikiQueryBuilder.order('title', { ascending: true }).limit(50);
+    setWikiResults(wikiData || []);
+
+    // 3. Log analytics
     await supabase.from('search_analytics').insert({
       query: query,
       user_id: user?.id || null,
-      results_count: data?.length || 0
+      results_count: (sitesData?.length || 0) + (wikiData?.length || 0)
     });
 
     setLoading(false);
@@ -85,6 +98,7 @@ export default function Search({ user }) {
   };
 
   const categories = ['Government', 'Corporate', 'Service', 'Charity', 'Community', 'Business', 'Build Project', 'Event', 'Politics', 'Creative', 'Emergency', 'Other'];
+  const totalResults = siteResults.length + wikiResults.length;
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200">
@@ -99,7 +113,7 @@ export default function Search({ user }) {
               type="text"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search..."
+              placeholder="Search sites and wiki..."
               className="w-full px-4 py-3 bg-neutral-100 dark:bg-[#09090b] border border-neutral-200 dark:border-white/10 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
             />
           </form>
@@ -116,6 +130,7 @@ export default function Search({ user }) {
       </div>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Filters */}
         <div className="mb-6">
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -180,7 +195,7 @@ export default function Search({ user }) {
         <div className="mb-6">
           <h2 className="text-xl sm:text-2xl font-semibold mb-1">Search Results</h2>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            {loading ? 'Searching...' : `${results.length} results for "${query}"`}
+            {loading ? 'Searching...' : `${totalResults} results for "${query}" (${siteResults.length} sites, ${wikiResults.length} wiki pages)`}
           </p>
         </div>
 
@@ -193,34 +208,74 @@ export default function Search({ user }) {
               </div>
             ))}
           </div>
-        ) : results.length === 0 ? (
+        ) : totalResults === 0 ? (
           <div className="text-center py-12 bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5">
             <p className="text-neutral-500">No results found</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {results.map((item) => (
-              <div 
-                key={item.id} 
-                className="p-4 sm:p-5 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl hover:border-orange-500/30 transition-colors cursor-pointer"
-                onClick={() => navigate(`/site/${item.slug}`)}
-              >
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">{item.name}</h3>
-                  {item.is_verified && <span className="text-xs text-orange-500">✓</span>}
-                  {item.is_sponsored && <span className="px-2 py-0.5 text-[10px] font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 rounded uppercase tracking-wider">Sponsored</span>}
-                </div>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">{item.description}</p>
-                <div className="flex items-center gap-3 text-xs text-neutral-400 dark:text-neutral-500 font-mono flex-wrap">
-                  <span>{item.category}</span>
-                  <span>•</span>
-                  <span>{item.owner_name || 'Unknown'}</span>
-                  <span>•</span>
-                  <span>{item.view_count || 0} views</span>
+          <>
+            {/* Sites Section */}
+            {siteResults.length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-lg font-bold mb-3 text-orange-500">Sites ({siteResults.length})</h3>
+                <div className="space-y-3">
+                  {siteResults.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="p-4 sm:p-5 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl hover:border-orange-500/30 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/site/${item.slug}`)}
+                    >
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">{item.name}</h3>
+                        {item.is_verified && <span className="text-xs text-orange-500">✓</span>}
+                        {item.is_sponsored && <span className="px-2 py-0.5 text-[10px] font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 rounded uppercase tracking-wider">Sponsored</span>}
+                      </div>
+                      <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">{item.description}</p>
+                      <div className="flex items-center gap-3 text-xs text-neutral-400 dark:text-neutral-500 font-mono flex-wrap">
+                        <span>{item.category}</span>
+                        <span>•</span>
+                        <span>{item.owner_name || 'Unknown'}</span>
+                        <span>•</span>
+                        <span>{item.view_count || 0} views</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+
+            {/* Wiki Section */}
+            {wikiResults.length > 0 && (
+              <div>
+                <h3 className="text-lg font-bold mb-3 text-orange-500">Wiki Pages ({wikiResults.length})</h3>
+                <div className="grid md:grid-cols-2 gap-3">
+                  {wikiResults.map((page) => (
+                    <a
+                      key={page.id}
+                      href={page.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-4 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl hover:border-orange-500/30 transition-colors group"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-orange-500/20 transition-colors">
+                          <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <div className="flex-grow min-w-0">
+                          <h4 className="font-semibold group-hover:text-orange-500 transition-colors truncate">{page.title}</h4>
+                          {page.category && page.category !== 'Category' && (
+                            <p className="text-xs text-neutral-500 font-mono mt-1">{page.category}</p>
+                          )}
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
