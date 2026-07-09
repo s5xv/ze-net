@@ -1,9 +1,9 @@
-import SiteReviews from '../components/SiteReviews';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Footer from '../components/Footer';
+import SiteReviews from '../components/SiteReviews';
 
 export default function Site({ user }) {
   const { slug } = useParams();
@@ -94,19 +94,19 @@ export default function Site({ user }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] flex items-center justify-center">
-        <div className="text-neutral-500 font-mono text-sm">Loading...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center">
+        <div className="text-gray-500 font-mono text-sm">Loading...</div>
       </div>
     );
   }
 
   if (!site) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4">404</h1>
-          <p className="text-neutral-500">Site not found</p>
-          <button onClick={() => navigate('/')} className="mt-4 text-orange-500 hover:underline">Go Home</button>
+          <p className="text-gray-500">Site not found</p>
+          <button onClick={() => navigate('/')} className="mt-4 text-blue-600 hover:underline">Go Home</button>
         </div>
       </div>
     );
@@ -115,56 +115,56 @@ export default function Site({ user }) {
   const urls = getAllUrls();
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#202124] text-gray-900 dark:text-gray-100 transition-colors duration-200 flex flex-col">
       <div className="flex flex-wrap justify-end gap-2 sm:gap-4 px-4 sm:px-6 py-4">
-        <a href="/" className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">HOME</a>
+        <a href="/" className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">HOME</a>
         {user ? (
-          <a href="/account" className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">ACCOUNT</a>
+          <a href="/account" className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">ACCOUNT</a>
         ) : (
-          <a href="/login" className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">SIGN IN</a>
+          <a href="/login" className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">SIGN IN</a>
         )}
-        <button onClick={toggleTheme} className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">{isDark ? 'LIGHT' : 'DARK'}</button>
+        <button onClick={toggleTheme} className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">{isDark ? 'LIGHT' : 'DARK'}</button>
       </div>
 
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
-        <div className="bg-white dark:bg-[#111111] rounded-xl p-6 sm:p-8 border border-neutral-200 dark:border-white/5 mb-6">
+        <div className="bg-white dark:bg-[#303134] rounded-xl p-6 sm:p-8 border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
             <div className="flex-grow">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <h1 className="text-3xl sm:text-4xl font-bold">{site.name}</h1>
-                {site.is_verified && <span className="px-2 py-1 text-xs font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 rounded">✓ Verified</span>}
-                {site.is_sponsored && <span className="px-2 py-1 text-xs font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 rounded">SPONSORED</span>}
+                {site.is_verified && <span className="px-2 py-1 text-xs font-bold text-blue-600 bg-blue-500/10 border border-blue-500/20 rounded">✓ Verified</span>}
+                {site.is_sponsored && <span className="px-2 py-1 text-xs font-bold text-blue-600 bg-blue-500/10 border border-blue-500/20 rounded">SPONSORED</span>}
               </div>
-              <p className="text-sm text-neutral-500 font-mono mb-2">{site.category}</p>
-              {site.owner_name && <p className="text-sm text-neutral-500">Owner: {site.owner_name}</p>}
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{site.category}</p>
+              {site.owner_name && <p className="text-sm text-gray-500 dark:text-gray-400">Owner: {site.owner_name}</p>}
             </div>
             <div className="flex gap-2 flex-shrink-0 flex-wrap">
               <button onClick={handleBookmark} className={`px-4 py-2 sm:py-3 font-medium rounded-lg transition-colors text-sm sm:text-base ${
                 isBookmarked 
                   ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
-                  : 'bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
+                  : 'bg-gray-100 dark:bg-[#3c4043] hover:bg-gray-200 dark:hover:bg-[#4a4d51] text-gray-700 dark:text-gray-300'
               }`}>
                 {isBookmarked ? '★ Bookmarked' : '☆ Bookmark'}
               </button>
-              <button onClick={handleShare} className="px-4 py-2 sm:py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-medium rounded-lg transition-colors text-sm sm:text-base">
+              <button onClick={handleShare} className="px-4 py-2 sm:py-3 bg-gray-100 dark:bg-[#3c4043] hover:bg-gray-200 dark:hover:bg-[#4a4d51] text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors text-sm sm:text-base">
                 Share
               </button>
             </div>
           </div>
 
           <div className="prose dark:prose-invert max-w-none mb-6">
-            <p className="text-base sm:text-lg text-neutral-700 dark:text-neutral-300 leading-relaxed">{site.description}</p>
+            <p className="text-base sm:text-lg text-gray-700 dark:text-gray-300 leading-relaxed">{site.description}</p>
           </div>
 
           {urls.length > 0 && (
             <div className="mb-6">
-              <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-3">Links</h3>
+              <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Links</h3>
               <div className="flex flex-wrap gap-2">
                 {urls.map((urlObj, index) => (
                   <button
                     key={index}
                     onClick={() => handleVisit(urlObj)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm"
                   >
                     <span>{urlObj.label}</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,38 +176,39 @@ export default function Site({ user }) {
             </div>
           )}
 
-          <div className="pt-6 border-t border-neutral-200 dark:border-white/10 grid grid-cols-2 gap-4 text-center">
+          <div className="pt-6 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-4 text-center">
             <div>
-              <p className="text-2xl sm:text-3xl font-bold text-orange-500">{site.view_count || 0}</p>
-              <p className="text-xs sm:text-sm text-neutral-500">Views</p>
+              <p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{site.view_count || 0}</p>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Views</p>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-bold text-orange-500">{site.click_count || 0}</p>
-              <p className="text-xs sm:text-sm text-neutral-500">Clicks</p>
+              <p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{site.click_count || 0}</p>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Clicks</p>
             </div>
           </div>
         </div>
 
         {relatedSites.length > 0 && (
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-6 border border-neutral-200 dark:border-white/5">
+          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
             <h2 className="text-xl font-bold mb-4">Related Sites</h2>
             <div className="space-y-3">
               {relatedSites.map((related) => (
                 <div 
                   key={related.id} 
-                  className="p-4 bg-neutral-50 dark:bg-[#09090b] border border-neutral-200 dark:border-white/5 rounded-lg hover:border-orange-500/30 transition-colors cursor-pointer"
+                  className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500/30 transition-colors cursor-pointer"
                   onClick={() => navigate(`/site/${related.slug}`)}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold">{related.name}</h3>
-                    {related.is_verified && <span className="text-xs text-orange-500">✓</span>}
+                    {related.is_verified && <span className="text-xs text-blue-600">✓</span>}
                   </div>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-400">{related.description}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{related.description}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
+
         <SiteReviews siteId={site.id} user={user} />
       </main>
 
