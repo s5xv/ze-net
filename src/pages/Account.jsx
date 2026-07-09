@@ -13,17 +13,19 @@ export default function Account({ user }) {
   const [lastChecked, setLastChecked] = useState('Never');
   const [bookmarks, setBookmarks] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
     fetchData();
-    loadRecentlyViewed();
     
     const interval = setInterval(() => verifyDeposits(true), 10000);
     return () => clearInterval(interval);
   }, [user, navigate]);
 
   const fetchData = async () => {
+    setRefreshing(true);
+    
     const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', user.id).single();
     setBalance(balData?.balance || 0);
 
@@ -31,19 +33,25 @@ export default function Account({ user }) {
     if (mcData) { setMcLinked(true); setMcUuid(mcData.account_id); }
 
     // Load bookmarks
-    const { data: bookmarkData } = await supabase
+    const { data: bookmarkData, error } = await supabase
       .from('bookmarks')
       .select('site_id, sites(name, slug, category)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
+    
+    console.log('Bookmarks loaded:', bookmarkData, 'Error:', error);
     setBookmarks(bookmarkData || []);
-  };
 
-  const loadRecentlyViewed = () => {
+    // Load recently viewed from localStorage
     const stored = localStorage.getItem('recentlyViewed');
+    console.log('Recently viewed from localStorage:', stored);
     if (stored) {
       setRecentlyViewed(JSON.parse(stored));
+    } else {
+      setRecentlyViewed([]);
     }
+
+    setRefreshing(false);
   };
 
   const clearRecentlyViewed = () => {
@@ -71,6 +79,9 @@ export default function Account({ user }) {
     <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
       <div className="flex justify-end gap-4 px-6 py-4">
         <a href="/" className="text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">HOME</a>
+        <button onClick={fetchData} className="text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">
+          {refreshing ? 'REFRESHING...' : 'REFRESH'}
+        </button>
         <button onClick={toggleTheme} className="text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">{isDark ? 'LIGHT' : 'DARK'}</button>
       </div>
 
@@ -115,9 +126,12 @@ export default function Account({ user }) {
             </div>
           </div>
 
-          {bookmarks.length > 0 && (
-            <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
-              <h2 className="text-lg font-semibold mb-4">Your Bookmarks ({bookmarks.length})</h2>
+          {/* Bookmarks Section */}
+          <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4">Your Bookmarks ({bookmarks.length})</h2>
+            {bookmarks.length === 0 ? (
+              <p className="text-sm text-neutral-500">No bookmarks yet. Visit a site and click the bookmark button!</p>
+            ) : (
               <div className="space-y-2">
                 {bookmarks.map((bookmark) => (
                   <div 
@@ -132,20 +146,25 @@ export default function Account({ user }) {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {recentlyViewed.length > 0 && (
-            <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Recently Viewed ({recentlyViewed.length})</h2>
+          {/* Recently Viewed Section */}
+          <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Recently Viewed ({recentlyViewed.length})</h2>
+              {recentlyViewed.length > 0 && (
                 <button 
                   onClick={clearRecentlyViewed}
                   className="text-xs text-neutral-500 hover:text-red-500 transition-colors"
                 >
                   Clear All
                 </button>
-              </div>
+              )}
+            </div>
+            {recentlyViewed.length === 0 ? (
+              <p className="text-sm text-neutral-500">No recently viewed sites. Visit some sites to see them here!</p>
+            ) : (
               <div className="space-y-2">
                 {recentlyViewed.map((site) => (
                   <div 
@@ -160,8 +179,8 @@ export default function Account({ user }) {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </main>
     </div>
