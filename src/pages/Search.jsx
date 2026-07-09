@@ -52,13 +52,7 @@ export default function Search({ user }) {
       <div className="bg-white dark:bg-[#111111] border-b border-neutral-200 dark:border-white/5 px-4 sm:px-6 py-4">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center gap-4">
           <a href="/" className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
-            <img 
-              src="/assets/logo.png" 
-              alt="Z&E Net" 
-              className="h-14 w-14 sm:h-16 sm:w-16 object-contain" 
-              style={{ imageRendering: 'pixelated' }}
-            />
-            <span className="text-2xl sm:text-3xl font-bold tracking-tight hidden sm:block">Z&E <span className="text-orange-500">Net</span></span>
+            <span className="text-2xl sm:text-3xl font-bold tracking-tight">Z&E <span className="text-orange-500">Net</span></span>
           </a>
           
           <form onSubmit={handleSearch} className="flex-grow w-full sm:w-auto">

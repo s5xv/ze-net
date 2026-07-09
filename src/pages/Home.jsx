@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
-import SearchAutocomplete from '../components/SearchAutocomplete';
 
 export default function Home({ user }) {
   const navigate = useNavigate();
@@ -101,11 +100,18 @@ export default function Home({ user }) {
         <p className="text-neutral-500 dark:text-neutral-400 text-base sm:text-lg mb-8 sm:mb-10 text-center">DemocracyCraft Centralized Directory</p>
 
         <form onSubmit={handleSearch} className="w-full max-w-2xl mb-10 sm:mb-12">
-          <SearchAutocomplete 
-            value={q} 
-            onChange={(e) => setQ(e.target.value)} 
-            onSubmit={handleSearch}
-          />
+          <div className="relative group">
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search sites..."
+              className="w-full px-5 sm:px-6 py-4 sm:py-5 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-xl text-lg sm:text-xl text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm dark:shadow-none"
+            />
+            <button type="submit" className="absolute right-2 sm:right-3 top-2 sm:top-3 bottom-2 sm:bottom-3 px-5 sm:px-8 bg-orange-500 hover:bg-orange-600 text-white text-base sm:text-lg font-medium rounded-lg transition-colors">
+              Search
+            </button>
+          </div>
         </form>
 
         <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-10 sm:mb-12 w-full max-w-2xl">

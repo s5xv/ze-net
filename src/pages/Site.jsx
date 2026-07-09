@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
-import { useBookmarks } from '../hooks/useBookmarks';
-import { useRecentlyViewed } from '../hooks/useRecentlyViewed';
 
 export default function Site({ user }) {
   const { slug } = useParams();
@@ -12,8 +10,7 @@ export default function Site({ user }) {
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [relatedSites, setRelatedSites] = useState([]);
-  const { bookmarks, addBookmark, removeBookmark, isBookmarked } = useBookmarks(user);
-  const { addToRecentlyViewed } = useRecentlyViewed();
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
   useEffect(() => {
     fetchSite();
@@ -25,7 +22,12 @@ export default function Site({ user }) {
     
     if (data) {
       setSite(data);
-      addToRecentlyViewed(data);
+      
+      // Add to recently viewed
+      const stored = localStorage.getItem('recentlyViewed');
+      const recentlyViewed = stored ? JSON.parse(stored) : [];
+      const updated = [data, ...recentlyViewed.filter((s) => s.id !== data.id)].slice(0, 10);
+      localStorage.setItem('recentlyViewed', JSON.stringify(updated));
       
       await supabase.from('sites').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
       
@@ -36,6 +38,17 @@ export default function Site({ user }) {
         .neq('id', data.id)
         .limit(5);
       setRelatedSites(related || []);
+
+      // Check if bookmarked
+      if (user) {
+        const { data: bookmark } = await supabase
+          .from('bookmarks')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('site_id', data.id)
+          .single();
+        setIsBookmarked(!!bookmark);
+      }
     }
     
     setLoading(false);
@@ -54,16 +67,25 @@ export default function Site({ user }) {
     alert('Link copied to clipboard!');
   };
 
-  const handleBookmark = () => {
+  const handleBookmark = async () => {
     if (!user) {
       alert('Please sign in to bookmark sites');
       return;
     }
 
-    if (isBookmarked(site.id)) {
-      removeBookmark(site.id);
+    if (isBookmarked) {
+      await supabase
+        .from('bookmarks')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('site_id', site.id);
+      setIsBookmarked(false);
     } else {
-      addBookmark(site.id);
+      await supabase.from('bookmarks').insert({
+        user_id: user.id,
+        site_id: site.id
+      });
+      setIsBookmarked(true);
     }
   };
 
@@ -116,11 +138,11 @@ export default function Site({ user }) {
                 Visit Site
               </button>
               <button onClick={handleBookmark} className={`px-4 py-2 sm:py-3 font-medium rounded-lg transition-colors text-sm sm:text-base ${
-                isBookmarked(site.id) 
+                isBookmarked 
                   ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
                   : 'bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
               }`}>
-                {isBookmarked(site.id) ? '★ Bookmarked' : '☆ Bookmark'}
+                {isBookmarked ? '★ Bookmarked' : '☆ Bookmark'}
               </button>
               <button onClick={handleShare} className="px-4 py-2 sm:py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-medium rounded-lg transition-colors text-sm sm:text-base">
                 Share
