@@ -11,19 +11,20 @@ export default function Account({ user }) {
   const [mcUuid, setMcUuid] = useState('');
   const [checkingDeposits, setCheckingDeposits] = useState(false);
   const [lastChecked, setLastChecked] = useState('Never');
+  const [debugLog, setDebugLog] = useState([]);
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
     fetchData();
     
-    // Auto-check every 10 seconds
     const interval = setInterval(() => verifyDeposits(true), 10000);
     return () => clearInterval(interval);
   }, [user, navigate]);
 
   const fetchData = async () => {
     const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', user.id).single();
-    if (balData) setBalance(balData.balance);
+    // FIX: Set to 0 if no row exists yet
+    setBalance(balData?.balance || 0);
 
     const { data: mcData } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', user.id).single();
     if (mcData) { setMcLinked(true); setMcUuid(mcData.account_id); }
@@ -32,7 +33,11 @@ export default function Account({ user }) {
   const verifyDeposits = async (silent = false) => {
     if (!silent) setCheckingDeposits(true);
     try {
-      await fetch('/api/check-deposits');
+      const res = await fetch('/api/check-deposits');
+      const data = await res.json();
+      
+      if (data.debugLog) setDebugLog(data.debugLog);
+      
       fetchData(); // Refresh balance
       const now = new Date();
       setLastChecked(`${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`);
@@ -62,7 +67,7 @@ export default function Account({ user }) {
             <div className="space-y-3 text-sm">
               <p><span className="text-neutral-500">Discord:</span> {user.user_metadata.name || user.email}</p>
               <p><span className="text-neutral-500">MC Status:</span> {mcLinked ? <span className="text-green-500">LINKED</span> : <span className="text-red-500">NOT LINKED</span>}</p>
-              {mcLinked && <p className="font-mono text-xs break-all">UUID: {mcUuid}</p>}
+              {mcLinked && <p className="font-mono text-xs break-all">UUID/IGN: {mcUuid}</p>}
               {!mcLinked && <a href="/link-account" className="text-orange-500 hover:underline">Link MC Account</a>}
             </div>
           </div>
@@ -77,16 +82,14 @@ export default function Account({ user }) {
           {/* Deposit Instructions */}
           <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
             <h2 className="text-lg font-semibold mb-4">How to Deposit</h2>
-            <p className="text-sm text-neutral-400 mb-4">Go in-game and use the following command to deposit any amount directly to your site balance:</p>
             <div className="bg-black rounded-lg p-4 font-mono text-green-400 text-lg mb-4 border border-neutral-800 text-center">
-              /db pay into ZEN [amount]
+              /paya business ZEN [amount]
             </div>
-            <p className="text-xs text-neutral-500 mb-4">Example: <span className="font-mono">/db pay into ZEN 50</span> will add $50 to your site balance.</p>
             
-            <div className="flex items-center justify-between pt-4 border-t border-neutral-800">
+            <div className="flex items-center justify-between pt-4 border-t border-neutral-800 mb-4">
               <div>
                 <h3 className="text-sm font-semibold mb-1">Deposit Verification</h3>
-                <p className="text-xs text-neutral-500">System checks for payments every 10 seconds. Last check: {lastChecked}</p>
+                <p className="text-xs text-neutral-500">Last check: {lastChecked}</p>
               </div>
               <button 
                 onClick={() => verifyDeposits(false)} 
@@ -96,6 +99,20 @@ export default function Account({ user }) {
                 {checkingDeposits ? 'Checking...' : 'Verify Deposits'}
               </button>
             </div>
+
+            {/* Debug Log */}
+            {debugLog.length > 0 && (
+              <div className="mt-4 p-4 bg-neutral-900 border border-neutral-700 rounded-lg overflow-auto max-h-60">
+                <h3 className="text-sm font-bold text-neutral-400 mb-2">System Debug Log:</h3>
+                <div className="space-y-1">
+                  {debugLog.map((log, i) => (
+                    <div key={i} className={`text-xs font-mono ${log.status === 'SUCCESS' ? 'text-green-400' : log.status === 'ERROR' ? 'text-red-400' : 'text-neutral-500'}`}>
+                      [ID: {log.txnId}] {log.status}: {log.reason} {log.newBalance ? `(New Balance: $${log.newBalance})` : ''}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
