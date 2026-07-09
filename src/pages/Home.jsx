@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
+import AdminButton from '../components/AdminButton';
 
 export default function Home({ user }) {
   const navigate = useNavigate();
@@ -11,13 +12,15 @@ export default function Home({ user }) {
   const [newSites, setNewSites] = useState([]);
   const [stats, setStats] = useState({ totalSites: 0 });
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [treasuryStats, setTreasuryStats] = useState({ onlinePlayers: [] });
+  const [announcement, setAnnouncement] = useState(null);
 
   useEffect(() => {
     fetchHomepageData();
+    fetchTreasuryStats();
+    fetchAnnouncement();
 
-    const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 300);
-    };
+    const handleScroll = () => setShowBackToTop(window.scrollY > 300);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -54,6 +57,21 @@ export default function Home({ user }) {
     setStats({ totalSites: siteCount || 0 });
   };
 
+  const fetchTreasuryStats = async () => {
+    try {
+      const res = await fetch('/api/treasury-stats');
+      const data = await res.json();
+      setTreasuryStats({ onlinePlayers: data.onlinePlayers || [] });
+    } catch (err) {
+      console.error('Failed to fetch treasury stats', err);
+    }
+  };
+
+  const fetchAnnouncement = async () => {
+    const { data } = await supabase.from('announcements').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1).single();
+    setAnnouncement(data);
+  };
+
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!q.trim()) return;
@@ -66,16 +84,30 @@ export default function Home({ user }) {
     navigate(`/search?q=${encodeURIComponent(q.trim())}`);
   };
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  const handleFeelingLucky = async () => {
+    const { data } = await supabase.from('sites').select('*').limit(1000);
+    if (data && data.length > 0) {
+      const randomSite = data[Math.floor(Math.random() * data.length)];
+      navigate(`/site/${randomSite.slug}`);
+    }
   };
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
+      {/* Announcement Banner */}
+      {announcement && (
+        <div className="bg-orange-500 text-white px-4 py-2 text-center text-sm">
+          <strong>📢 {announcement.title}:</strong> {announcement.message}
+        </div>
+      )}
+
       <div className="flex flex-wrap justify-end gap-2 sm:gap-4 px-4 sm:px-6 py-4">
         {user ? (
           <>
             <a href="/account" className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">ACCOUNT</a>
+            <AdminButton />
             <button onClick={async () => { await supabase.auth.signOut(); navigate('/'); }} className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">SIGN OUT</button>
           </>
         ) : (
@@ -99,7 +131,19 @@ export default function Home({ user }) {
 
         <p className="text-neutral-500 dark:text-neutral-400 text-base sm:text-lg mb-8 sm:mb-10 text-center">DemocracyCraft Centralized Directory</p>
 
-        <form onSubmit={handleSearch} className="w-full max-w-2xl mb-10 sm:mb-12">
+        {/* Live Stats */}
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-8 w-full max-w-2xl">
+          <div className="bg-white dark:bg-[#111111] rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-white/5 text-center">
+            <p className="text-2xl sm:text-3xl font-bold text-green-500 mb-1">{treasuryStats.onlinePlayers.length}</p>
+            <p className="text-xs sm:text-sm text-neutral-500">Players Online</p>
+          </div>
+          <div className="bg-white dark:bg-[#111111] rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-white/5 text-center">
+            <p className="text-2xl sm:text-3xl font-bold text-blue-500 mb-1">{stats.totalSites}</p>
+            <p className="text-xs sm:text-sm text-neutral-500">Total Sites</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSearch} className="w-full max-w-2xl mb-6">
           <div className="relative group">
             <input
               type="text"
@@ -114,16 +158,26 @@ export default function Home({ user }) {
           </div>
         </form>
 
-        <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-10 sm:mb-12 w-full max-w-2xl">
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-6 sm:p-8 border border-neutral-200 dark:border-white/5 text-center">
-            <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-orange-500 mb-2">{stats.totalSites}</p>
-            <p className="text-sm sm:text-base text-neutral-500">Total Sites</p>
+        <button
+          onClick={handleFeelingLucky}
+          className="mb-10 px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors"
+        >
+          🎲 I'm Feeling Lucky
+        </button>
+
+        {/* Online Players */}
+        {treasuryStats.onlinePlayers.length > 0 && (
+          <div className="w-full max-w-4xl mb-8 bg-white dark:bg-[#111111] rounded-xl p-5 border border-neutral-200 dark:border-white/5">
+            <h2 className="text-base font-bold text-green-500 mb-3">🟢 Online Now ({treasuryStats.onlinePlayers.length})</h2>
+            <div className="flex flex-wrap gap-2">
+              {treasuryStats.onlinePlayers.slice(0, 20).map((player, i) => (
+                <span key={i} className="px-3 py-1 bg-green-500/10 text-green-600 dark:text-green-400 text-sm rounded-full border border-green-500/20">
+                  {player.name}
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-6 sm:p-8 border border-neutral-200 dark:border-white/5 text-center">
-            <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-orange-500 mb-2">∞</p>
-            <p className="text-sm sm:text-base text-neutral-500">Possibilities</p>
-          </div>
-        </div>
+        )}
 
         <div className="w-full max-w-4xl grid md:grid-cols-2 gap-4 sm:gap-6 mb-8">
           <div className="bg-white dark:bg-[#111111] rounded-xl p-5 sm:p-6 border border-neutral-200 dark:border-white/5">
@@ -173,18 +227,17 @@ export default function Home({ user }) {
           </a>
         </div>
 
-        {/* Footer Links */}
         <div className="mt-12 text-center space-y-2">
           <div className="flex gap-4 justify-center text-sm flex-wrap">
+            <a href="/wiki" className="text-neutral-500 hover:text-orange-500 transition-colors">Wiki</a>
+            <span className="text-neutral-300">•</span>
             <a href="/forums" className="text-neutral-500 hover:text-orange-500 transition-colors">Forums</a>
             <span className="text-neutral-300">•</span>
             <a href="/departments" className="text-neutral-500 hover:text-orange-500 transition-colors">Departments</a>
             <span className="text-neutral-300">•</span>
-            <a href="/changelog" className="text-neutral-500 hover:text-orange-500  transition-colors">Changelog</a>
+            <a href="/changelog" className="text-neutral-500 hover:text-orange-500 transition-colors">Changelog</a>
             <span className="text-neutral-300">•</span>
             <a href="/contact" className="text-neutral-500 hover:text-orange-500 transition-colors">Contact</a>
-            <a href="/wiki" className="text-neutral-500 hover:text-orange-500 transition-colors">Wiki</a>
-            <span className="text-neutral-300">•</span>
           </div>
         </div>
       </main>
