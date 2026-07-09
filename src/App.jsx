@@ -6,6 +6,7 @@ import { supabase } from './services/supabase';
 
 import Home from './pages/Home';
 import Search from './pages/Search';
+import Site from './pages/Site';
 import Login from './pages/Login';
 import Account from './pages/Account';
 import Admin from './pages/Admin';
@@ -21,12 +22,8 @@ function AuthHandler() {
       const code = urlParams.get('code');
 
       if (code) {
-        console.log('Found auth code, exchanging for session...');
         const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          console.error('Failed to exchange code:', error);
-        } else {
-          console.log('Session established successfully');
+        if (!error) {
           window.history.replaceState({}, document.title, window.location.pathname);
           navigate('/account');
         }
@@ -57,6 +54,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home user={user} />} />
         <Route path="/search" element={<Search user={user} />} />
+        <Route path="/site/:slug" element={<Site user={user} />} />
         <Route path="/login" element={<Login />} />
         <Route path="/account" element={<Account user={user} />} />
         <Route path="/admin" element={<Admin user={user} />} />

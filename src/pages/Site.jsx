@@ -1,0 +1,149 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useTheme } from '../hooks/useTheme';
+import { supabase } from '../services/supabase';
+
+export default function Site({ user }) {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const { isDark, toggleTheme } = useTheme();
+  const [site, setSite] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [relatedSites, setRelatedSites] = useState([]);
+
+  useEffect(() => {
+    fetchSite();
+  }, [slug]);
+
+  const fetchSite = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('sites').select('*').eq('slug', slug).single();
+    
+    if (data) {
+      setSite(data);
+      
+      // Increment view count
+      await supabase.from('sites').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
+      
+      // Get related sites (same category)
+      const { data: related } = await supabase
+        .from('sites')
+        .select('*')
+        .eq('category', data.category)
+        .neq('id', data.id)
+        .limit(5);
+      setRelatedSites(related || []);
+    }
+    
+    setLoading(false);
+  };
+
+  const handleVisit = async () => {
+    if (site) {
+      await supabase.from('sites').update({ click_count: (site.click_count || 0) + 1 }).eq('id', site.id);
+      window.open(site.url, '_blank');
+    }
+  };
+
+  const handleShare = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    alert('Link copied to clipboard!');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] flex items-center justify-center">
+        <div className="text-neutral-500 font-mono text-sm">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!site) {
+    return (
+      <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-4">404</h1>
+          <p className="text-neutral-500">Site not found</p>
+          <button onClick={() => navigate('/')} className="mt-4 text-orange-500 hover:underline">Go Home</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
+      <div className="flex flex-wrap justify-end gap-2 sm:gap-4 px-4 sm:px-6 py-4">
+        <a href="/" className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">HOME</a>
+        {user ? (
+          <a href="/account" className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">ACCOUNT</a>
+        ) : (
+          <a href="/login" className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">SIGN IN</a>
+        )}
+        <button onClick={toggleTheme} className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">{isDark ? 'LIGHT' : 'DARK'}</button>
+      </div>
+
+      <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
+        {/* Site Header */}
+        <div className="bg-white dark:bg-[#111111] rounded-xl p-6 sm:p-8 border border-neutral-200 dark:border-white/5 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+            <div className="flex-grow">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <h1 className="text-3xl sm:text-4xl font-bold">{site.name}</h1>
+                {site.is_verified && <span className="px-2 py-1 text-xs font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 rounded">✓ Verified</span>}
+                {site.is_sponsored && <span className="px-2 py-1 text-xs font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 rounded">SPONSORED</span>}
+              </div>
+              <p className="text-sm text-neutral-500 font-mono mb-2">{site.category}</p>
+              {site.owner_name && <p className="text-sm text-neutral-500">Owner: {site.owner_name}</p>}
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button onClick={handleVisit} className="px-4 sm:px-6 py-2 sm:py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm sm:text-base">
+                Visit Site
+              </button>
+              <button onClick={handleShare} className="px-4 py-2 sm:py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-medium rounded-lg transition-colors text-sm sm:text-base">
+                Share
+              </button>
+            </div>
+          </div>
+
+          <div className="prose dark:prose-invert max-w-none">
+            <p className="text-base sm:text-lg text-neutral-700 dark:text-neutral-300 leading-relaxed">{site.description}</p>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-white/10 grid grid-cols-2 gap-4 text-center">
+            <div>
+              <p className="text-2xl sm:text-3xl font-bold text-orange-500">{site.view_count || 0}</p>
+              <p className="text-xs sm:text-sm text-neutral-500">Views</p>
+            </div>
+            <div>
+              <p className="text-2xl sm:text-3xl font-bold text-orange-500">{site.click_count || 0}</p>
+              <p className="text-xs sm:text-sm text-neutral-500">Clicks</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Related Sites */}
+        {relatedSites.length > 0 && (
+          <div className="bg-white dark:bg-[#111111] rounded-xl p-6 border border-neutral-200 dark:border-white/5">
+            <h2 className="text-xl font-bold mb-4">Related Sites</h2>
+            <div className="space-y-3">
+              {relatedSites.map((related) => (
+                <div 
+                  key={related.id} 
+                  className="p-4 bg-neutral-50 dark:bg-[#09090b] border border-neutral-200 dark:border-white/5 rounded-lg hover:border-orange-500/30 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/site/${related.slug}`)}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold">{related.name}</h3>
+                    {related.is_verified && <span className="text-xs text-orange-500">✓</span>}
+                  </div>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">{related.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
