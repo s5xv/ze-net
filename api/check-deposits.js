@@ -12,8 +12,9 @@ const ZANDENET_ACCOUNT_ID = '123945';
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
+  const ign = req.query.ign; // Get the in-game name from the query parameter
+
   try {
-    // 1. Fetch recent transactions
     const response = await fetch(`${TREASURY_API_BASE}/api/v1/accounts/${ZANDENET_ACCOUNT_ID}/transactions?limit=50`, {
       headers: {
         'Authorization': `Bearer ${BUSINESS_API_TOKEN}`,
@@ -26,28 +27,28 @@ export default async function handler(req, res) {
     }
 
     const rawData = await response.json();
-    
-    // FIX: The API returns transactions under "items", not "data"
     const transactions = rawData.items || [];
 
-    // 2. Get all pending verification requests
     const { data: pendingVerifications } = await supabase
       .from('pending_verifications')
       .select('*')
       .eq('status', 'waiting');
 
     let actionsTaken = 0;
+    let debugInfo = {
+      totalTransactions: transactions.length,
+      pendingVerifications: pendingVerifications?.length || 0,
+      lookingForIGN: ign,
+      matchedTransactions: []
+    };
 
-    // 3. Loop through transactions
     for (const txn of transactions) {
       const txnId = txn.txnId || txn.postingId;
-      // FIX: amount is a string in the API, so we parse it
       const amount = parseFloat(txn.amount);
-      const initiatorUuid = txn.initiatorUuid;
+      const memo = txn.memo || '';
 
-      if (!txnId || isNaN(amount) || amount <= 0 || !initiatorUuid) continue;
+      if (!txnId || isNaN(amount) || amount <= 0) continue;
 
-      // Check if we already processed this transaction
       const { data: existing } = await supabase
         .from('processed_deposits')
         .select('txn_id')
@@ -56,37 +57,42 @@ export default async function handler(req, res) {
 
       if (existing) continue;
 
-      // 4. Find a matching pending verification by amount
-      const match = pendingVerifications.find(v => {
+      // Check if this transaction matches a pending verification by amount
+      const amountMatch = pendingVerifications.find(v => {
         const expectedAmount = parseFloat(v.expected_amount);
         return Math.abs(expectedAmount - amount) < 0.001;
       });
 
-      if (match) {
-        // Check if this UUID is already linked
-        const { data: alreadyLinked } = await supabase
-          .from('treasury_tokens')
-          .select('id')
-          .eq('account_id', initiatorUuid)
-          .single();
+      if (amountMatch && ign) {
+        // Check if the memo contains the player's IGN
+        // The memo format is: "Payment from <IGN> to business ZEN Corporate Account"
+        const memoLower = memo.toLowerCase();
+        const ignLower = ign.toLowerCase();
         
-        if (!alreadyLinked) {
-          // Link the account!
+        if (memoLower.includes(ignLower)) {
+          debugInfo.matchedTransactions.push({
+            txnId,
+            amount,
+            memo,
+            matchedIGN: ign
+          });
+
+          // We found a match! Now we need to get the actual UUID
+          // Since we can't get it from the API, we'll store the IGN instead
           await supabase.from('treasury_tokens').insert({
-            user_id: match.discord_user_id,
+            user_id: amountMatch.discord_user_id,
             token: 'verified_via_payment',
-            account_id: initiatorUuid
+            account_id: ign // Store the IGN instead of UUID
           });
           
           await supabase.from('pending_verifications')
             .update({ status: 'verified' })
-            .eq('id', match.id);
+            .eq('id', amountMatch.id);
           
           actionsTaken++;
         }
       }
 
-      // Mark transaction as processed
       await supabase.from('processed_deposits').insert({
         txn_id: txnId,
         amount: amount,
@@ -96,10 +102,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ 
       message: `Processed ${actionsTaken} verifications`,
-      debug: {
-        totalTransactions: transactions.length,
-        pendingVerifications: pendingVerifications?.length || 0
-      }
+      debug: debugInfo
     });
 
   } catch (error) {

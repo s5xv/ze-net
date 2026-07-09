@@ -10,6 +10,7 @@ export default function LinkAccount({ user }) {
   const [linkedAccount, setLinkedAccount] = useState(null);
   const [randomAmount, setRandomAmount] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
+  const [ign, setIgn] = useState('');
   const [debugData, setDebugData] = useState(null);
 
   useEffect(() => {
@@ -47,26 +48,30 @@ export default function LinkAccount({ user }) {
   };
 
   const checkStatus = async () => {
+    if (!ign.trim()) {
+      setErrorMsg('Please enter your in-game name first.');
+      return;
+    }
+
     setChecking(true);
     setErrorMsg('');
     setDebugData(null);
     
     try {
-      // 1. Fetch debug data to see what the API is actually returning
-      const debugRes = await fetch('/api/debug-txns');
-      const debugJson = await debugRes.json();
-      setDebugData(debugJson);
-
-      // 2. Trigger the actual check
-      const res = await fetch('/api/check-deposits');
-      if (!res.ok) throw new Error('Server error');
+      // Pass the IGN to the backend so it can match against the memo
+      const res = await fetch(`/api/check-deposits?ign=${encodeURIComponent(ign.trim())}`);
+      const data = await res.json();
       
-      // 3. Check if we got linked
-      const { data } = await supabase.from('treasury_tokens').select('*').eq('user_id', user.id).single();
-      if (data) {
-        setLinkedAccount(data);
+      if (data.debug) {
+        setDebugData(data.debug);
+      }
+
+      // Check if we got linked
+      const { data: linked } = await supabase.from('treasury_tokens').select('*').eq('user_id', user.id).single();
+      if (linked) {
+        setLinkedAccount(linked);
       } else {
-        setErrorMsg('Payment not detected yet. Check the debug data below to see what the API returned.');
+        setErrorMsg('Payment not detected yet. Make sure you paid the exact amount and entered your correct in-game name.');
       }
     } catch (err) {
       setErrorMsg('Error checking server.');
@@ -115,7 +120,16 @@ export default function LinkAccount({ user }) {
         ) : (
           <div className="bg-white dark:bg-[#111111] rounded-xl p-6 border border-neutral-200 dark:border-white/5 space-y-6">
             <div className="text-center">
-              <p className="text-neutral-300 mb-6">To link your account, pay exactly this amount to your business <span className="text-orange-500 font-bold">ZEN</span> in-game:</p>
+              <p className="text-neutral-300 mb-4">Step 1: Enter your in-game name</p>
+              <input
+                type="text"
+                value={ign}
+                onChange={(e) => setIgn(e.target.value)}
+                placeholder="Your Minecraft username"
+                className="w-full px-4 py-3 bg-neutral-100 dark:bg-[#09090b] border border-neutral-200 dark:border-white/10 rounded-lg text-center text-lg focus:outline-none focus:border-orange-500 mb-6"
+              />
+
+              <p className="text-neutral-300 mb-4">Step 2: Pay exactly this amount in-game:</p>
               
               <div className="bg-black rounded-lg p-6 font-mono text-orange-500 text-4xl font-bold mb-6 border border-orange-500/30">
                 ${randomAmount.toFixed(2)}
@@ -130,16 +144,15 @@ export default function LinkAccount({ user }) {
                 disabled={checking}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-700 text-white font-medium rounded-lg transition-colors w-full"
               >
-                {checking ? 'Checking...' : 'Check if I Paid'}
+                {checking ? 'Checking...' : 'Step 3: Check if I Paid'}
               </button>
 
               {errorMsg && <p className="mt-4 text-sm text-red-400">{errorMsg}</p>}
             </div>
 
-            {/* DEBUG DATA */}
             {debugData && (
               <div className="mt-6 p-4 bg-neutral-900 border border-neutral-700 rounded-lg overflow-auto max-h-96">
-                <h3 className="text-sm font-bold text-neutral-400 mb-2">API Debug Data (What the server sees):</h3>
+                <h3 className="text-sm font-bold text-neutral-400 mb-2">API Debug Data:</h3>
                 <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
                   {JSON.stringify(debugData, null, 2)}
                 </pre>
