@@ -176,9 +176,11 @@ export default function Home({ user }) {
         {/* Footer Links */}
         <div className="mt-12 text-center space-y-2">
           <div className="flex gap-4 justify-center text-sm flex-wrap">
+            <a href="/forums" className="text-neutral-500 hover:text-orange-500 transition-colors">Forums</a>
+            <span className="text-neutral-300">•</span>
             <a href="/departments" className="text-neutral-500 hover:text-orange-500 transition-colors">Departments</a>
             <span className="text-neutral-300">•</span>
-            <a href="/changelog" className="text-neutral-500 hover:text-orange-500 transition-colors">Changelog</a>
+            <a href="/changelog" className="text-neutral-500 hover:text-orange-500  transition-colors">Changelog</a>
             <span className="text-neutral-300">•</span>
             <a href="/contact" className="text-neutral-500 hover:text-orange-500 transition-colors">Contact</a>
           </div>

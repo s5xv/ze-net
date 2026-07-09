@@ -17,6 +17,8 @@ import Changelog from './pages/Changelog';
 import Contact from './pages/Contact';
 import Departments from './pages/Departments';
 import DepartmentDetail from './pages/DepartmentDetail';
+import Forums from './pages/Forums';
+import ForumThreads from './pages/ForumThreads';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -84,6 +86,8 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/departments" element={<Departments />} />
           <Route path="/departments/:slug" element={<DepartmentDetail />} />
+          <Route path="/forums" element={<Forums />} />
+          <Route path="/forums/:forumId" element={<ForumThreads />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
