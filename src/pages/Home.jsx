@@ -96,10 +96,10 @@ export default function Home({ user }) {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#202124] text-gray-900 dark:text-gray-100 transition-colors duration-200 flex flex-col">
       {/* Announcement Banner */}
       {announcement && (
-        <div className="bg-orange-500 text-white px-4 py-2 text-center text-sm">
+        <div className="bg-blue-600 text-white px-4 py-2 text-center text-sm">
           <strong>📢 {announcement.title}:</strong> {announcement.message}
         </div>
       )}
@@ -107,40 +107,40 @@ export default function Home({ user }) {
       <div className="flex flex-wrap justify-end gap-2 sm:gap-4 px-4 sm:px-6 py-4">
         {user ? (
           <>
-            <a href="/account" className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">ACCOUNT</a>
+            <a href="/account" className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">ACCOUNT</a>
             <AdminButton />
-            <button onClick={async () => { await supabase.auth.signOut(); navigate('/'); }} className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">SIGN OUT</button>
+            <button onClick={async () => { await supabase.auth.signOut(); navigate('/'); }} className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">SIGN OUT</button>
           </>
         ) : (
-          <a href="/login" className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">SIGN IN</a>
+          <a href="/login" className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">SIGN IN</a>
         )}
-        <button onClick={toggleTheme} className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">{isDark ? 'LIGHT' : 'DARK'}</button>
+        <button onClick={toggleTheme} className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">{isDark ? 'LIGHT' : 'DARK'}</button>
       </div>
 
-      <main className="flex-grow flex flex-col items-center justify-start px-4 sm:px-6 py-8 sm:py-12">
+      <main className="flex-grow flex flex-col items-center justify-start px-4 sm:px-6 py-12 sm:py-20">
         <div className="flex flex-col items-center gap-6 mb-8">
           <img 
             src="/assets/logo.png" 
             alt="Z&E Net" 
-            className="h-48 w-48 sm:h-64 sm:w-64 md:h-80 md:w-80 object-contain"
+            className="h-32 w-32 sm:h-40 sm:w-40 md:h-48 md:w-48 object-contain"
             style={{ imageRendering: 'pixelated' }}
           />
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-center">
-            Z&E <span className="text-orange-500">Net</span>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-center">
+            Z&E <span className="text-blue-600 dark:text-blue-400">Net</span>
           </h1>
         </div>
 
-        <p className="text-neutral-500 dark:text-neutral-400 text-base sm:text-lg mb-8 sm:mb-10 text-center">DemocracyCraft Centralized Directory</p>
+        <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg mb-8 sm:mb-10 text-center">DemocracyCraft Centralized Directory</p>
 
         {/* Live Stats */}
-        <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-8 w-full max-w-2xl">
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-white/5 text-center">
-            <p className="text-2xl sm:text-3xl font-bold text-green-500 mb-1">{treasuryStats.onlinePlayers.length}</p>
-            <p className="text-xs sm:text-sm text-neutral-500">Players Online</p>
+        <div className="flex gap-4 sm:gap-6 mb-8">
+          <div className="bg-white dark:bg-[#303134] rounded-lg px-4 sm:px-6 py-3 border border-gray-200 dark:border-gray-700 text-center shadow-sm">
+            <p className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{treasuryStats.onlinePlayers.length}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Players Online</p>
           </div>
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-white/5 text-center">
-            <p className="text-2xl sm:text-3xl font-bold text-blue-500 mb-1">{stats.totalSites}</p>
-            <p className="text-xs sm:text-sm text-neutral-500">Total Sites</p>
+          <div className="bg-white dark:bg-[#303134] rounded-lg px-4 sm:px-6 py-3 border border-gray-200 dark:border-gray-700 text-center shadow-sm">
+            <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalSites}</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Total Sites</p>
           </div>
         </div>
 
@@ -150,29 +150,37 @@ export default function Home({ user }) {
               type="text"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search sites..."
-              className="w-full px-5 sm:px-6 py-4 sm:py-5 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-xl text-lg sm:text-xl text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm dark:shadow-none"
+              placeholder="Search sites or type a URL"
+              className="w-full px-5 sm:px-6 py-3 sm:py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-base sm:text-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm dark:shadow-none hover:shadow-md dark:hover:shadow-lg"
             />
-            <button type="submit" className="absolute right-2 sm:right-3 top-2 sm:top-3 bottom-2 sm:bottom-3 px-5 sm:px-8 bg-orange-500 hover:bg-orange-600 text-white text-base sm:text-lg font-medium rounded-lg transition-colors">
+            <button type="submit" className="absolute right-2 sm:right-3 top-2 sm:top-3 bottom-2 sm:bottom-3 px-4 sm:px-6 bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base font-medium rounded-full transition-colors">
               Search
             </button>
           </div>
         </form>
 
-        <button
-          onClick={handleFeelingLucky}
-          className="mb-10 px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition-colors"
-        >
-          🎲 I'm Feeling Lucky
-        </button>
+        <div className="flex gap-3 mb-10">
+          <button
+            onClick={handleSearch}
+            className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors border border-transparent hover:border-gray-300 dark:hover:border-gray-600"
+          >
+            Google Search
+          </button>
+          <button
+            onClick={handleFeelingLucky}
+            className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors border border-transparent hover:border-gray-300 dark:hover:border-gray-600"
+          >
+            I'm Feeling Lucky
+          </button>
+        </div>
 
         {/* Online Players */}
         {treasuryStats.onlinePlayers.length > 0 && (
-          <div className="w-full max-w-4xl mb-8 bg-white dark:bg-[#111111] rounded-xl p-5 border border-neutral-200 dark:border-white/5">
-            <h2 className="text-base font-bold text-green-500 mb-3">🟢 Online Now ({treasuryStats.onlinePlayers.length})</h2>
+          <div className="w-full max-w-4xl mb-8 bg-white dark:bg-[#303134] rounded-xl p-5 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h2 className="text-base font-bold text-green-600 dark:text-green-400 mb-3">🟢 Online Now ({treasuryStats.onlinePlayers.length})</h2>
             <div className="flex flex-wrap gap-2">
               {treasuryStats.onlinePlayers.slice(0, 20).map((player, i) => (
-                <span key={i} className="px-3 py-1 bg-green-500/10 text-green-600 dark:text-green-400 text-sm rounded-full border border-green-500/20">
+                <span key={i} className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm rounded-full border border-green-200 dark:border-green-800">
                   {player.name}
                 </span>
               ))}
@@ -181,35 +189,35 @@ export default function Home({ user }) {
         )}
 
         <div className="w-full max-w-4xl grid md:grid-cols-2 gap-4 sm:gap-6 mb-8">
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-5 sm:p-6 border border-neutral-200 dark:border-white/5">
-            <h2 className="text-base sm:text-lg font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4">Trending</h2>
+          <div className="bg-white dark:bg-[#303134] rounded-xl p-5 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h2 className="text-base sm:text-lg font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Trending</h2>
             {trending.length === 0 ? (
-              <p className="text-sm text-neutral-500">No sites yet</p>
+              <p className="text-sm text-gray-500">No sites yet</p>
             ) : (
               <ul className="space-y-3">
                 {trending.map((item, i) => (
                   <li key={item.id} className="flex items-center justify-between group cursor-pointer" onClick={() => navigate(`/site/${item.slug}`)}>
                     <div className="flex items-center gap-2 flex-grow min-w-0">
-                      <span className="text-xs text-neutral-400 font-mono">{i + 1}.</span>
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300 group-hover:text-orange-500 transition-colors truncate">{item.name}</span>
+                      <span className="text-xs text-gray-400 font-mono">{i + 1}.</span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">{item.name}</span>
                     </div>
-                    <span className="text-xs text-neutral-400 dark:text-neutral-600 flex-shrink-0 ml-2">{item.view_count || 0} views</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-600 flex-shrink-0 ml-2">{item.view_count || 0} views</span>
                   </li>
                 ))}
               </ul>
             )}
           </div>
 
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-5 sm:p-6 border border-neutral-200 dark:border-white/5">
-            <h2 className="text-base sm:text-lg font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4">Newly Added</h2>
+          <div className="bg-white dark:bg-[#303134] rounded-xl p-5 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h2 className="text-base sm:text-lg font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Newly Added</h2>
             {newSites.length === 0 ? (
-              <p className="text-sm text-neutral-500">No sites yet</p>
+              <p className="text-sm text-gray-500">No sites yet</p>
             ) : (
               <ul className="space-y-3">
                 {newSites.map((item, i) => (
                   <li key={item.id} className="flex items-center justify-between group cursor-pointer" onClick={() => navigate(`/site/${item.slug}`)}>
-                    <span className="text-sm text-neutral-700 dark:text-neutral-300 group-hover:text-orange-500 transition-colors truncate flex-grow">{item.name}</span>
-                    <span className="text-xs text-neutral-400 dark:text-neutral-600 flex-shrink-0 ml-2">{new Date(item.created_at).toLocaleDateString()}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate flex-grow">{item.name}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-600 flex-shrink-0 ml-2">{new Date(item.created_at).toLocaleDateString()}</span>
                   </li>
                 ))}
               </ul>
@@ -223,7 +231,7 @@ export default function Home({ user }) {
       {showBackToTop && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-6 right-6 p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-lg transition-all z-50"
+          className="fixed bottom-6 right-6 p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all z-50"
           aria-label="Back to top"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
-import { useTheme } from './hooks/useTheme';
+import { useTheme } from '../hooks/useTheme';
 import { useEffect } from 'react';
-import { supabase } from './services/supabase';
+import { supabase } from '../services/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import Home from './pages/Home';
@@ -69,8 +69,8 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] flex items-center justify-center">
-        <div className="text-neutral-500 font-mono text-sm">INITIALIZING...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center">
+        <div className="text-gray-500 font-mono text-sm">INITIALIZING...</div>
       </div>
     );
   }
