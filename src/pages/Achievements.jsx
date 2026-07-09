@@ -1,5 +1,5 @@
-import { useTheme } from './hooks/useTheme';
-import { useAchievements, ACHIEVEMENTS } from './hooks/useAchievements';
+import { useTheme } from '../hooks/useTheme';
+import { useAchievements, ACHIEVEMENTS } from '../hooks/useAchievements';
 import Footer from '../components/Footer';
 import AdminButton from '../components/AdminButton';
 
