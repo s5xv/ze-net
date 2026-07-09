@@ -5,105 +5,89 @@ const supabase = createClient(
   process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 );
 
-const TREASURY_API_BASE = 'https://api.democracycraft.net/economy';
+const TREASURY_API_BASE = 'https://api.democracycraft.net/economy/api/v1';
 const BUSINESS_API_TOKEN = process.env.TREASURY_BUSINESS_TOKEN; 
 const ZANDENET_ACCOUNT_ID = '123945'; 
+const BUSINESS_NAME = 'zen'; // Must be lowercase for memo matching
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  const ign = req.query.ign; // Get the in-game name from the query parameter
+  const ign = req.query.ign; 
 
   try {
-    const response = await fetch(`${TREASURY_API_BASE}/api/v1/accounts/${ZANDENET_ACCOUNT_ID}/transactions?limit=50`, {
+    // 1. Fetch transactions (limit 100 like your Python script)
+    const response = await fetch(`${TREASURY_API_BASE}/accounts/${ZANDENET_ACCOUNT_ID}/transactions?limit=100`, {
       headers: {
         'Authorization': `Bearer ${BUSINESS_API_TOKEN}`,
         'Content-Type': 'application/json'
       }
     });
 
-    if (!response.ok) {
-      return res.status(500).json({ error: `API fetch failed with status ${response.status}` });
-    }
+    if (!response.ok) return res.status(500).json({ error: 'API fetch failed' });
 
     const rawData = await response.json();
     const transactions = rawData.items || [];
 
+    // 2. Get pending verifications
     const { data: pendingVerifications } = await supabase
       .from('pending_verifications')
       .select('*')
       .eq('status', 'waiting');
 
     let actionsTaken = 0;
-    let debugInfo = {
-      totalTransactions: transactions.length,
-      pendingVerifications: pendingVerifications?.length || 0,
-      lookingForIGN: ign,
-      matchedTransactions: []
+    let debugInfo = { 
+      totalTransactions: transactions.length, 
+      pendingVerifications: pendingVerifications?.length || 0, 
+      lookingForIGN: ign, 
+      matchedTransactions: [] 
     };
 
-    for (const txn of transactions) {
-      const txnId = txn.txnId || txn.postingId;
-      const amount = parseFloat(txn.amount);
-      const memo = txn.memo || '';
+    // 3. Mimic the Python script's exact matching logic
+    for (const t of transactions) {
+      // Skip plugin system transactions (like internal business transfers)
+      if (t.pluginSystem !== null) continue;
 
-      if (!txnId || isNaN(amount) || amount <= 0) continue;
+      const txnId = t.txnId || t.postingId;
+      const amount = parseFloat(t.amount);
+      
+      // Check amount against pending verifications
+      const match = pendingVerifications.find(v => Math.abs(parseFloat(v.expected_amount) - amount) < 0.001);
+      if (!match) continue;
 
-      const { data: existing } = await supabase
-        .from('processed_deposits')
-        .select('txn_id')
-        .eq('txn_id', txnId)
-        .single();
+      // Check memo EXACTLY like the Python script
+      // Python: expected_memo = f"payment from {mc_username.lower()} to business zec corporate account"
+      const memo = (t.memo || t.message || "").trim().toLowerCase();
+      const expectedMemo = `payment from ${ign.toLowerCase()} to business ${BUSINESS_NAME} corporate account`;
 
-      if (existing) continue;
+      if (memo === expectedMemo) {
+         debugInfo.matchedTransactions.push({ txnId, amount, memo });
 
-      // Check if this transaction matches a pending verification by amount
-      const amountMatch = pendingVerifications.find(v => {
-        const expectedAmount = parseFloat(v.expected_amount);
-        return Math.abs(expectedAmount - amount) < 0.001;
-      });
+         // Try to fetch the player's UUID using the /accounts/by-player endpoint
+         let playerUuid = null;
+         try {
+           const playerRes = await fetch(`${TREASURY_API_BASE}/accounts/by-player?name=${ign}`, {
+             headers: { 'Authorization': `Bearer ${BUSINESS_API_TOKEN}` }
+           });
+           if (playerRes.ok) {
+             const playerData = await playerRes.json();
+             playerUuid = playerData.playerUuid;
+           }
+         } catch (e) { /* ignore */ }
 
-      if (amountMatch && ign) {
-        // Check if the memo contains the player's IGN
-        // The memo format is: "Payment from <IGN> to business ZEN Corporate Account"
-        const memoLower = memo.toLowerCase();
-        const ignLower = ign.toLowerCase();
-        
-        if (memoLower.includes(ignLower)) {
-          debugInfo.matchedTransactions.push({
-            txnId,
-            amount,
-            memo,
-            matchedIGN: ign
-          });
+         // Link the account!
+         await supabase.from('treasury_tokens').insert({
+           user_id: match.discord_user_id,
+           token: 'verified_via_payment',
+           account_id: playerUuid || ign 
+         });
 
-          // We found a match! Now we need to get the actual UUID
-          // Since we can't get it from the API, we'll store the IGN instead
-          await supabase.from('treasury_tokens').insert({
-            user_id: amountMatch.discord_user_id,
-            token: 'verified_via_payment',
-            account_id: ign // Store the IGN instead of UUID
-          });
-          
-          await supabase.from('pending_verifications')
-            .update({ status: 'verified' })
-            .eq('id', amountMatch.id);
-          
-          actionsTaken++;
-        }
+         await supabase.from('pending_verifications').update({ status: 'verified' }).eq('id', match.id);
+         actionsTaken++;
       }
-
-      await supabase.from('processed_deposits').insert({
-        txn_id: txnId,
-        amount: amount,
-        user_id: null
-      });
     }
 
-    return res.status(200).json({ 
-      message: `Processed ${actionsTaken} verifications`,
-      debug: debugInfo
-    });
+    return res.status(200).json({ message: `Processed ${actionsTaken} verifications`, debug: debugInfo });
 
   } catch (error) {
     console.error('Deposit check error:', error);
