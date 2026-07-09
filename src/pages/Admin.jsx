@@ -15,8 +15,11 @@ export default function Admin({ user }) {
   const [ads, setAds] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
   const [analytics, setAnalytics] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [premiumListings, setPremiumListings] = useState([]);
   const [showAddSite, setShowAddSite] = useState(false);
   const [showAddAd, setShowAddAd] = useState(false);
+  const [newPremium, setNewPremium] = useState({ siteId: '', tier: 'basic', days: 30 });
   const [stats, setStats] = useState({
     totalSites: 0,
     totalViews: 0,
@@ -85,6 +88,12 @@ export default function Admin({ user }) {
     const { data: analyticsData } = await supabase.from('search_analytics').select('*').order('created_at', { ascending: false }).limit(50);
     setAnalytics(analyticsData || []);
 
+    const { data: messagesData } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
+    setMessages(messagesData || []);
+
+    const { data: premiumData } = await supabase.from('premium_listings').select('*, sites(name)').order('created_at', { ascending: false });
+    setPremiumListings(premiumData || []);
+
     const totalViews = sitesData?.reduce((sum, s) => sum + (s.view_count || 0), 0) || 0;
     const totalClicks = sitesData?.reduce((sum, s) => sum + (s.click_count || 0), 0) || 0;
     
@@ -100,7 +109,6 @@ export default function Admin({ user }) {
     e.preventDefault();
     const { error } = await supabase.from('sites').insert(newSite);
     if (!error) {
-      // Send Discord notification
       try {
         await fetch('/api/discord-webhook', {
           method: 'POST',
@@ -166,12 +174,10 @@ export default function Admin({ user }) {
   const handleApproveWithdrawal = async (id, userId, amount) => {
     if (confirm(`Approve withdrawal of $${amount}?`)) {
       await supabase.from('pending_withdrawals').update({ status: 'approved' }).eq('id', id);
-      
       const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', userId).single();
       if (balData) {
         await supabase.from('site_balances').update({ balance: balData.balance - amount }).eq('user_id', userId);
       }
-      
       alert(`Approved! You now need to manually pay the user $${amount} in-game.`);
       fetchData();
     }
@@ -180,6 +186,43 @@ export default function Admin({ user }) {
   const handleRejectWithdrawal = async (id) => {
     if (confirm('Reject this withdrawal request?')) {
       await supabase.from('pending_withdrawals').update({ status: 'rejected' }).eq('id', id);
+      fetchData();
+    }
+  };
+
+  const handleMarkAsRead = async (id) => {
+    await supabase.from('contact_messages').update({ status: 'read' }).eq('id', id);
+    fetchData();
+  };
+
+  const handleDeleteMessage = async (id) => {
+    if (confirm('Delete this message?')) {
+      await supabase.from('contact_messages').delete().eq('id', id);
+      fetchData();
+    }
+  };
+
+  const handleAddPremium = async () => {
+    if (!newPremium.siteId || !newPremium.days) {
+      alert('Please select a site and enter days');
+      return;
+    }
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + newPremium.days);
+    
+    await supabase.from('premium_listings').insert({
+      site_id: newPremium.siteId,
+      tier: newPremium.tier,
+      end_date: endDate.toISOString()
+    });
+    
+    setNewPremium({ siteId: '', tier: 'basic', days: 30 });
+    fetchData();
+  };
+
+  const handleRemovePremium = async (id) => {
+    if (confirm('Remove this premium listing?')) {
+      await supabase.from('premium_listings').delete().eq('id', id);
       fetchData();
     }
   };
@@ -275,12 +318,12 @@ export default function Admin({ user }) {
           </div>
         </div>
 
-        <div className="flex gap-2 mb-6 border-b border-neutral-200 dark:border-white/5">
-          {['sites', 'ads', 'withdrawals', 'analytics'].map((tab) => (
+        <div className="flex gap-2 mb-6 border-b border-neutral-200 dark:border-white/5 overflow-x-auto">
+          {['sites', 'ads', 'premium', 'withdrawals', 'messages', 'analytics'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${
+              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${
                 activeTab === tab
                   ? 'border-orange-500 text-orange-600 dark:text-orange-400'
                   : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'
@@ -541,6 +584,76 @@ export default function Admin({ user }) {
           </div>
         )}
 
+        {activeTab === 'premium' && (
+          <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
+            <h2 className="text-xl font-bold mb-6">Premium Listings</h2>
+            
+            <div className="mb-6 p-4 bg-neutral-50 dark:bg-[#09090b] rounded-lg border border-neutral-200 dark:border-white/10">
+              <h3 className="font-semibold mb-3">Add Premium Listing</h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                <select
+                  value={newPremium.siteId}
+                  onChange={(e) => setNewPremium({...newPremium, siteId: e.target.value})}
+                  className="px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                >
+                  <option value="">Select Site</option>
+                  {sites.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                <select
+                  value={newPremium.tier}
+                  onChange={(e) => setNewPremium({...newPremium, tier: e.target.value})}
+                  className="px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                >
+                  <option value="basic">Basic ($5/mo)</option>
+                  <option value="pro">Pro ($15/mo)</option>
+                  <option value="enterprise">Enterprise ($50/mo)</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="Days"
+                  value={newPremium.days || ''}
+                  onChange={(e) => setNewPremium({...newPremium, days: parseInt(e.target.value) || 0})}
+                  className="px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                />
+              </div>
+              <button
+                onClick={handleAddPremium}
+                className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Add Premium
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {premiumListings.length === 0 ? (
+                <p className="text-neutral-500 text-center py-12">No premium listings yet</p>
+              ) : (
+                premiumListings.map((listing) => (
+                  <div key={listing.id} className="p-4 bg-neutral-50 dark:bg-[#09090b] border border-neutral-200 dark:border-white/5 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold">{listing.sites?.name || 'Unknown'}</h3>
+                        <p className="text-sm text-neutral-500">
+                          Tier: <span className="text-orange-500 font-bold">{listing.tier.toUpperCase()}</span> • 
+                          Expires: {new Date(listing.end_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRemovePremium(listing.id)}
+                        className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'withdrawals' && (
           <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
             <h2 className="text-xl font-bold mb-6">Pending Withdrawals</h2>
@@ -568,6 +681,50 @@ export default function Admin({ user }) {
                           className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
                         >
                           Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'messages' && (
+          <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
+            <h2 className="text-xl font-bold mb-6">Contact Messages ({messages.filter(m => m.status === 'unread').length} unread)</h2>
+            {messages.length === 0 ? (
+              <p className="text-neutral-500 text-center py-12">No messages yet</p>
+            ) : (
+              <div className="space-y-3">
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`p-4 border rounded-lg ${msg.status === 'unread' ? 'bg-orange-500/5 border-orange-500/20' : 'bg-neutral-50 dark:bg-[#09090b] border-neutral-200 dark:border-white/5'}`}>
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div className="flex-grow">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold">{msg.subject}</h3>
+                          {msg.status === 'unread' && (
+                            <span className="px-2 py-0.5 text-xs font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 rounded">NEW</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-500 mb-2">From: {msg.name} • {new Date(msg.created_at).toLocaleString()}</p>
+                        <p className="text-sm text-neutral-700 dark:text-neutral-300">{msg.message}</p>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        {msg.status === 'unread' && (
+                          <button
+                            onClick={() => handleMarkAsRead(msg.id)}
+                            className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                          >
+                            Mark Read
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                        >
+                          Delete
                         </button>
                       </div>
                     </div>

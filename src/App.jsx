@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useEffect } from 'react';
 import { supabase } from './services/supabase';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import Home from './pages/Home';
 import Search from './pages/Search';
@@ -14,6 +15,8 @@ import LinkAccount from './pages/LinkAccount';
 import MiningGame from './pages/MiningGame';
 import Changelog from './pages/Changelog';
 import Contact from './pages/Contact';
+import Departments from './pages/Departments';
+import DepartmentDetail from './pages/DepartmentDetail';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -43,6 +46,19 @@ function App() {
   useTheme();
   const { user, loading } = useAuth();
 
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[type="text"]');
+        if (searchInput) searchInput.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] flex items-center justify-center">
@@ -52,22 +68,26 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <AuthHandler />
-      <Routes>
-        <Route path="/" element={<Home user={user} />} />
-        <Route path="/search" element={<Search user={user} />} />
-        <Route path="/site/:slug" element={<Site user={user} />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/account" element={<Account user={user} />} />
-        <Route path="/admin" element={<Admin user={user} />} />
-        <Route path="/link-account" element={<LinkAccount user={user} />} />
-        <Route path="/mining-game" element={<MiningGame />} />
-        <Route path="/changelog" element={<Changelog />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthHandler />
+        <Routes>
+          <Route path="/" element={<Home user={user} />} />
+          <Route path="/search" element={<Search user={user} />} />
+          <Route path="/site/:slug" element={<Site user={user} />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/account" element={<Account user={user} />} />
+          <Route path="/admin" element={<Admin user={user} />} />
+          <Route path="/link-account" element={<LinkAccount user={user} />} />
+          <Route path="/mining-game" element={<MiningGame />} />
+          <Route path="/changelog" element={<Changelog />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/departments" element={<Departments />} />
+          <Route path="/departments/:slug" element={<DepartmentDetail />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
