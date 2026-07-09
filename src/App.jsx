@@ -19,6 +19,7 @@ import Departments from './pages/Departments';
 import DepartmentDetail from './pages/DepartmentDetail';
 import Forums from './pages/Forums';
 import ForumThreads from './pages/ForumThreads';
+import Wiki from './pages/Wiki';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -88,6 +89,7 @@ function App() {
           <Route path="/departments/:slug" element={<DepartmentDetail />} />
           <Route path="/forums" element={<Forums />} />
           <Route path="/forums/:forumId" element={<ForumThreads />} />
+          <Route path="/wiki" element={<Wiki />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

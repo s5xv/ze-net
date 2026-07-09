@@ -183,6 +183,8 @@ export default function Home({ user }) {
             <a href="/changelog" className="text-neutral-500 hover:text-orange-500  transition-colors">Changelog</a>
             <span className="text-neutral-300">•</span>
             <a href="/contact" className="text-neutral-500 hover:text-orange-500 transition-colors">Contact</a>
+            <a href="/wiki" className="text-neutral-500 hover:text-orange-500 transition-colors">Wiki</a>
+            <span className="text-neutral-300">•</span>
           </div>
         </div>
       </main>
