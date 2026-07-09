@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase';
 
 export default function Contact() {
   const { isDark, toggleTheme } = useTheme();
-  const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
+  const [formData, setFormData] = useState({ name: '', subject: '', message: '' });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -13,20 +13,19 @@ export default function Contact() {
     setSending(true);
 
     try {
-      // Send to Discord webhook
-      await fetch('/api/discord-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `**Contact Form Submission**\nName: ${formData.name}\nEmail: ${formData.email}\nSubject: ${formData.subject}\n\nMessage:\n${formData.message}`,
-          color: 0x3b82f6 // Blue
-        })
+      const { error } = await supabase.from('contact_messages').insert({
+        name: formData.name,
+        subject: formData.subject,
+        message: formData.message
       });
 
+      if (error) throw error;
+
       setSent(true);
-      setFormData({ name: '', email: '', subject: '', message: '' });
+      setFormData({ name: '', subject: '', message: '' });
     } catch (err) {
       alert('Failed to send message. Please try again.');
+      console.error(err);
     } finally {
       setSending(false);
     }
@@ -56,17 +55,6 @@ export default function Contact() {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                required
-                className="w-full px-4 py-3 bg-neutral-100 dark:bg-[#09090b] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Email</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
                 required
                 className="w-full px-4 py-3 bg-neutral-100 dark:bg-[#09090b] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
               />

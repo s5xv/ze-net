@@ -29,27 +29,22 @@ export default function Search({ user }) {
     
     let queryBuilder = supabase.from('sites').select('*');
 
-    // Text search
     if (query) {
       queryBuilder = queryBuilder.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
     }
 
-    // Category filter
     if (categoryFilter) {
       queryBuilder = queryBuilder.eq('category', categoryFilter);
     }
 
-    // Verified filter
     if (verifiedFilter) {
       queryBuilder = queryBuilder.eq('is_verified', true);
     }
 
-    // Sponsored filter
     if (sponsoredFilter) {
       queryBuilder = queryBuilder.eq('is_sponsored', true);
     }
 
-    // Sort
     if (sortBy === 'view_count') {
       queryBuilder = queryBuilder.order('view_count', { ascending: false });
     } else if (sortBy === 'created_at') {
@@ -121,7 +116,6 @@ export default function Search({ user }) {
       </div>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Filters */}
         <div className="mb-6">
           <button
             onClick={() => setShowFilters(!showFilters)}
