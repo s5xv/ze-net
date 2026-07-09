@@ -12,7 +12,6 @@ import Admin from './pages/Admin';
 import LinkAccount from './pages/LinkAccount';
 import NotFound from './pages/NotFound';
 
-// This component handles the OAuth callback code
 function AuthHandler() {
   const navigate = useNavigate();
 
@@ -28,9 +27,7 @@ function AuthHandler() {
           console.error('Failed to exchange code:', error);
         } else {
           console.log('Session established successfully');
-          // Clean up the URL
           window.history.replaceState({}, document.title, window.location.pathname);
-          // Redirect to account page
           navigate('/account');
         }
       }
