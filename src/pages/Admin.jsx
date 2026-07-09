@@ -17,9 +17,16 @@ export default function Admin({ user }) {
   const [analytics, setAnalytics] = useState([]);
   const [messages, setMessages] = useState([]);
   const [premiumListings, setPremiumListings] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [siteRequests, setSiteRequests] = useState([]);
+  const [manualDeposits, setManualDeposits] = useState([]);
   const [showAddSite, setShowAddSite] = useState(false);
   const [showAddAd, setShowAddAd] = useState(false);
+  const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
+  const [showManualDeposit, setShowManualDeposit] = useState(false);
   const [newPremium, setNewPremium] = useState({ siteId: '', tier: 'basic', days: 30 });
+  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '' });
+  const [manualDeposit, setManualDeposit] = useState({ userId: '', amount: '', reason: '', notes: '' });
   const [stats, setStats] = useState({
     totalSites: 0,
     totalViews: 0,
@@ -95,6 +102,15 @@ export default function Admin({ user }) {
     const { data: premiumData } = await supabase.from('premium_listings').select('*, sites(name)').order('created_at', { ascending: false });
     setPremiumListings(premiumData || []);
 
+    const { data: announcementsData } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+    setAnnouncements(announcementsData || []);
+
+    const { data: siteRequestsData } = await supabase.from('site_requests').select('*').order('created_at', { ascending: false });
+    setSiteRequests(siteRequestsData || []);
+
+    const { data: manualDepositsData } = await supabase.from('manual_deposits').select('*').order('created_at', { ascending: false }).limit(50);
+    setManualDeposits(manualDepositsData || []);
+
     const totalViews = sitesData?.reduce((sum, s) => sum + (s.view_count || 0), 0) || 0;
     const totalClicks = sitesData?.reduce((sum, s) => sum + (s.click_count || 0), 0) || 0;
     
@@ -128,10 +144,7 @@ export default function Admin({ user }) {
 
   const handleAddSite = async (e) => {
     e.preventDefault();
-    
-    // Use first URL as primary if exists
     const primaryUrl = newSite.urls.length > 0 ? newSite.urls[0].url : newSite.url;
-    
     const siteData = {
       ...newSite,
       url: primaryUrl,
@@ -258,6 +271,88 @@ export default function Admin({ user }) {
     }
   };
 
+  const handleAddAnnouncement = async (e) => {
+    e.preventDefault();
+    const { error } = await supabase.from('announcements').insert(newAnnouncement);
+    if (!error) {
+      setShowAddAnnouncement(false);
+      setNewAnnouncement({ title: '', message: '' });
+      fetchData();
+    } else {
+      alert('Error adding announcement: ' + error.message);
+    }
+  };
+
+  const handleToggleAnnouncement = async (id, currentStatus) => {
+    await supabase.from('announcements').update({ is_active: !currentStatus }).eq('id', id);
+    fetchData();
+  };
+
+  const handleDeleteAnnouncement = async (id) => {
+    if (confirm('Delete this announcement?')) {
+      await supabase.from('announcements').delete().eq('id', id);
+      fetchData();
+    }
+  };
+
+  const handleApproveSiteRequest = async (request) => {
+    if (confirm('Approve this site request?')) {
+      await supabase.from('sites').insert({
+        name: request.site_name,
+        slug: request.site_name.toLowerCase().replace(/\s+/g, '-'),
+        description: request.description || '',
+        url: request.site_url,
+        urls: [{ label: 'Website', url: request.site_url }],
+        category: 'Other',
+        owner_name: '',
+        is_verified: false,
+        is_sponsored: false
+      });
+      await supabase.from('site_requests').update({ status: 'approved' }).eq('id', request.id);
+      fetchData();
+    }
+  };
+
+  const handleRejectSiteRequest = async (id) => {
+    if (confirm('Reject this site request?')) {
+      await supabase.from('site_requests').update({ status: 'rejected' }).eq('id', id);
+      fetchData();
+    }
+  };
+
+  const handleManualDeposit = async (e) => {
+    e.preventDefault();
+    if (!manualDeposit.userId || !manualDeposit.amount) {
+      alert('Please enter user ID and amount');
+      return;
+    }
+    
+    try {
+      const res = await fetch('/api/manual-deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: manualDeposit.userId,
+          amount: parseFloat(manualDeposit.amount),
+          reason: manualDeposit.reason,
+          adminNotes: manualDeposit.notes
+        })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        alert(`Success! New balance: $${data.newBalance.toFixed(2)}`);
+        setShowManualDeposit(false);
+        setManualDeposit({ userId: '', amount: '', reason: '', notes: '' });
+        fetchData();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-[#09090b] dark:to-[#111111] flex items-center justify-center px-4">
@@ -350,7 +445,7 @@ export default function Admin({ user }) {
         </div>
 
         <div className="flex gap-2 mb-6 border-b border-neutral-200 dark:border-white/5 overflow-x-auto">
-          {['sites', 'ads', 'premium', 'withdrawals', 'messages', 'analytics'].map((tab) => (
+          {['sites', 'ads', 'premium', 'announcements', 'requests', 'deposits', 'withdrawals', 'messages', 'analytics'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -422,7 +517,6 @@ export default function Admin({ user }) {
                   />
                 </div>
 
-                {/* Multiple URLs Section */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm font-medium">Links (Discord, Wiki, Website, etc.)</label>
@@ -510,7 +604,7 @@ export default function Admin({ user }) {
                         )}
                       </div>
                       <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-2">{site.description}</p>
-                      <div className="flex items-center gap-4 text-xs text-neutral-500 font-mono flex-wrap">
+                      <div className="flex items-center gap-4 text-xs text-neutral-500 font-mono">
                         <span>{site.category}</span>
                         <span>•</span>
                         <span>{site.owner_name || 'Unknown'}</span>
@@ -715,6 +809,212 @@ export default function Admin({ user }) {
                       >
                         Remove
                       </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'announcements' && (
+          <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Announcements</h2>
+              <button onClick={() => setShowAddAnnouncement(!showAddAnnouncement)} className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors">
+                {showAddAnnouncement ? 'Cancel' : '+ Add Announcement'}
+              </button>
+            </div>
+
+            {showAddAnnouncement && (
+              <form onSubmit={handleAddAnnouncement} className="mb-6 p-6 bg-neutral-50 dark:bg-[#09090b] rounded-lg border border-neutral-200 dark:border-white/10">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">Title</label>
+                  <input
+                    type="text"
+                    placeholder="Announcement title"
+                    value={newAnnouncement.title}
+                    onChange={(e) => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
+                    className="w-full px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">Message</label>
+                  <textarea
+                    placeholder="Announcement message"
+                    value={newAnnouncement.message}
+                    onChange={(e) => setNewAnnouncement({...newAnnouncement, message: e.target.value})}
+                    className="w-full px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                    rows="3"
+                    required
+                  />
+                </div>
+                <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
+                  Add Announcement
+                </button>
+              </form>
+            )}
+
+            <div className="space-y-3">
+              {announcements.map((ann) => (
+                <div key={ann.id} className="p-4 bg-neutral-50 dark:bg-[#09090b] border border-neutral-200 dark:border-white/5 rounded-lg">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-grow">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-lg">{ann.title}</h3>
+                        {ann.is_active && (
+                          <span className="px-2 py-0.5 text-xs font-bold text-green-600 bg-green-500/10 border border-green-500/20 rounded">ACTIVE</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-2">{ann.message}</p>
+                      <p className="text-xs text-neutral-500 font-mono">{new Date(ann.created_at).toLocaleString()}</p>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleToggleAnnouncement(ann.id, ann.is_active)}
+                        className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
+                          ann.is_active 
+                            ? 'bg-green-600 text-white' 
+                            : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
+                        }`}
+                      >
+                        {ann.is_active ? 'Active' : 'Inactive'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAnnouncement(ann.id)}
+                        className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'requests' && (
+          <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
+            <h2 className="text-xl font-bold mb-6">Site Requests ({siteRequests.filter(r => r.status === 'pending').length} pending)</h2>
+            {siteRequests.length === 0 ? (
+              <p className="text-neutral-500 text-center py-12">No site requests yet</p>
+            ) : (
+              <div className="space-y-3">
+                {siteRequests.map((req) => (
+                  <div key={req.id} className={`p-4 border rounded-lg ${req.status === 'pending' ? 'bg-orange-500/5 border-orange-500/20' : 'bg-neutral-50 dark:bg-[#09090b] border-neutral-200 dark:border-white/5'}`}>
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div className="flex-grow">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold">{req.site_name}</h3>
+                          {req.status === 'pending' && (
+                            <span className="px-2 py-0.5 text-xs font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 rounded">PENDING</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-500 mb-2">{req.site_url}</p>
+                        {req.description && <p className="text-sm text-neutral-700 dark:text-neutral-300 mb-2">{req.description}</p>}
+                        <p className="text-xs text-neutral-500">{new Date(req.created_at).toLocaleString()}</p>
+                      </div>
+                      {req.status === 'pending' && (
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => handleApproveSiteRequest(req)}
+                            className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectSiteRequest(req.id)}
+                            className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'deposits' && (
+          <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Manual Deposits</h2>
+              <button onClick={() => setShowManualDeposit(!showManualDeposit)} className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors">
+                {showManualDeposit ? 'Cancel' : '+ Manual Deposit'}
+              </button>
+            </div>
+
+            {showManualDeposit && (
+              <form onSubmit={handleManualDeposit} className="mb-6 p-6 bg-neutral-50 dark:bg-[#09090b] rounded-lg border border-neutral-200 dark:border-white/10">
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">User ID (Discord ID)</label>
+                    <input
+                      type="text"
+                      placeholder="User UUID"
+                      value={manualDeposit.userId}
+                      onChange={(e) => setManualDeposit({...manualDeposit, userId: e.target.value})}
+                      className="w-full px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Amount ($)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={manualDeposit.amount}
+                      onChange={(e) => setManualDeposit({...manualDeposit, amount: e.target.value})}
+                      className="w-full px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">Reason</label>
+                  <input
+                    type="text"
+                    placeholder="Reason for deposit"
+                    value={manualDeposit.reason}
+                    onChange={(e) => setManualDeposit({...manualDeposit, reason: e.target.value})}
+                    className="w-full px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-2">Admin Notes</label>
+                  <textarea
+                    placeholder="Internal notes"
+                    value={manualDeposit.notes}
+                    onChange={(e) => setManualDeposit({...manualDeposit, notes: e.target.value})}
+                    className="w-full px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                    rows="2"
+                  />
+                </div>
+                <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
+                  Process Deposit
+                </button>
+              </form>
+            )}
+
+            <div className="space-y-3">
+              {manualDeposits.length === 0 ? (
+                <p className="text-neutral-500 text-center py-12">No manual deposits yet</p>
+              ) : (
+                manualDeposits.map((dep) => (
+                  <div key={dep.id} className="p-4 bg-neutral-50 dark:bg-[#09090b] border border-neutral-200 dark:border-white/5 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-mono text-sm text-neutral-500 mb-1">User: {dep.user_id.slice(0, 8)}...</p>
+                        <p className="text-2xl font-bold text-green-500">${dep.amount.toFixed(2)}</p>
+                        {dep.reason && <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">{dep.reason}</p>}
+                        <p className="text-xs text-neutral-500 mt-1">{new Date(dep.created_at).toLocaleString()}</p>
+                      </div>
                     </div>
                   </div>
                 ))

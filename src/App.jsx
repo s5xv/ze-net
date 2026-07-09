@@ -13,6 +13,7 @@ import Account from './pages/Account';
 import Admin from './pages/Admin';
 import LinkAccount from './pages/LinkAccount';
 import MiningGame from './pages/MiningGame';
+import WikiFinder from './pages/WikiFinder';
 import Changelog from './pages/Changelog';
 import Contact from './pages/Contact';
 import Departments from './pages/Departments';
@@ -22,6 +23,8 @@ import ForumThreads from './pages/ForumThreads';
 import Wiki from './pages/Wiki';
 import Utilities from './pages/Utilities';
 import Challenge from './pages/Challenge';
+import Achievements from './pages/Achievements';
+import Leaderboard from './pages/Leaderboard';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -85,6 +88,7 @@ function App() {
           <Route path="/admin" element={<Admin user={user} />} />
           <Route path="/link-account" element={<LinkAccount user={user} />} />
           <Route path="/mining-game" element={<MiningGame />} />
+          <Route path="/wiki-finder" element={<WikiFinder user={user} />} />
           <Route path="/changelog" element={<Changelog />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/departments" element={<Departments />} />
@@ -94,6 +98,8 @@ function App() {
           <Route path="/wiki" element={<Wiki />} />
           <Route path="/utilities" element={<Utilities user={user} />} />
           <Route path="/challenge" element={<Challenge user={user} />} />
+          <Route path="/achievements" element={<Achievements user={user} />} />
+          <Route path="/leaderboard" element={<Leaderboard user={user} />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

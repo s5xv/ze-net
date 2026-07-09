@@ -1,3 +1,4 @@
+import SiteReviews from '../components/SiteReviews';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
@@ -207,6 +208,7 @@ export default function Site({ user }) {
             </div>
           </div>
         )}
+        <SiteReviews siteId={site.id} user={user} />
       </main>
 
       <Footer />

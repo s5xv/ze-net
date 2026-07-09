@@ -2,7 +2,6 @@ export default function Footer() {
   return (
     <footer className="bg-neutral-100 dark:bg-[#0a0a0a] border-t border-neutral-200 dark:border-white/5 mt-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {/* Footer Links */}
         <div className="flex flex-wrap gap-4 justify-center text-sm mb-6">
           <a href="/wiki" className="text-neutral-500 hover:text-orange-500 transition-colors">Wiki</a>
           <span className="text-neutral-300 dark:text-neutral-700">•</span>
@@ -12,14 +11,21 @@ export default function Footer() {
           <span className="text-neutral-300 dark:text-neutral-700">•</span>
           <a href="/utilities" className="text-neutral-500 hover:text-orange-500 transition-colors">Utilities</a>
           <span className="text-neutral-300 dark:text-neutral-700">•</span>
-          <a href="/challenge" className="text-neutral-500 hover:text-orange-500 transition-colors">Daily Challenge</a>
+          <a href="/challenge" className="text-neutral-500 hover:text-orange-500 transition-colors">Challenge</a>
+          <span className="text-neutral-300 dark:text-neutral-700">•</span>
+          <a href="/achievements" className="text-neutral-500 hover:text-orange-500 transition-colors">Achievements</a>
+          <span className="text-neutral-300 dark:text-neutral-700">•</span>
+          <a href="/leaderboard" className="text-neutral-500 hover:text-orange-500 transition-colors">Leaderboard</a>
+          <span className="text-neutral-300 dark:text-neutral-700">•</span>
+          <a href="/mining-game" className="text-neutral-500 hover:text-orange-500 transition-colors">Mining</a>
+          <span className="text-neutral-300 dark:text-neutral-700">•</span>
+          <a href="/wiki-finder" className="text-neutral-500 hover:text-orange-500 transition-colors">Wiki Finder</a>
           <span className="text-neutral-300 dark:text-neutral-700">•</span>
           <a href="/changelog" className="text-neutral-500 hover:text-orange-500 transition-colors">Changelog</a>
           <span className="text-neutral-300 dark:text-neutral-700">•</span>
           <a href="/contact" className="text-neutral-500 hover:text-orange-500 transition-colors">Contact</a>
         </div>
 
-        {/* Logo & Tagline */}
         <div className="flex flex-col items-center mb-6">
           <img 
             src="/assets/logo.png" 
@@ -32,7 +38,6 @@ export default function Footer() {
           </p>
         </div>
 
-        {/* Donation Link */}
         <div className="text-center mb-6">
           <a 
             href="https://gnomefundme.org/c/ze-net-build-the-duckduckgo-of-democracycraft" 
@@ -44,14 +49,12 @@ export default function Footer() {
           </a>
         </div>
 
-        {/* Disclaimer */}
         <div className="border-t border-neutral-200 dark:border-white/5 pt-6">
           <p className="text-xs text-neutral-500 dark:text-neutral-500 text-center leading-relaxed max-w-3xl mx-auto">
             Z&E Net is an independent search directory and is not affiliated with, endorsed by, or officially connected to DemocracyCraft or its official wiki. All search redirects utilize publicly available data in accordance with the Creative Commons Attribution-ShareAlike 4.0 International license.
           </p>
         </div>
 
-        {/* Copyright */}
         <div className="text-center mt-4">
           <p className="text-xs text-neutral-400 dark:text-neutral-600">
             © {new Date().getFullYear()} Z&E Net. All rights reserved.
