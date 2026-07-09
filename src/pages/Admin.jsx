@@ -32,6 +32,7 @@ export default function Admin({ user }) {
     slug: '',
     description: '',
     url: '',
+    urls: [],
     category: 'Government',
     owner_name: '',
     is_verified: false,
@@ -105,9 +106,39 @@ export default function Admin({ user }) {
     });
   };
 
+  const addUrl = () => {
+    setNewSite({
+      ...newSite,
+      urls: [...newSite.urls, { label: '', url: '' }]
+    });
+  };
+
+  const removeUrl = (index) => {
+    setNewSite({
+      ...newSite,
+      urls: newSite.urls.filter((_, i) => i !== index)
+    });
+  };
+
+  const updateUrl = (index, field, value) => {
+    const updatedUrls = [...newSite.urls];
+    updatedUrls[index] = { ...updatedUrls[index], [field]: value };
+    setNewSite({ ...newSite, urls: updatedUrls });
+  };
+
   const handleAddSite = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.from('sites').insert(newSite);
+    
+    // Use first URL as primary if exists
+    const primaryUrl = newSite.urls.length > 0 ? newSite.urls[0].url : newSite.url;
+    
+    const siteData = {
+      ...newSite,
+      url: primaryUrl,
+      urls: newSite.urls.filter(u => u.url && u.label)
+    };
+    
+    const { error } = await supabase.from('sites').insert(siteData);
     if (!error) {
       try {
         await fetch('/api/discord-webhook', {
@@ -123,7 +154,7 @@ export default function Admin({ user }) {
       }
 
       setShowAddSite(false);
-      setNewSite({ name: '', slug: '', description: '', url: '', category: 'Government', owner_name: '', is_verified: false, is_sponsored: false });
+      setNewSite({ name: '', slug: '', description: '', url: '', urls: [], category: 'Government', owner_name: '', is_verified: false, is_sponsored: false });
       fetchData();
     } else {
       alert('Error adding site: ' + error.message);
@@ -358,17 +389,6 @@ export default function Admin({ user }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">URL</label>
-                    <input
-                      type="text"
-                      placeholder="https://example.com"
-                      value={newSite.url}
-                      onChange={(e) => setNewSite({...newSite, url: e.target.value})}
-                      className="w-full px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
-                      required
-                    />
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium mb-2">Owner Name</label>
                     <input
                       type="text"
@@ -401,6 +421,54 @@ export default function Admin({ user }) {
                     rows="3"
                   />
                 </div>
+
+                {/* Multiple URLs Section */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium">Links (Discord, Wiki, Website, etc.)</label>
+                    <button
+                      type="button"
+                      onClick={addUrl}
+                      className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    >
+                      + Add Link
+                    </button>
+                  </div>
+                  {newSite.urls.length === 0 ? (
+                    <p className="text-xs text-neutral-500 italic">No links added yet. Click "+ Add Link" to add Discord, Wiki, Website, etc.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {newSite.urls.map((urlEntry, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            placeholder="Label (e.g., Discord)"
+                            value={urlEntry.label}
+                            onChange={(e) => updateUrl(index, 'label', e.target.value)}
+                            className="flex-grow px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                            required
+                          />
+                          <input
+                            type="text"
+                            placeholder="https://..."
+                            value={urlEntry.url}
+                            onChange={(e) => updateUrl(index, 'url', e.target.value)}
+                            className="flex-grow px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeUrl(index)}
+                            className="px-3 py-2 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex gap-6 mb-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -442,14 +510,14 @@ export default function Admin({ user }) {
                         )}
                       </div>
                       <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-2">{site.description}</p>
-                      <div className="flex items-center gap-4 text-xs text-neutral-500 font-mono">
+                      <div className="flex items-center gap-4 text-xs text-neutral-500 font-mono flex-wrap">
                         <span>{site.category}</span>
                         <span>•</span>
                         <span>{site.owner_name || 'Unknown'}</span>
                         <span>•</span>
-                        <span>{site.view_count || 0} views</span>
+                        <span>{(site.urls && site.urls.length) || 0} links</span>
                         <span>•</span>
-                        <span>{site.click_count || 0} clicks</span>
+                        <span>{site.view_count || 0} views</span>
                       </div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
@@ -606,9 +674,8 @@ export default function Admin({ user }) {
                   onChange={(e) => setNewPremium({...newPremium, tier: e.target.value})}
                   className="px-3 py-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-lg focus:outline-none focus:border-orange-500"
                 >
-                  <option value="basic">Basic ($5/mo)</option>
-                  <option value="pro">Pro ($15/mo)</option>
-                  <option value="enterprise">Enterprise ($50/mo)</option>
+                  <option value="basic">Basic (Advertisers)</option>
+                  <option value="elite">Elite</option>
                 </select>
                 <input
                   type="number"
@@ -636,7 +703,9 @@ export default function Admin({ user }) {
                       <div>
                         <h3 className="font-semibold">{listing.sites?.name || 'Unknown'}</h3>
                         <p className="text-sm text-neutral-500">
-                          Tier: <span className="text-orange-500 font-bold">{listing.tier.toUpperCase()}</span> • 
+                          Tier: <span className={`font-bold ${listing.tier === 'elite' ? 'text-yellow-500' : 'text-orange-500'}`}>
+                            {listing.tier === 'elite' ? '⭐ ELITE' : 'BASIC'}
+                          </span> • 
                           Expires: {new Date(listing.end_date).toLocaleDateString()}
                         </p>
                       </div>

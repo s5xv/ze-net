@@ -32,19 +32,14 @@ export default function Account({ user }) {
     const { data: mcData } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', user.id).single();
     if (mcData) { setMcLinked(true); setMcUuid(mcData.account_id); }
 
-    // Load bookmarks
-    const { data: bookmarkData, error } = await supabase
+    const { data: bookmarkData } = await supabase
       .from('bookmarks')
       .select('site_id, sites(name, slug, category)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-    
-    console.log('Bookmarks loaded:', bookmarkData, 'Error:', error);
     setBookmarks(bookmarkData || []);
 
-    // Load recently viewed from localStorage
     const stored = localStorage.getItem('recentlyViewed');
-    console.log('Recently viewed from localStorage:', stored);
     if (stored) {
       setRecentlyViewed(JSON.parse(stored));
     } else {
@@ -75,6 +70,18 @@ export default function Account({ user }) {
 
   if (!user) return null;
 
+  // Get Discord profile info
+  const displayName = user.user_metadata?.global_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
+  const username = user.user_metadata?.username || user.email || '';
+  const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.avatar;
+  
+  // Construct full Discord avatar URL if it's just a hash
+  const fullAvatarUrl = avatarUrl 
+    ? (avatarUrl.startsWith('http') 
+        ? avatarUrl 
+        : `https://cdn.discordapp.com/avatars/${user.id}/${avatarUrl}.png?size=256`)
+    : null;
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
       <div className="flex justify-end gap-4 px-6 py-4">
@@ -86,16 +93,68 @@ export default function Account({ user }) {
       </div>
 
       <main className="flex-grow max-w-4xl mx-auto px-4 py-8 w-full">
-        <h1 className="text-3xl font-bold mb-8">Account Dashboard</h1>
+        {/* Discord Profile Card */}
+        <div className="bg-gradient-to-br from-[#5865F2]/20 to-[#5865F2]/5 dark:from-[#5865F2]/10 dark:to-transparent rounded-2xl p-6 sm:p-8 border border-[#5865F2]/20 mb-8">
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            {/* Avatar */}
+            <div className="relative">
+              {fullAvatarUrl ? (
+                <img 
+                  src={fullAvatarUrl} 
+                  alt={displayName}
+                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-[#5865F2]/30 shadow-xl"
+                />
+              ) : (
+                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-[#5865F2] to-[#7983F5] flex items-center justify-center text-white text-4xl sm:text-5xl font-bold border-4 border-[#5865F2]/30 shadow-xl">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              {/* Online indicator */}
+              <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-white dark:border-[#09090b]"></div>
+            </div>
+
+            {/* User Info */}
+            <div className="flex-grow text-center sm:text-left">
+              <h1 className="text-3xl sm:text-4xl font-bold mb-1">{displayName}</h1>
+              {username && username !== displayName && (
+                <p className="text-[#5865F2] font-medium mb-2">@{username}</p>
+              )}
+              <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                <span className="px-3 py-1 bg-[#5865F2]/20 text-[#5865F2] text-xs font-bold rounded-full border border-[#5865F2]/30">
+                  DISCORD MEMBER
+                </span>
+                {mcLinked && (
+                  <span className="px-3 py-1 bg-green-500/20 text-green-500 text-xs font-bold rounded-full border border-green-500/30">
+                    MC LINKED
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Profile & Linking</h2>
+            <h2 className="text-lg font-semibold mb-4">Account Info</h2>
             <div className="space-y-3 text-sm">
-              <p><span className="text-neutral-500">Discord:</span> {user.user_metadata.name || user.email}</p>
-              <p><span className="text-neutral-500">MC Status:</span> {mcLinked ? <span className="text-green-500">LINKED</span> : <span className="text-red-500">NOT LINKED</span>}</p>
-              {mcLinked && <p className="font-mono text-xs break-all">UUID: {mcUuid}</p>}
-              {!mcLinked && <a href="/link-account" className="text-orange-500 hover:underline">Link MC Account</a>}
+              <div className="flex justify-between">
+                <span className="text-neutral-500">Discord ID:</span>
+                <span className="font-mono text-xs">{user.id.slice(0, 16)}...</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-neutral-500">MC Status:</span>
+                {mcLinked ? (
+                  <span className="text-green-500 font-medium">✓ LINKED</span>
+                ) : (
+                  <a href="/link-account" className="text-orange-500 hover:underline">Link MC Account →</a>
+                )}
+              </div>
+              {mcLinked && (
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">MC UUID:</span>
+                  <span className="font-mono text-xs break-all">{mcUuid}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -126,12 +185,9 @@ export default function Account({ user }) {
             </div>
           </div>
 
-          {/* Bookmarks Section */}
-          <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Your Bookmarks ({bookmarks.length})</h2>
-            {bookmarks.length === 0 ? (
-              <p className="text-sm text-neutral-500">No bookmarks yet. Visit a site and click the bookmark button!</p>
-            ) : (
+          {bookmarks.length > 0 && (
+            <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
+              <h2 className="text-lg font-semibold mb-4">Your Bookmarks ({bookmarks.length})</h2>
               <div className="space-y-2">
                 {bookmarks.map((bookmark) => (
                   <div 
@@ -146,25 +202,20 @@ export default function Account({ user }) {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Recently Viewed Section */}
-          <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Recently Viewed ({recentlyViewed.length})</h2>
-              {recentlyViewed.length > 0 && (
+          {recentlyViewed.length > 0 && (
+            <div className="md:col-span-2 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/5 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Recently Viewed ({recentlyViewed.length})</h2>
                 <button 
                   onClick={clearRecentlyViewed}
                   className="text-xs text-neutral-500 hover:text-red-500 transition-colors"
                 >
                   Clear All
                 </button>
-              )}
-            </div>
-            {recentlyViewed.length === 0 ? (
-              <p className="text-sm text-neutral-500">No recently viewed sites. Visit some sites to see them here!</p>
-            ) : (
+              </div>
               <div className="space-y-2">
                 {recentlyViewed.map((site) => (
                   <div 
@@ -179,8 +230,8 @@ export default function Account({ user }) {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
