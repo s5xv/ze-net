@@ -12,11 +12,9 @@ export default function Home({ user }) {
   const [newSites, setNewSites] = useState([]);
   const [stats, setStats] = useState({ totalSites: 0 });
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [serverStatus, setServerStatus] = useState({ online: false, players: 0 });
 
   useEffect(() => {
     fetchHomepageData();
-    fetchServerStatus();
 
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 300);
@@ -25,7 +23,6 @@ export default function Home({ user }) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Konami code easter egg
   useEffect(() => {
     const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
     let konamiIndex = 0;
@@ -58,16 +55,6 @@ export default function Home({ user }) {
     setStats({ totalSites: siteCount || 0 });
   };
 
-  const fetchServerStatus = async () => {
-    try {
-      const res = await fetch('/api/server-status');
-      const data = await res.json();
-      setServerStatus(data);
-    } catch (err) {
-      console.error('Failed to fetch server status', err);
-    }
-  };
-
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!q.trim()) return;
@@ -86,7 +73,6 @@ export default function Home({ user }) {
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
-      {/* Header */}
       <div className="flex flex-wrap justify-end gap-2 sm:gap-4 px-4 sm:px-6 py-4">
         {user ? (
           <>
@@ -99,23 +85,7 @@ export default function Home({ user }) {
         <button onClick={toggleTheme} className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">{isDark ? 'LIGHT' : 'DARK'}</button>
       </div>
 
-      {/* Main content */}
       <main className="flex-grow flex flex-col items-center justify-start px-4 sm:px-6 py-8 sm:py-12">
-        {/* Server Status Widget */}
-        <div className="mb-6 sm:mb-8">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border ${
-            serverStatus.online 
-              ? 'bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400' 
-              : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
-          }`}>
-            <div className={`w-2 h-2 rounded-full ${serverStatus.online ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-            <span className="text-sm font-medium">
-              {serverStatus.online ? `${serverStatus.players} players online` : 'Server Offline'}
-            </span>
-          </div>
-        </div>
-
-        {/* MASSIVE Logo and Name */}
         <div className="flex flex-col items-center gap-6 mb-8">
           <img 
             src="/assets/logo.png" 
@@ -130,7 +100,6 @@ export default function Home({ user }) {
 
         <p className="text-neutral-500 dark:text-neutral-400 text-base sm:text-lg mb-8 sm:mb-10 text-center">DemocracyCraft Centralized Directory</p>
 
-        {/* Search bar with autocomplete */}
         <form onSubmit={handleSearch} className="w-full max-w-2xl mb-10 sm:mb-12">
           <SearchAutocomplete 
             value={q} 
@@ -139,7 +108,6 @@ export default function Home({ user }) {
           />
         </form>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-10 sm:mb-12 w-full max-w-2xl">
           <div className="bg-white dark:bg-[#111111] rounded-xl p-6 sm:p-8 border border-neutral-200 dark:border-white/5 text-center">
             <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-orange-500 mb-2">{stats.totalSites}</p>
@@ -151,7 +119,6 @@ export default function Home({ user }) {
           </div>
         </div>
 
-        {/* Trending & New */}
         <div className="w-full max-w-4xl grid md:grid-cols-2 gap-4 sm:gap-6 mb-8">
           <div className="bg-white dark:bg-[#111111] rounded-xl p-5 sm:p-6 border border-neutral-200 dark:border-white/5">
             <h2 className="text-base sm:text-lg font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4">Trending</h2>
@@ -189,7 +156,6 @@ export default function Home({ user }) {
           </div>
         </div>
 
-        {/* Donation Link */}
         <div className="mt-8 sm:mt-12 text-center">
           <a 
             href="https://gnomefundme.org/c/ze-net-build-the-duckduckgo-of-democracycraft" 
@@ -202,7 +168,6 @@ export default function Home({ user }) {
         </div>
       </main>
 
-      {/* Back to Top Button */}
       {showBackToTop && (
         <button
           onClick={scrollToTop}

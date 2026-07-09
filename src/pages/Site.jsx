@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
+import { useBookmarks } from '../hooks/useBookmarks';
+import { useRecentlyViewed } from '../hooks/useRecentlyViewed';
 
 export default function Site({ user }) {
   const { slug } = useParams();
@@ -10,6 +12,8 @@ export default function Site({ user }) {
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [relatedSites, setRelatedSites] = useState([]);
+  const { bookmarks, addBookmark, removeBookmark, isBookmarked } = useBookmarks(user);
+  const { addToRecentlyViewed } = useRecentlyViewed();
 
   useEffect(() => {
     fetchSite();
@@ -21,11 +25,10 @@ export default function Site({ user }) {
     
     if (data) {
       setSite(data);
+      addToRecentlyViewed(data);
       
-      // Increment view count
       await supabase.from('sites').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
       
-      // Get related sites (same category)
       const { data: related } = await supabase
         .from('sites')
         .select('*')
@@ -49,6 +52,19 @@ export default function Site({ user }) {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
     alert('Link copied to clipboard!');
+  };
+
+  const handleBookmark = () => {
+    if (!user) {
+      alert('Please sign in to bookmark sites');
+      return;
+    }
+
+    if (isBookmarked(site.id)) {
+      removeBookmark(site.id);
+    } else {
+      addBookmark(site.id);
+    }
   };
 
   if (loading) {
@@ -84,7 +100,6 @@ export default function Site({ user }) {
       </div>
 
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
-        {/* Site Header */}
         <div className="bg-white dark:bg-[#111111] rounded-xl p-6 sm:p-8 border border-neutral-200 dark:border-white/5 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
             <div className="flex-grow">
@@ -96,9 +111,16 @@ export default function Site({ user }) {
               <p className="text-sm text-neutral-500 font-mono mb-2">{site.category}</p>
               {site.owner_name && <p className="text-sm text-neutral-500">Owner: {site.owner_name}</p>}
             </div>
-            <div className="flex gap-2 flex-shrink-0">
+            <div className="flex gap-2 flex-shrink-0 flex-wrap">
               <button onClick={handleVisit} className="px-4 sm:px-6 py-2 sm:py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm sm:text-base">
                 Visit Site
+              </button>
+              <button onClick={handleBookmark} className={`px-4 py-2 sm:py-3 font-medium rounded-lg transition-colors text-sm sm:text-base ${
+                isBookmarked(site.id) 
+                  ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
+                  : 'bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
+              }`}>
+                {isBookmarked(site.id) ? '★ Bookmarked' : '☆ Bookmark'}
               </button>
               <button onClick={handleShare} className="px-4 py-2 sm:py-3 bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-medium rounded-lg transition-colors text-sm sm:text-base">
                 Share
@@ -122,7 +144,6 @@ export default function Site({ user }) {
           </div>
         </div>
 
-        {/* Related Sites */}
         {relatedSites.length > 0 && (
           <div className="bg-white dark:bg-[#111111] rounded-xl p-6 border border-neutral-200 dark:border-white/5">
             <h2 className="text-xl font-bold mb-4">Related Sites</h2>
