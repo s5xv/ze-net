@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from './hooks/useTheme';
 import { useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { supabase } from './services/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import Home from './pages/Home';

@@ -1,8 +1,8 @@
 import Footer from '../components/Footer';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTheme } from '../hooks/useTheme';
-import { supabase } from '../services/supabase';
+import { useTheme } from './hooks/useTheme';
+import { supabase } from './services/supabase';
 
 export default function ForumThreads() {
   const { forumId } = useParams();

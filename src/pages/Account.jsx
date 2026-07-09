@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../hooks/useTheme';
-import { supabase } from '../services/supabase';
+import { useTheme } from './hooks/useTheme';
+import { supabase } from './services/supabase';
 import Footer from '../components/Footer';
 
 export default function Account({ user }) {

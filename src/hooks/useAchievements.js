@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+import { supabase } from './services/supabase';
 
 export const ACHIEVEMENTS = {
   first_login: { title: 'Welcome!', description: 'Sign in for the first time', icon: '👋', xp: 10 },

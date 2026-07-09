@@ -1,8 +1,8 @@
 import Footer from '../components/Footer';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../services/supabase';
-import { useTheme } from '../hooks/useTheme';
+import { supabase } from './services/supabase';
+import { useTheme } from './hooks/useTheme';
 
 export default function LinkAccount({ user }) {
   const navigate = useNavigate();

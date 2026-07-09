@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from './hooks/useTheme';
 import Footer from '../components/Footer';
 import AdminButton from '../components/AdminButton';
 

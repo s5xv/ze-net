@@ -1,5 +1,5 @@
 import Footer from '../components/Footer';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from './hooks/useTheme';
 
 export default function Changelog() {
   const { isDark, toggleTheme } = useTheme();

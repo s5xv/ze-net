@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../hooks/useTheme';
-import { supabase } from '../services/supabase';
+import { useTheme } from './hooks/useTheme';
+import { supabase } from './services/supabase';
 
 const ADMIN_PASSWORD = 'Khalid124_';
 

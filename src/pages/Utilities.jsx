@@ -1,6 +1,6 @@
 import Footer from '../components/Footer';
 import { useState, useEffect, useRef } from 'react';
-import { useTheme } from '../hooks/useTheme';
+import { useTheme } from './hooks/useTheme';
 import AdminButton from '../components/AdminButton';
 
 export default function Utilities({ user }) {

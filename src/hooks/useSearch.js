@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { listings } from '../services/supabase';
+import { listings } from './services/supabase';
 
 export function useSearch(query) {
   const [results, setResults] = useState([]);
