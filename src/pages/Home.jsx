@@ -9,39 +9,56 @@ export default function Home({ user }) {
   const { isDark, toggleTheme } = useTheme();
   const [trending, setTrending] = useState([]);
   const [newSites, setNewSites] = useState([]);
-  const [stats, setStats] = useState({ totalSites: 0, totalUsers: 0 });
+  const [stats, setStats] = useState({ totalSites: 0 });
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   useEffect(() => {
     fetchHomepageData();
+
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 300);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Konami code easter egg
+  useEffect(() => {
+    const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+    let konamiIndex = 0;
+
+    const handleKeyPress = (e) => {
+      if (e.key === konamiCode[konamiIndex]) {
+        konamiIndex++;
+        if (konamiIndex === konamiCode.length) {
+          alert('🎉 You found the secret! Redirecting to mining game...');
+          navigate('/mining-game');
+          konamiIndex = 0;
+        }
+      } else {
+        konamiIndex = 0;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [navigate]);
+
   const fetchHomepageData = async () => {
-    // Get trending sites (most views)
-    const { data: trendingData } = await supabase
-      .from('sites')
-      .select('*')
-      .order('view_count', { ascending: false })
-      .limit(5);
+    const { data: trendingData } = await supabase.from('sites').select('*').order('view_count', { ascending: false }).limit(5);
     setTrending(trendingData || []);
 
-    // Get newest sites
-    const { data: newData } = await supabase
-      .from('sites')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(5);
+    const { data: newData } = await supabase.from('sites').select('*').order('created_at', { ascending: false }).limit(5);
     setNewSites(newData || []);
 
-    // Get stats
     const { count: siteCount } = await supabase.from('sites').select('*', { count: 'exact', head: true });
-    setStats({ totalSites: siteCount || 0, totalUsers: 0 });
+    setStats({ totalSites: siteCount || 0 });
   };
 
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!q.trim()) return;
 
-    // Log search analytics
     if (user) {
       await supabase.from('search_history').insert({ user_id: user.id, query: q.trim() });
     }
@@ -50,9 +67,13 @@ export default function Home({ user }) {
     navigate(`/search?q=${encodeURIComponent(q.trim())}`);
   };
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
-      {/* Mobile-friendly header */}
+      {/* Header */}
       <div className="flex flex-wrap justify-end gap-2 sm:gap-4 px-4 sm:px-6 py-4">
         {user ? (
           <>
@@ -67,54 +88,53 @@ export default function Home({ user }) {
 
       {/* Main content */}
       <main className="flex-grow flex flex-col items-center justify-start px-4 sm:px-6 py-8 sm:py-12">
-        {/* Logo and Name - Responsive sizing */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {/* MASSIVE Logo and Name */}
+        <div className="flex flex-col items-center gap-6 mb-8">
           <img 
             src="/assets/logo.png" 
             alt="Z&E Net" 
-            className="h-24 w-24 sm:h-32 sm:w-32 object-contain"
+            className="h-48 w-48 sm:h-64 sm:w-64 md:h-80 md:w-80 object-contain"
             style={{ imageRendering: 'pixelated' }}
           />
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-center">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-center">
             Z&E <span className="text-orange-500">Net</span>
           </h1>
         </div>
 
-        <p className="text-neutral-500 dark:text-neutral-400 text-sm sm:text-base mb-6 sm:mb-8 text-center">DemocracyCraft Centralized Directory</p>
+        <p className="text-neutral-500 dark:text-neutral-400 text-base sm:text-lg mb-8 sm:mb-10 text-center">DemocracyCraft Centralized Directory</p>
 
-        {/* Search bar - Mobile optimized */}
-        <form onSubmit={handleSearch} className="w-full max-w-2xl mb-8 sm:mb-12">
+        {/* Search bar */}
+        <form onSubmit={handleSearch} className="w-full max-w-2xl mb-10 sm:mb-12">
           <div className="relative group">
             <input
               type="text"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search sites..."
-              className="w-full px-4 sm:px-5 py-3 sm:py-4 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-xl text-base sm:text-lg text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm dark:shadow-none"
+              className="w-full px-5 sm:px-6 py-4 sm:py-5 bg-white dark:bg-[#111111] border border-neutral-200 dark:border-white/10 rounded-xl text-lg sm:text-xl text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm dark:shadow-none"
             />
-            <button type="submit" className="absolute right-2 top-2 bottom-2 px-4 sm:px-6 bg-orange-500 hover:bg-orange-600 text-white text-sm sm:text-base font-medium rounded-lg transition-colors">
+            <button type="submit" className="absolute right-2 sm:right-3 top-2 sm:top-3 bottom-2 sm:bottom-3 px-5 sm:px-8 bg-orange-500 hover:bg-orange-600 text-white text-base sm:text-lg font-medium rounded-lg transition-colors">
               Search
             </button>
           </div>
         </form>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-8 sm:mb-12 w-full max-w-2xl">
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-white/5 text-center">
-            <p className="text-2xl sm:text-3xl font-bold text-orange-500 mb-1">{stats.totalSites}</p>
-            <p className="text-xs sm:text-sm text-neutral-500">Total Sites</p>
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-10 sm:mb-12 w-full max-w-2xl">
+          <div className="bg-white dark:bg-[#111111] rounded-xl p-6 sm:p-8 border border-neutral-200 dark:border-white/5 text-center">
+            <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-orange-500 mb-2">{stats.totalSites}</p>
+            <p className="text-sm sm:text-base text-neutral-500">Total Sites</p>
           </div>
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-white/5 text-center">
-            <p className="text-2xl sm:text-3xl font-bold text-orange-500 mb-1">∞</p>
-            <p className="text-xs sm:text-sm text-neutral-500">Possibilities</p>
+          <div className="bg-white dark:bg-[#111111] rounded-xl p-6 sm:p-8 border border-neutral-200 dark:border-white/5 text-center">
+            <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-orange-500 mb-2">∞</p>
+            <p className="text-sm sm:text-base text-neutral-500">Possibilities</p>
           </div>
         </div>
 
-        {/* Trending & New - Mobile responsive grid */}
-        <div className="w-full max-w-4xl grid md:grid-cols-2 gap-4 sm:gap-6">
-          {/* Trending */}
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-white/5">
-            <h2 className="text-sm sm:text-base font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4">Trending</h2>
+        {/* Trending & New */}
+        <div className="w-full max-w-4xl grid md:grid-cols-2 gap-4 sm:gap-6 mb-8">
+          <div className="bg-white dark:bg-[#111111] rounded-xl p-5 sm:p-6 border border-neutral-200 dark:border-white/5">
+            <h2 className="text-base sm:text-lg font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4">Trending</h2>
             {trending.length === 0 ? (
               <p className="text-sm text-neutral-500">No sites yet</p>
             ) : (
@@ -132,9 +152,8 @@ export default function Home({ user }) {
             )}
           </div>
 
-          {/* New */}
-          <div className="bg-white dark:bg-[#111111] rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-white/5">
-            <h2 className="text-sm sm:text-base font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4">Newly Added</h2>
+          <div className="bg-white dark:bg-[#111111] rounded-xl p-5 sm:p-6 border border-neutral-200 dark:border-white/5">
+            <h2 className="text-base sm:text-lg font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider mb-4">Newly Added</h2>
             {newSites.length === 0 ? (
               <p className="text-sm text-neutral-500">No sites yet</p>
             ) : (
@@ -156,12 +175,25 @@ export default function Home({ user }) {
             href="https://gnomefundme.org/c/ze-net-build-the-duckduckgo-of-democracycraft" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-block px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg transition-colors text-sm sm:text-base"
+            className="inline-block px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors text-base sm:text-lg"
           >
             Support Z&E Net Development
           </a>
         </div>
       </main>
+
+      {/* Back to Top Button */}
+      {showBackToTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-full shadow-lg transition-all z-50"
+          aria-label="Back to top"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

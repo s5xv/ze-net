@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import Account from './pages/Account';
 import Admin from './pages/Admin';
 import LinkAccount from './pages/LinkAccount';
+import MiningGame from './pages/MiningGame';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -59,6 +60,7 @@ function App() {
         <Route path="/account" element={<Account user={user} />} />
         <Route path="/admin" element={<Admin user={user} />} />
         <Route path="/link-account" element={<LinkAccount user={user} />} />
+        <Route path="/mining-game" element={<MiningGame />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
