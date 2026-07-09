@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
+import Footer from '../components/Footer';
 
 export default function Account({ user }) {
   const navigate = useNavigate();
@@ -70,12 +71,10 @@ export default function Account({ user }) {
 
   if (!user) return null;
 
-  // Get Discord profile info
   const displayName = user.user_metadata?.global_name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
   const username = user.user_metadata?.username || user.email || '';
   const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.avatar;
   
-  // Construct full Discord avatar URL if it's just a hash
   const fullAvatarUrl = avatarUrl 
     ? (avatarUrl.startsWith('http') 
         ? avatarUrl 
@@ -93,10 +92,8 @@ export default function Account({ user }) {
       </div>
 
       <main className="flex-grow max-w-4xl mx-auto px-4 py-8 w-full">
-        {/* Discord Profile Card */}
         <div className="bg-gradient-to-br from-[#5865F2]/20 to-[#5865F2]/5 dark:from-[#5865F2]/10 dark:to-transparent rounded-2xl p-6 sm:p-8 border border-[#5865F2]/20 mb-8">
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            {/* Avatar */}
             <div className="relative">
               {fullAvatarUrl ? (
                 <img 
@@ -109,11 +106,9 @@ export default function Account({ user }) {
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
-              {/* Online indicator */}
               <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-white dark:border-[#09090b]"></div>
             </div>
 
-            {/* User Info */}
             <div className="flex-grow text-center sm:text-left">
               <h1 className="text-3xl sm:text-4xl font-bold mb-1">{displayName}</h1>
               {username && username !== displayName && (
@@ -234,6 +229,8 @@ export default function Account({ user }) {
           )}
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }

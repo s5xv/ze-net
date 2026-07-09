@@ -20,6 +20,8 @@ import DepartmentDetail from './pages/DepartmentDetail';
 import Forums from './pages/Forums';
 import ForumThreads from './pages/ForumThreads';
 import Wiki from './pages/Wiki';
+import Utilities from './pages/Utilities';
+import Challenge from './pages/Challenge';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -90,6 +92,8 @@ function App() {
           <Route path="/forums" element={<Forums />} />
           <Route path="/forums/:forumId" element={<ForumThreads />} />
           <Route path="/wiki" element={<Wiki />} />
+          <Route path="/utilities" element={<Utilities user={user} />} />
+          <Route path="/challenge" element={<Challenge user={user} />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

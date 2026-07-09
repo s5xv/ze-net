@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
+import Footer from '../components/Footer';
 
 export default function Site({ user }) {
   const { slug } = useParams();
@@ -73,7 +74,6 @@ export default function Site({ user }) {
     }
   };
 
-  // Get all URLs (from urls array or fallback to single url)
   const getAllUrls = () => {
     if (site.urls && site.urls.length > 0) {
       return site.urls;
@@ -155,7 +155,6 @@ export default function Site({ user }) {
             <p className="text-base sm:text-lg text-neutral-700 dark:text-neutral-300 leading-relaxed">{site.description}</p>
           </div>
 
-          {/* Multiple URLs Section */}
           {urls.length > 0 && (
             <div className="mb-6">
               <h3 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-3">Links</h3>
@@ -209,6 +208,8 @@ export default function Site({ user }) {
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 }

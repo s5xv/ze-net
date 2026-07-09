@@ -2,6 +2,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
+import Footer from '../components/Footer';
 
 export default function Search({ user }) {
   const [searchParams] = useSearchParams();
@@ -28,7 +29,6 @@ export default function Search({ user }) {
   const fetchResults = async () => {
     setLoading(true);
     
-    // 1. Search sites
     let queryBuilder = supabase.from('sites').select('*');
 
     if (query) {
@@ -58,9 +58,7 @@ export default function Search({ user }) {
     const { data: sitesData } = await queryBuilder;
     setSiteResults(sitesData || []);
 
-    // 2. Search wiki pages
     let wikiQueryBuilder = supabase.from('wiki_pages').select('*');
-    
     if (query) {
       wikiQueryBuilder = wikiQueryBuilder.or(`title.ilike.%${query}%,content.ilike.%${query}%`);
     }
@@ -68,7 +66,6 @@ export default function Search({ user }) {
     const { data: wikiData } = await wikiQueryBuilder.order('title', { ascending: true }).limit(50);
     setWikiResults(wikiData || []);
 
-    // 3. Log analytics
     await supabase.from('search_analytics').insert({
       query: query,
       user_id: user?.id || null,
@@ -101,7 +98,7 @@ export default function Search({ user }) {
   const totalResults = siteResults.length + wikiResults.length;
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200">
+    <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
       <div className="bg-white dark:bg-[#111111] border-b border-neutral-200 dark:border-white/5 px-4 sm:px-6 py-4">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center gap-4">
           <a href="/" className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
@@ -129,8 +126,7 @@ export default function Search({ user }) {
         </div>
       </div>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Filters */}
+      <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
         <div className="mb-6">
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -214,7 +210,6 @@ export default function Search({ user }) {
           </div>
         ) : (
           <>
-            {/* Sites Section */}
             {siteResults.length > 0 && (
               <div className="mb-8">
                 <h3 className="text-lg font-bold mb-3 text-orange-500">Sites ({siteResults.length})</h3>
@@ -244,7 +239,6 @@ export default function Search({ user }) {
               </div>
             )}
 
-            {/* Wiki Section */}
             {wikiResults.length > 0 && (
               <div>
                 <h3 className="text-lg font-bold mb-3 text-orange-500">Wiki Pages ({wikiResults.length})</h3>
@@ -278,6 +272,8 @@ export default function Search({ user }) {
           </>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import Footer from '../components/Footer';
 import { useTheme } from '../hooks/useTheme';
 
 export default function Changelog() {

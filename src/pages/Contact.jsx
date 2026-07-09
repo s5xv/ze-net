@@ -1,3 +1,4 @@
+import Footer from '../components/Footer';
 import { useState } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';

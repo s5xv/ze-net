@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import AdminButton from '../components/AdminButton';
+import Footer from '../components/Footer';
 
 export default function Home({ user }) {
   const navigate = useNavigate();
@@ -215,32 +216,9 @@ export default function Home({ user }) {
             )}
           </div>
         </div>
-
-        <div className="mt-8 sm:mt-12 text-center">
-          <a 
-            href="https://gnomefundme.org/c/ze-net-build-the-duckduckgo-of-democracycraft" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-block px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors text-base sm:text-lg"
-          >
-            Support Z&E Net Development
-          </a>
-        </div>
-
-        <div className="mt-12 text-center space-y-2">
-          <div className="flex gap-4 justify-center text-sm flex-wrap">
-            <a href="/wiki" className="text-neutral-500 hover:text-orange-500 transition-colors">Wiki</a>
-            <span className="text-neutral-300">•</span>
-            <a href="/forums" className="text-neutral-500 hover:text-orange-500 transition-colors">Forums</a>
-            <span className="text-neutral-300">•</span>
-            <a href="/departments" className="text-neutral-500 hover:text-orange-500 transition-colors">Departments</a>
-            <span className="text-neutral-300">•</span>
-            <a href="/changelog" className="text-neutral-500 hover:text-orange-500 transition-colors">Changelog</a>
-            <span className="text-neutral-300">•</span>
-            <a href="/contact" className="text-neutral-500 hover:text-orange-500 transition-colors">Contact</a>
-          </div>
-        </div>
       </main>
+
+      <Footer />
 
       {showBackToTop && (
         <button
