@@ -139,7 +139,7 @@ export default function Admin() {
 
     const { error } = await supabase.from('sites').insert({
       name: newSite.business_name, slug, description: finalDescription,
-      category: newSite.category, url: newSite.website_url || '#', shortcuts: shortcutsArray, is_verified: false
+      category: newSite.category, url: newSite.website_url || '#', shortcuts: shortcutsArray.join(', '), is_verified: false
     });
 
     if (error) alert('Error creating site: ' + error.message);
@@ -270,7 +270,7 @@ export default function Admin() {
     const { error } = await supabase.from('sites').insert({
       name: reg.business_name, slug: generateSlug(reg.business_name),
       description: reg.description || `${reg.business_name} - ${reg.category}`,
-      category: reg.category, url: reg.website_url || '#', shortcuts: shortcutsArray, is_verified: false
+      category: reg.category, url: reg.website_url || '#', shortcuts: shortcutsArray.join(', '), is_verified: false
     });
     if (error) alert('Error: ' + error.message);
     else { await supabase.from('business_registrations').update({ status: 'approved' }).eq('id', reg.id); alert('Site created!'); fetchData(); }
