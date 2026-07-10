@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
-import Footer from '../components/Footer';
-import SiteReviews from '../components/SiteReviews';
+import Layout from '../components/Layout';
+import { useAuth } from '../hooks/useAuth';
 
-export default function Site({ user }) {
+export default function Site() {
+  const { user } = useAuth();
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [relatedSites, setRelatedSites] = useState([]);
@@ -94,38 +95,32 @@ export default function Site({ user }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center">
-        <div className="text-gray-500 font-mono text-sm">Loading...</div>
-      </div>
+      <Layout user={user}>
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-gray-500 font-mono text-sm">Loading...</div>
+        </div>
+      </Layout>
     );
   }
 
   if (!site) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">404</h1>
-          <p className="text-gray-500">Site not found</p>
-          <button onClick={() => navigate('/')} className="mt-4 text-blue-600 hover:underline">Go Home</button>
+      <Layout user={user}>
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold mb-4">404</h1>
+            <p className="text-gray-500">Site not found</p>
+            <button onClick={() => navigate('/')} className="mt-4 text-blue-600 hover:underline">Go Home</button>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   const urls = getAllUrls();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#202124] text-gray-900 dark:text-gray-100 transition-colors duration-200 flex flex-col">
-      <div className="flex flex-wrap justify-end gap-2 sm:gap-4 px-4 sm:px-6 py-4">
-        <a href="/" className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">HOME</a>
-        {user ? (
-          <a href="/account" className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">ACCOUNT</a>
-        ) : (
-          <a href="/login" className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">SIGN IN</a>
-        )}
-        <button onClick={toggleTheme} className="text-xs sm:text-sm font-mono font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors tracking-wide">{isDark ? 'LIGHT' : 'DARK'}</button>
-      </div>
-
+    <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="bg-white dark:bg-[#303134] rounded-xl p-6 sm:p-8 border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
@@ -208,11 +203,7 @@ export default function Site({ user }) {
             </div>
           </div>
         )}
-
-        <SiteReviews siteId={site.id} user={user} />
       </main>
-
-      <Footer />
-    </div>
+    </Layout>
   );
 }

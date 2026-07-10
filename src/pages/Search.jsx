@@ -2,9 +2,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
-import Footer from '../components/Footer';
+import Layout from '../components/Layout';
+import { useAuth } from '../hooks/useAuth';
 
-export default function Search({ user }) {
+export default function Search() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const [q, setQ] = useState(query);
@@ -28,7 +30,6 @@ export default function Search({ user }) {
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${query}%,content.ilike.%${query}%`).not('content', 'is', null).limit(10);
     setWikiResults(wikiData || []);
 
-    // Only show featured snippet if we have content
     if (sitesData && sitesData.length > 0) {
       const topSite = sitesData[0];
       setFeaturedSnippet({ 
@@ -39,7 +40,6 @@ export default function Search({ user }) {
         slug: topSite.slug 
       });
     } else if (wikiData && wikiData.length > 0) {
-      // Only use wiki if it has content (content is not null)
       const topWiki = wikiData[0];
       if (topWiki.content && topWiki.content.length > 0) {
         const paragraphs = topWiki.content.split('\n').filter(p => p.trim().length > 0);
@@ -62,18 +62,7 @@ export default function Search({ user }) {
   const handleSearch = (e) => { e.preventDefault(); if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`); };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#202124] text-gray-900 dark:text-gray-100 flex flex-col">
-      <div className="bg-white dark:bg-[#303134] border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 shadow-sm">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center gap-4">
-          <a href="/" className="flex items-center gap-3"><img src="/assets/logo.png" alt="Z&E Net" className="h-8 w-8" style={{ imageRendering: 'pixelated' }} /><span className="text-xl font-bold">Z&E <span className="text-blue-600">Net</span></span></a>
-          <form onSubmit={handleSearch} className="flex-grow w-full"><input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search..." className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-full focus:outline-none focus:border-blue-500" /></form>
-          <div className="flex gap-3">
-            <button onClick={toggleTheme} className="text-sm text-gray-600 dark:text-gray-400">{isDark ? '☀️' : ''}</button>
-            {user ? <a href="/account" className="text-sm text-gray-600 dark:text-gray-400">Account</a> : <a href="/login" className="text-sm text-gray-600 dark:text-gray-400">Sign in</a>}
-          </div>
-        </div>
-      </div>
-
+    <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-6 w-full">
         {featuredSnippet && !loading && (
           <div className="mb-6 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
@@ -135,7 +124,6 @@ export default function Search({ user }) {
           </div>
         )}
       </main>
-      <Footer />
-    </div>
+    </Layout>
   );
 }
