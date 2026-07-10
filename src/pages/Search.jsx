@@ -25,10 +25,10 @@ export default function Search({ user }) {
     const { data: sitesData } = await supabase.from('sites').select('*').or(`name.ilike.%${query}%,description.ilike.%${query}%,shortcuts.ilike.%${query}%`).order('view_count', { ascending: false }).limit(20);
     setSiteResults(sitesData || []);
 
-    const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${query}%,content.ilike.%${query}%`).limit(10);
+    const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${query}%,content.ilike.%${query}%`).not('content', 'is', null).limit(10);
     setWikiResults(wikiData || []);
 
-    // Better featured snippet - prioritize sites over wiki
+    // Only show featured snippet if we have content
     if (sitesData && sitesData.length > 0) {
       const topSite = sitesData[0];
       setFeaturedSnippet({ 
@@ -39,29 +39,19 @@ export default function Search({ user }) {
         slug: topSite.slug 
       });
     } else if (wikiData && wikiData.length > 0) {
+      // Only use wiki if it has content (content is not null)
       const topWiki = wikiData[0];
-      // Better wiki summary extraction
-      let summary = '';
-      if (topWiki.content && topWiki.content.length > 0 && !topWiki.content.includes('There is currently no text')) {
-        // Try to get first paragraph or first 2-3 sentences
+      if (topWiki.content && topWiki.content.length > 0) {
         const paragraphs = topWiki.content.split('\n').filter(p => p.trim().length > 0);
-        if (paragraphs.length > 0) {
-          summary = paragraphs[0].substring(0, 250);
-          if (paragraphs[0].length > 250) summary += '...';
-        } else {
-          summary = topWiki.content.substring(0, 200) + '...';
-        }
-      } else {
-        summary = 'This page has no content yet';
+        const summary = paragraphs[0]?.substring(0, 250) || topWiki.content.substring(0, 200);
+        
+        setFeaturedSnippet({ 
+          type: 'wiki', 
+          title: topWiki.title, 
+          description: summary + (summary.length >= 250 ? '...' : ''), 
+          url: topWiki.url 
+        });
       }
-      setFeaturedSnippet({ 
-        type: 'wiki', 
-        title: topWiki.title, 
-        description: summary, 
-        url: topWiki.url 
-      });
-    } else {
-      setFeaturedSnippet(null);
     }
 
     if (user) await supabase.from('search_history').insert({ user_id: user.id, query });
@@ -70,15 +60,6 @@ export default function Search({ user }) {
   };
 
   const handleSearch = (e) => { e.preventDefault(); if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`); };
-
-  // Helper to check if wiki page is empty
-  const isWikiEmpty = (page) => {
-    if (!page.content) return true;
-    if (page.content.trim().length === 0) return true;
-    if (page.content.includes('There is currently no text in this page')) return true;
-    if (page.content.includes('associated-pages')) return true;
-    return false;
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#202124] text-gray-900 dark:text-gray-100 flex flex-col">
@@ -129,21 +110,18 @@ export default function Search({ user }) {
               <div className="mt-8">
                 <h3 className="text-lg font-bold mb-4 text-gray-700 dark:text-gray-300">Wiki Pages</h3>
                 <div className="space-y-3">
-                  {wikiResults.map((page) => {
-                    const empty = isWikiEmpty(page);
-                    return (
-                      <a key={page.id} href={page.url} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-shadow">
-                        <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-1">{page.title}</h4>
-                        {empty ? (
-                          <p className="text-sm text-gray-500 italic mt-1">There is nothing in this page</p>
-                        ) : (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                            {page.content?.split('\n').filter(p => p.trim().length > 0)[0]?.substring(0, 200) || page.content?.substring(0, 200)}...
-                          </p>
-                        )}
-                      </a>
-                    );
-                  })}
+                  {wikiResults.map((page) => (
+                    <a key={page.id} href={page.url} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-shadow">
+                      <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-1">{page.title}</h4>
+                      {page.content ? (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                          {page.content.split('\n').filter(p => p.trim().length > 0)[0]?.substring(0, 200) || page.content.substring(0, 200)}...
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-500 italic mt-1">This page exists but has no content</p>
+                      )}
+                    </a>
+                  ))}
                 </div>
               </div>
             )}

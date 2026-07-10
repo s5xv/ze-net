@@ -13,6 +13,7 @@ export default async function handler(req, res) {
 
   try {
     if (action === 'all-pages') {
+      // First, get all page titles
       const response = await fetch(`${WIKI_API_URL}?action=query&list=allpages&aplimit=500&format=json`, {
         headers: { 'User-Agent': 'Z&ENet/1.0 (Wiki Scraper)' }
       });
@@ -22,70 +23,91 @@ export default async function handler(req, res) {
       const data = await response.json();
       const pages = data.query?.allpages || [];
 
-      for (const p of pages) {
-        // FIXED: Remove /wiki/ prefix - use just /PageTitle
-        const url = `${WIKI_BASE_URL}/${encodeURIComponent(p.title.replace(/ /g, '_'))}`;
-        const slug = p.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      // Fetch content for each page in batches
+      let successCount = 0;
+      for (let i = 0; i < pages.length; i += 50) {
+        const batch = pages.slice(i, i + 50);
+        const titles = batch.map(p => p.title).join('|');
         
-        await supabase.from('wiki_pages').upsert({
-          title: p.title,
-          slug: slug,
-          url: url,
-          category: 'General',
-          content: '',
-          last_updated: new Date().toISOString()
-        }, { onConflict: 'slug' });
+        const contentResponse = await fetch(
+          `${WIKI_API_URL}?action=query&titles=${encodeURIComponent(titles)}&prop=extracts&explaintext=1&exintro=1&format=json`,
+          { headers: { 'User-Agent': 'Z&ENet/1.0 (Wiki Scraper)' } }
+        );
+        
+        if (contentResponse.ok) {
+          const contentData = await contentResponse.json();
+          const contentPages = contentData.query?.pages || {};
+          
+          for (const pageData of Object.values(contentPages)) {
+            const title = pageData.title;
+            const extract = pageData.extract || '';
+            const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+            const url = `${WIKI_BASE_URL}/${encodeURIComponent(title.replace(/ /g, '_'))}`;
+            
+            // Check if page is empty or has placeholder text
+            const isEmpty = !extract || 
+                           extract.trim().length === 0 || 
+                           extract.includes('There is currently no text in this page') ||
+                           extract.includes('associated-pages');
+            
+            await supabase.from('wiki_pages').upsert({
+              title: title,
+              slug: slug,
+              url: url,
+              category: 'General',
+              content: isEmpty ? null : extract,
+              last_updated: new Date().toISOString()
+            }, { onConflict: 'slug' });
+            
+            if (!isEmpty) successCount++;
+          }
+        }
       }
 
-      return res.status(200).json({ success: true, count: pages.length, message: `Cached ${pages.length} wiki pages` });
-
-    } else if (action === 'categories') {
-      const response = await fetch(`${WIKI_API_URL}?action=query&list=categories&cllimit=500&format=json`, {
-        headers: { 'User-Agent': 'Z&ENet/1.0 (Wiki Scraper)' }
+      return res.status(200).json({ 
+        success: true, 
+        count: pages.length,
+        withContent: successCount,
+        message: `Cached ${pages.length} pages (${successCount} with content)` 
       });
 
-      if (!response.ok) return res.status(500).json({ error: 'Failed to fetch categories' });
+    } else if (action === 'single-page' && page) {
+      // Fetch a single page with full content
+      const response = await fetch(
+        `${WIKI_API_URL}?action=query&titles=${encodeURIComponent(page)}&prop=extracts&explaintext=1&format=json`,
+        { headers: { 'User-Agent': 'Z&ENet/1.0 (Wiki Scraper)' } }
+      );
 
-      const data = await response.json();
-      const categories = data.query?.categories || [];
-
-      for (const cat of categories) {
-        const catName = cat.title.replace('Category:', '');
-        const slug = catName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        const url = `${WIKI_BASE_URL}/Category:${encodeURIComponent(catName.replace(/ /g, '_'))}`;
-        
-        await supabase.from('wiki_pages').upsert({
-          title: catName,
-          slug: `category-${slug}`,
-          url: url,
-          category: 'Category',
-          content: '',
-          last_updated: new Date().toISOString()
-        }, { onConflict: 'slug' });
-      }
-
-      return res.status(200).json({ success: true, count: categories.length, message: `Cached ${categories.length} categories` });
-
-    } else if (action === 'page-content' && page) {
-      const response = await fetch(`${WIKI_API_URL}?action=query&titles=${encodeURIComponent(page)}&prop=extracts&explaintext=1&format=json`, {
-        headers: { 'User-Agent': 'Z&ENet/1.0 (Wiki Scraper)' }
-      });
-
-      if (!response.ok) return res.status(500).json({ error: 'Failed to fetch page content' });
+      if (!response.ok) return res.status(500).json({ error: 'Failed to fetch page' });
 
       const data = await response.json();
       const pages = data.query?.pages || {};
       const pageData = Object.values(pages)[0];
 
-      if (pageData && pageData.extract) {
-        const slug = page.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      if (pageData && pageData.title) {
+        const extract = pageData.extract || '';
+        const slug = pageData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const url = `${WIKI_BASE_URL}/${encodeURIComponent(pageData.title.replace(/ /g, '_'))}`;
         
-        await supabase.from('wiki_pages').update({
-          content: pageData.extract,
+        const isEmpty = !extract || 
+                       extract.trim().length === 0 || 
+                       extract.includes('There is currently no text in this page');
+        
+        await supabase.from('wiki_pages').upsert({
+          title: pageData.title,
+          slug: slug,
+          url: url,
+          category: 'General',
+          content: isEmpty ? null : extract,
           last_updated: new Date().toISOString()
-        }).eq('slug', slug);
+        }, { onConflict: 'slug' });
 
-        return res.status(200).json({ success: true, content: pageData.extract });
+        return res.status(200).json({ 
+          success: true, 
+          title: pageData.title,
+          hasContent: !isEmpty,
+          content: isEmpty ? null : extract.substring(0, 200) + '...'
+        });
       }
 
       return res.status(404).json({ error: 'Page not found' });
