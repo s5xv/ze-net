@@ -16,34 +16,22 @@ export default function RegisterBusiness() {
     owner_discord: '',
     category: 'Retail Shop',
     plot_number: '',
+    shortcut: '',
     discord_invite: '',
     website_url: ''
   });
 
   const categories = [
-    'Retail Shop',
-    'Restaurant / Food',
-    'Real Estate',
-    'Bank / Finance',
-    'Service (Building, Mining, etc)',
-    'Farm / Agriculture',
-    'Entertainment / Casino',
-    'Government / Public Service',
-    'Technology / Redstone',
-    'Transportation',
-    'Hotel / Accommodation',
-    'Other'
+    'Retail Shop', 'Restaurant / Food', 'Real Estate', 'Bank / Finance',
+    'Service (Building, Mining, etc)', 'Farm / Agriculture', 'Entertainment / Casino',
+    'Government / Public Service', 'Technology / Redstone', 'Transportation',
+    'Hotel / Accommodation', 'Other'
   ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user) {
-      alert('Please sign in to register a business');
-      navigate('/login');
-      return;
-    }
+    if (!user) { alert('Please sign in'); navigate('/login'); return; }
 
-    // Validate that at least one contact method is provided
     const hasPlotNumber = formData.plot_number.trim().length > 0;
     const hasDiscordInvite = formData.discord_invite.trim().length > 0;
     const hasWebsiteUrl = formData.website_url.trim().length > 0;
@@ -60,7 +48,6 @@ export default function RegisterBusiness() {
         user_id: user.id,
         status: 'pending'
       });
-
       if (error) throw error;
       setSubmitted(true);
     } catch (err) {
@@ -77,12 +64,8 @@ export default function RegisterBusiness() {
           <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-8 text-center">
             <div className="text-6xl mb-4">✅</div>
             <h1 className="text-3xl font-bold mb-4">Registration Submitted!</h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Your business registration is pending admin review. You'll be notified once it's approved.
-            </p>
-            <button onClick={() => navigate('/')} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
-              Back to Home
-            </button>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">Your business registration is pending admin review.</p>
+            <button onClick={() => navigate('/')} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">Back to Home</button>
           </div>
         </main>
       </Layout>
@@ -99,81 +82,44 @@ export default function RegisterBusiness() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">Business Name *</label>
-              <input
-                type="text"
-                required
-                value={formData.business_name}
-                onChange={(e) => setFormData({...formData, business_name: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="Exact name used in game"
-              />
+              <input type="text" required value={formData.business_name} onChange={(e) => setFormData({...formData, business_name: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" placeholder="Exact name used in game" />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-2">Owner Discord Username *</label>
-              <input
-                type="text"
-                required
-                value={formData.owner_discord}
-                onChange={(e) => setFormData({...formData, owner_discord: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="e.g., username#1234"
-              />
+              <input type="text" required value={formData.owner_discord} onChange={(e) => setFormData({...formData, owner_discord: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" placeholder="e.g., username" />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-2">Business Category *</label>
-              <select
-                required
-                value={formData.category}
-                onChange={(e) => setFormData({...formData, category: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
+              <select required value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500">
+                {categories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
               </select>
             </div>
 
             <div>
+              <label className="block text-sm font-medium mb-2">Search Shortcut (Optional)</label>
+              <input type="text" value={formData.shortcut} onChange={(e) => setFormData({...formData, shortcut: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" placeholder="e.g., rvr, bank, main" />
+              <p className="text-xs text-gray-500 mt-1">A quick code people can type in the search bar to find your business instantly.</p>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium mb-2">Plot Number</label>
-              <input
-                type="text"
-                value={formData.plot_number}
-                onChange={(e) => setFormData({...formData, plot_number: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="e.g., 78, 1, plot 002 Porock, A123, etc."
-              />
-              <p className="text-xs text-gray-500 mt-1">Any format works - numbers only, letters, or mixed (e.g., 78, plot 002 Porock, A123)</p>
+              <input type="text" value={formData.plot_number} onChange={(e) => setFormData({...formData, plot_number: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" placeholder="e.g., 78, 1, plot 002 Porock, A123" />
+              <p className="text-xs text-gray-500 mt-1">Any format works - numbers only, letters, or mixed.</p>
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-2">Company Discord Invite Link</label>
-              <input
-                type="url"
-                value={formData.discord_invite}
-                onChange={(e) => setFormData({...formData, discord_invite: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="https://discord.gg/..."
-              />
+              <input type="url" value={formData.discord_invite} onChange={(e) => setFormData({...formData, discord_invite: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" placeholder="https://discord.gg/..." />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-2">Company Website URL</label>
-              <input
-                type="url"
-                value={formData.website_url}
-                onChange={(e) => setFormData({...formData, website_url: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="https://..."
-              />
+              <input type="url" value={formData.website_url} onChange={(e) => setFormData({...formData, website_url: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" placeholder="https://..." />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
-            >
+            <button type="submit" disabled={loading} className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors">
               {loading ? 'Submitting...' : 'Submit Registration'}
             </button>
           </form>

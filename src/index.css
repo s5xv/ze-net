@@ -2,32 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-html {
+html, body {
+  margin: 0;
+  padding: 0;
   height: 100%;
-  overflow-y: auto;
+  /* Force dark background to prevent white flash on mobile scroll */
+  background-color: #171717; 
+  /* Disable the bounce/overscroll effect */
+  overscroll-behavior-y: none;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
-  margin: 0;
-  padding: 0;
-  min-height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  -webkit-overflow-scrolling: touch;
 }
 
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-/* Prevent white space on mobile overscroll */
-html, body {
-  overscroll-behavior: none;
-}
-
-/* Ensure proper scrolling on all devices */
-* {
-  -webkit-tap-highlight-color: transparent;
 }

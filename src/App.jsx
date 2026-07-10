@@ -29,6 +29,7 @@ import Leaderboard from './pages/Leaderboard';
 import Docs from './pages/Docs';
 import RegisterBusiness from './pages/RegisterBusiness';
 import SubmitAd from './pages/SubmitAd';
+import VerifySite from './pages/VerifySite';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -53,18 +54,6 @@ function AuthHandler() {
 function App() {
   useTheme();
   const { user, loading } = useAuth();
-
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-        e.preventDefault();
-        const searchInput = document.querySelector('input[type="text"]');
-        if (searchInput) searchInput.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
 
   if (loading) return <div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center"><div className="text-gray-500">Loading...</div></div>;
 
@@ -97,6 +86,7 @@ function App() {
           <Route path="/docs" element={<Docs user={user} />} />
           <Route path="/register-business" element={<RegisterBusiness user={user} />} />
           <Route path="/submit-ad" element={<SubmitAd user={user} />} />
+          <Route path="/verify-site" element={<VerifySite user={user} />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

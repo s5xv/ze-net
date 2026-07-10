@@ -60,6 +60,7 @@ export default function Search() {
     }
 
     if (user) await supabase.from('search_history').insert({ user_id: user.id, query });
+      if (user) { const { checkAndUnlockAchievements } = await import("../utils/tracker"); checkAndUnlockAchievements(user.id); }
     await supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: (sitesData?.length || 0) + (wikiData?.length || 0) });
     setLoading(false);
   };
