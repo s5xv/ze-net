@@ -27,6 +27,8 @@ import Challenge from './pages/Challenge';
 import Achievements from './pages/Achievements';
 import Leaderboard from './pages/Leaderboard';
 import Docs from './pages/Docs';
+import RegisterBusiness from './pages/RegisterBusiness';
+import SubmitAd from './pages/SubmitAd';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -93,6 +95,8 @@ function App() {
           <Route path="/achievements" element={<Achievements user={user} />} />
           <Route path="/leaderboard" element={<Leaderboard user={user} />} />
           <Route path="/docs" element={<Docs user={user} />} />
+          <Route path="/register-business" element={<RegisterBusiness user={user} />} />
+          <Route path="/submit-ad" element={<SubmitAd user={user} />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

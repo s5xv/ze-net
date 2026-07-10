@@ -134,6 +134,15 @@ export default function Home() {
     navigate('/utilities');
   };
 
+  // Fix URL - ensure it has protocol
+  const fixUrl = (url) => {
+    if (!url) return '#';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    return `https://${url}`;
+  };
+
   if (loading) {
     return (
       <Layout user={null}>
@@ -146,99 +155,165 @@ export default function Home() {
 
   return (
     <Layout user={user}>
-      <main className="flex-grow flex flex-col items-center justify-center px-4 py-8 sm:py-12">
-        <div className="text-center mb-6">
-          <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold tracking-tight">
-            Z&E <span className="text-blue-600 dark:text-blue-400">NET</span>
-          </h1>
-          <div className="flex justify-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
-            <span>players online: {stats.onlinePlayers}</span>
-            <span>•</span>
-            <span>total sites: {stats.totalSites}</span>
-          </div>
-        </div>
-
-        <form onSubmit={handleSearch} className="w-full max-w-2xl mb-6 relative">
-          <input
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-            placeholder="What's on your mind today?..."
-            className="w-full px-6 py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-          />
-          
-          {showSuggestions && (
-            <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-96 overflow-y-auto">
-              {suggestions.map((s, i) => (
-                <button key={i} type="button" onClick={() => handleSuggestionClick(s)} className="w-full text-left px-6 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0">
-                  {s.type === 'popular' ? (
-                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  )}
-                  <span className="text-gray-700 dark:text-gray-300 flex-grow">{s.text}</span>
-                  {s.type === 'popular' && <span className="text-xs text-orange-500">Trending</span>}
-                  {s.type === 'site' && <span className="text-xs text-gray-400">Site</span>}
-                  {s.type === 'wiki' && <span className="text-xs text-gray-400">Wiki</span>}
-                </button>
-              ))}
-            </div>
-          )}
-        </form>
-
-        <div className="flex flex-wrap gap-3 justify-center mb-12">
-          <button onClick={handleSearch} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
-            Search web
-          </button>
-          <button onClick={handleFeelingLucky} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
-            I'm feeling lucky
-          </button>
-          <button onClick={handleMoreClick} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
-            More...
-          </button>
-        </div>
-
-        {/* ADS SECTION */}
-        {ads.length > 0 && (
-          <div className="w-full max-w-4xl mb-8">
-            <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4 text-center">Sponsored</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ads.map((ad) => (
-                <a
-                  key={ad.id}
-                  href={ad.link_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-white dark:bg-[#303134] border-2 border-blue-500/30 dark:border-blue-400/30 rounded-xl p-4 hover:shadow-lg transition-all group"
-                >
-                  {ad.image_url && (
-                    <img src={ad.image_url} alt={ad.title} className="w-full h-32 object-cover rounded-lg mb-3" />
-                  )}
-                  <h4 className="font-bold text-blue-600 dark:text-blue-400 mb-1 group-hover:underline">{ad.title}</h4>
-                  {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
-                  <span className="text-xs text-gray-400 mt-2 block">Sponsored</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="w-full max-w-4xl mb-8">
-          <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
-            <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700">
-              <div className="text-center">
-                <div className="text-8xl sm:text-9xl mb-2"></div>
-                <p className="text-xs text-gray-500">Character</p>
+      <main className="flex-grow max-w-7xl mx-auto px-4 py-8 sm:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Content - 3 columns */}
+          <div className="lg:col-span-3 space-y-8">
+            <div className="text-center mb-6">
+              <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight">
+                Z&E <span className="text-blue-600 dark:text-blue-400">NET</span>
+              </h1>
+              <div className="flex justify-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <span>players online: {stats.onlinePlayers}</span>
+                <span>•</span>
+                <span>total sites: {stats.totalSites}</span>
               </div>
             </div>
-            <div className="w-1/2 sm:w-3/5 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto">
+
+            <form onSubmit={handleSearch} className="w-full relative">
+              <input
+                type="text"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                placeholder="What's on your mind today?..."
+                className="w-full px-6 py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+              />
+              
+              {showSuggestions && (
+                <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-96 overflow-y-auto">
+                  {suggestions.map((s, i) => (
+                    <button key={i} type="button" onClick={() => handleSuggestionClick(s)} className="w-full text-left px-6 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0">
+                      {s.type === 'popular' ? (
+                        <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                      )}
+                      <span className="text-gray-700 dark:text-gray-300 flex-grow">{s.text}</span>
+                      {s.type === 'popular' && <span className="text-xs text-orange-500">Trending</span>}
+                      {s.type === 'site' && <span className="text-xs text-gray-400">Site</span>}
+                      {s.type === 'wiki' && <span className="text-xs text-gray-400">Wiki</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </form>
+
+            <div className="flex flex-wrap gap-3 justify-center">
+              <button onClick={handleSearch} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
+                Search web
+              </button>
+              <button onClick={handleFeelingLucky} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
+                I'm feeling lucky
+              </button>
+              <button onClick={handleMoreClick} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
+                More...
+              </button>
+            </div>
+
+            <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
+              <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700">
+                <div className="text-center">
+                  <div className="text-8xl sm:text-9xl mb-2"></div>
+                  <p className="text-xs text-gray-500">Character</p>
+                </div>
+              </div>
+              <div className="w-1/2 sm:w-3/5 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto">
+                <div>
+                  <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">Are they simply the best?!</h2>
+                  <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-6">Are placeholders simply better?</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500 italic">(This will show most searched site/wiki/person this week once people start browsing!)</p>
+                </div>
+                <div className="h-6 w-full bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 via-blue-500 via-indigo-500 to-purple-500 rounded-full mt-auto"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar - 1 column */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Gold Ads (Banner) */}
+            {ads.filter(a => a.tier === 'gold').length > 0 && (
               <div>
-                <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">Are they simply the best?!</h2>
-                <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-6">Are placeholders simply better?</p>
-                <p className="text-sm text-gray-500 dark:text-gray-500 italic">(This will show most searched site/wiki/person this week once people start browsing!)</p>
+                <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Featured</h3>
+                <div className="space-y-3">
+                  {ads.filter(a => a.tier === 'gold').map((ad) => (
+                    <a
+                      key={ad.id}
+                      href={fixUrl(ad.link_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-2 border-yellow-500/50 dark:border-yellow-400/50 rounded-xl p-4 hover:shadow-lg transition-all group"
+                    >
+                      {ad.image_url && (
+                        <img src={ad.image_url} alt={ad.title} className="w-full h-32 object-cover rounded-lg mb-3" />
+                      )}
+                      <h4 className="font-bold text-yellow-600 dark:text-yellow-400 mb-1 group-hover:underline">{ad.title}</h4>
+                      {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
+                      <span className="text-xs text-yellow-500 mt-2 block">⭐ Gold Sponsor</span>
+                    </a>
+                  ))}
+                </div>
               </div>
-              <div className="h-6 w-full bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 via-blue-500 via-indigo-500 to-purple-500 rounded-full mt-auto"></div>
+            )}
+
+            {/* Silver Ads */}
+            {ads.filter(a => a.tier === 'silver').length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Premium</h3>
+                <div className="space-y-3">
+                  {ads.filter(a => a.tier === 'silver').map((ad) => (
+                    <a
+                      key={ad.id}
+                      href={fixUrl(ad.link_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block bg-gradient-to-br from-gray-400/10 to-gray-500/10 dark:from-gray-400/20 dark:to-gray-500/20 border-2 border-gray-400/50 dark:border-gray-500/50 rounded-xl p-4 hover:shadow-lg transition-all group"
+                    >
+                      {ad.image_url && (
+                        <img src={ad.image_url} alt={ad.title} className="w-full h-24 object-cover rounded-lg mb-2" />
+                      )}
+                      <h4 className="font-bold text-gray-600 dark:text-gray-300 mb-1 group-hover:underline">{ad.title}</h4>
+                      {ad.description && <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
+                      <span className="text-xs text-gray-500 mt-2 block">🥈 Silver Sponsor</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bronze Ads */}
+            {ads.filter(a => a.tier === 'bronze').length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Sponsored</h3>
+                <div className="space-y-2">
+                  {ads.filter(a => a.tier === 'bronze').map((ad) => (
+                    <a
+                      key={ad.id}
+                      href={fixUrl(ad.link_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg p-3 hover:shadow-md transition-all group"
+                    >
+                      <h4 className="font-semibold text-blue-600 dark:text-blue-400 text-sm group-hover:underline">{ad.title}</h4>
+                      {ad.description && <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mt-1">{ad.description}</p>}
+                      <span className="text-xs text-gray-400 mt-1 block">🥉 Bronze</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Links */}
+            <div>
+              <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Quick Links</h3>
+              <div className="space-y-2">
+                <a href="/register-business" className="block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium text-center transition-colors">
+                  Register Business
+                </a>
+                <a href="/submit-ad" className="block px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium text-center transition-colors">
+                  Submit Ad
+                </a>
+              </div>
             </div>
           </div>
         </div>
