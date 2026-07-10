@@ -87,7 +87,7 @@ export default function Layout({ children, user }) {
           {/* Logo/Home link */}
           <a href="/" className="flex items-center gap-2 hover:opacity-80">
             <img src="/assets/logo.png" alt="Z&E Net" className="h-8 w-8 object-contain" style={{ imageRendering: 'pixelated' }} />
-            <span className="font-bold text-lg hidden sm:inline">Z&E <span className="text-blue-600 dark:text-blue-400">NET</span></span>
+            <span className="font-bold text-2xl sm:text-3xl font-bold hidden sm:inline">Z&E <span className="text-blue-600 dark:text-blue-400">NET</span></span>
           </a>
           <div className="flex items-center gap-2">
             <span className="font-medium">Wallet</span>

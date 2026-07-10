@@ -22,37 +22,35 @@ export default function Search() {
 
   const fetchResults = async () => {
     setLoading(true);
+    const searchTerm = query.toLowerCase().trim();
     
-    const { data: sitesData } = await supabase.from('sites').select('*').or(`name.ilike.%${query}%,description.ilike.%${query}%,shortcuts.ilike.%${query}%`).order('view_count', { ascending: false }).limit(20);
-    setSiteResults(sitesData || []);
-
-    // Get wiki pages - include both with and without content
-    const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${query}%,content.ilike.%${query}%`).limit(10);
+    // Search wiki pages (case-insensitive)
+    const { data: wikiData } = await supabase
+      .from('wiki_pages')
+      .select('*')
+      .or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`)
+      .order('title', { ascending: true })
+      .limit(20);
     setWikiResults(wikiData || []);
 
-    // Featured snippet - only if we have content
-    if (sitesData && sitesData.length > 0) {
-      const topSite = sitesData[0];
-      setFeaturedSnippet({ 
-        type: 'site', 
-        title: topSite.name, 
-        description: topSite.description || 'No description available', 
-        url: topSite.url, 
-        slug: topSite.slug 
-      });
-    } else if (wikiData && wikiData.length > 0) {
-      // Find first wiki page with actual content
-      const wikiWithContent = wikiData.find(w => w.content && w.content.length > 0);
-      if (wikiWithContent) {
-        const paragraphs = wikiWithContent.content.split('\n').filter(p => p.trim().length > 0);
-        const summary = paragraphs[0]?.substring(0, 250) || wikiWithContent.content.substring(0, 200);
-        
-        setFeaturedSnippet({ 
-          type: 'wiki', 
-          title: wikiWithContent.title, 
-          description: summary + (summary.length >= 250 ? '...' : ''), 
-          url: wikiWithContent.url 
-        });
+    // Search sites
+    const { data: sitesData } = await supabase
+      .from('sites')
+      .select('*')
+      .or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcuts.ilike.%${searchTerm}%`)
+      .order('view_count', { ascending: false })
+      .limit(10);
+    setSiteResults(sitesData || []);
+
+    // Featured snippet (prefer site, fallback to wiki with content)
+    if (sitesData?.length) {
+      const top = sitesData[0];
+      setFeaturedSnippet({ type: 'site', title: top.name, description: top.description || 'No description', url: top.url, slug: top.slug });
+    } else if (wikiData?.length) {
+      const withContent = wikiData.find(w => w.content && w.content.length > 10);
+      if (withContent) {
+        const summary = withContent.content.split('\n').filter(p => p.trim())[0]?.substring(0, 200) || '';
+        setFeaturedSnippet({ type: 'wiki', title: withContent.title, description: summary + '...', url: withContent.url });
       }
     }
 
@@ -68,63 +66,35 @@ export default function Search() {
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-6 w-full">
         {featuredSnippet && !loading && (
           <div className="mb-6 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="flex-grow">
-                <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-2">{featuredSnippet.title}</h3>
-                <p className="text-gray-700 dark:text-gray-300 mb-3 leading-relaxed">{featuredSnippet.description}</p>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span className="text-green-600 dark:text-green-400">●</span><span>{featuredSnippet.type === 'site' ? 'Site' : 'Wiki'}</span>
-                  {featuredSnippet.url && <><span>•</span><a href={featuredSnippet.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate max-w-md">{featuredSnippet.url}</a></>}
-                </div>
-              </div>
-              {featuredSnippet.slug && <button onClick={() => navigate(`/site/${featuredSnippet.slug}`)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg">Visit</button>}
+            <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-2">{featuredSnippet.title}</h3>
+            <p className="text-gray-700 dark:text-gray-300 mb-3">{featuredSnippet.description}</p>
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span className="text-green-600">●</span><span>{featuredSnippet.type === 'site' ? 'Site' : 'Wiki'}</span>
+              {featuredSnippet.url && <a href={featuredSnippet.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">{featuredSnippet.url}</a>}
             </div>
           </div>
         )}
 
         {loading ? <div className="text-center py-12 text-gray-500">Searching...</div> : (
           <div className="space-y-4">
+            {wikiResults.map((page) => (
+              <a key={page.id} href={page.url} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-shadow">
+                <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-1">{page.title}</h4>
+                {page.content && page.content.length > 10 ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{page.content.split('\n').filter(p=>p.trim())[0]?.substring(0, 150)}...</p>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">This page exists but has no content</p>
+                )}
+              </a>
+            ))}
             {siteResults.map((site) => (
-              <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer">
-                <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400 mb-1 truncate">{site.name}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">{site.url}</p>
-                <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">{site.description}</p>
-                <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
-                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">{site.category}</span>
-                  {site.shortcuts && site.shortcuts.length > 0 && <span className="text-gray-400">Shortcuts: {site.shortcuts.join(', ')}</span>}
-                  <span>•</span><span>{site.view_count || 0} views</span>
-                </div>
+              <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md cursor-pointer">
+                <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400 mb-1">{site.name}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{site.description}</p>
               </div>
             ))}
-
-            {wikiResults.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-lg font-bold mb-4 text-gray-700 dark:text-gray-300">Wiki Pages</h3>
-                <div className="space-y-3">
-                  {wikiResults.map((page) => {
-                    const hasContent = page.content && page.content.length > 0;
-                    return (
-                      <a key={page.id} href={page.url} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-shadow">
-                        <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-1">{page.title}</h4>
-                        {hasContent ? (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                            {page.content.split('\n').filter(p => p.trim().length > 0)[0]?.substring(0, 200) || page.content.substring(0, 200)}...
-                          </p>
-                        ) : (
-                          <p className="text-sm text-gray-500 italic mt-1">This page exists but has no content</p>
-                        )}
-                      </a>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {siteResults.length === 0 && wikiResults.length === 0 && !loading && (
-              <div className="text-center py-12">
-                <p className="text-gray-500 mb-2">No results found for "{query}"</p>
-                <p className="text-sm text-gray-400">Try using shortcuts or different keywords</p>
-              </div>
+              <div className="text-center py-12 text-gray-500">No results found for "{query}"</div>
             )}
           </div>
         )}
