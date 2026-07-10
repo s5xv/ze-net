@@ -6,7 +6,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Account() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const [balance, setBalance] = useState(0);
@@ -14,16 +14,17 @@ export default function Account() {
   const [mcUuid, setMcUuid] = useState('');
   const [bookmarks, setBookmarks] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
-  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (!user) { navigate('/login'); return; }
-    fetchData();
-  }, [user, navigate]);
+    // Only redirect if auth is done loading and user is null
+    if (!authLoading && !user) {
+      navigate('/login');
+      return;
+    }
+    if (user) fetchData();
+  }, [user, authLoading, navigate]);
 
   const fetchData = async () => {
-    setRefreshing(true);
-    
     const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', user.id).single();
     setBalance(balData?.balance || 0);
 
@@ -38,19 +39,24 @@ export default function Account() {
     setBookmarks(bookmarkData || []);
 
     const stored = localStorage.getItem('recentlyViewed');
-    if (stored) {
-      setRecentlyViewed(JSON.parse(stored));
-    } else {
-      setRecentlyViewed([]);
-    }
-
-    setRefreshing(false);
+    setRecentlyViewed(stored ? JSON.parse(stored) : []);
   };
 
   const clearRecentlyViewed = () => {
     localStorage.removeItem('recentlyViewed');
     setRecentlyViewed([]);
   };
+
+  // Show loading while auth is being determined
+  if (authLoading) {
+    return (
+      <Layout user={null}>
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-gray-500">Loading...</div>
+        </div>
+      </Layout>
+    );
+  }
 
   if (!user) return null;
 
@@ -63,35 +69,20 @@ export default function Account() {
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 py-8 w-full">
-        {/* Discord Profile Card */}
         <div className="bg-gradient-to-br from-[#5865F2]/20 to-[#5865F2]/5 dark:from-[#5865F2]/10 dark:to-transparent rounded-2xl p-6 sm:p-8 border border-[#5865F2]/20 mb-8">
           <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="relative">
-              {fullAvatarUrl ? (
-                <img 
-                  src={fullAvatarUrl} 
-                  alt={userDisplayName}
-                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-[#5865F2]/30 shadow-xl"
-                />
-              ) : (
-                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-[#5865F2] to-[#7983F5] flex items-center justify-center text-white text-4xl sm:text-5xl font-bold border-4 border-[#5865F2]/30 shadow-xl">
-                  {userDisplayName.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-white dark:border-[#202124]"></div>
-            </div>
-
+            {fullAvatarUrl ? (
+              <img src={fullAvatarUrl} alt={userDisplayName} className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-[#5865F2]/30 shadow-xl" />
+            ) : (
+              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-[#5865F2] to-[#7983F5] flex items-center justify-center text-white text-4xl sm:text-5xl font-bold border-4 border-[#5865F2]/30 shadow-xl">
+                {userDisplayName.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div className="flex-grow text-center sm:text-left">
               <h1 className="text-3xl sm:text-4xl font-bold mb-1">{userDisplayName}</h1>
               <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-                <span className="px-3 py-1 bg-[#5865F2]/20 text-[#5865F2] text-xs font-bold rounded-full border border-[#5865F2]/30">
-                  DISCORD MEMBER
-                </span>
-                {mcLinked && (
-                  <span className="px-3 py-1 bg-green-500/20 text-green-500 text-xs font-bold rounded-full border border-green-500/30">
-                    MC LINKED
-                  </span>
-                )}
+                <span className="px-3 py-1 bg-[#5865F2]/20 text-[#5865F2] text-xs font-bold rounded-full border border-[#5865F2]/30">DISCORD MEMBER</span>
+                {mcLinked && <span className="px-3 py-1 bg-green-500/20 text-green-500 text-xs font-bold rounded-full border border-green-500/30">MC LINKED</span>}
               </div>
             </div>
           </div>
@@ -133,11 +124,7 @@ export default function Account() {
               <h2 className="text-lg font-semibold mb-4">Your Bookmarks ({bookmarks.length})</h2>
               <div className="space-y-2">
                 {bookmarks.map((bookmark) => (
-                  <div 
-                    key={bookmark.site_id}
-                    onClick={() => navigate(`/site/${bookmark.sites.slug}`)}
-                    className="p-3 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-blue-500/30 transition-colors"
-                  >
+                  <div key={bookmark.site_id} onClick={() => navigate(`/site/${bookmark.sites.slug}`)} className="p-3 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-blue-500/30 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{bookmark.sites.name}</span>
                       <span className="text-xs text-gray-500 font-mono">{bookmark.sites.category}</span>
@@ -152,20 +139,11 @@ export default function Account() {
             <div className="md:col-span-2 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Recently Viewed ({recentlyViewed.length})</h2>
-                <button 
-                  onClick={clearRecentlyViewed}
-                  className="text-xs text-gray-500 hover:text-red-500 transition-colors"
-                >
-                  Clear All
-                </button>
+                <button onClick={clearRecentlyViewed} className="text-xs text-gray-500 hover:text-red-500">Clear All</button>
               </div>
               <div className="space-y-2">
                 {recentlyViewed.map((site) => (
-                  <div 
-                    key={site.id}
-                    onClick={() => navigate(`/site/${site.slug}`)}
-                    className="p-3 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-blue-500/30 transition-colors"
-                  >
+                  <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-3 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:border-blue-500/30 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{site.name}</span>
                       <span className="text-xs text-gray-500 font-mono">{site.category}</span>

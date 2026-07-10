@@ -66,7 +66,8 @@ export default function Home() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('https://map.democracycraft.net/maps/reveille/live/players.json');
+      // Use our proxy API instead of direct call
+      const res = await fetch('/api/online-players');
       const data = await res.json();
       const { count } = await supabase.from('sites').select('*', { count: 'exact', head: true });
       setStats({ onlinePlayers: data.players?.length || 0, totalSites: count || 0 });
@@ -106,16 +107,23 @@ export default function Home() {
   };
 
   const handleFeelingLucky = async () => {
-    console.log('Feeling lucky clicked');
-    const { data, error } = await supabase.from('sites').select('slug').limit(1000);
-    console.log('Fetched sites:', data, 'Error:', error);
-    if (data && data.length > 0) {
-      const randomSite = data[Math.floor(Math.random() * data.length)];
-      console.log('Navigating to:', randomSite.slug);
-      navigate(`/site/${randomSite.slug}`);
-    } else {
-      alert('No sites available yet!');
+    // Try sites first
+    const { data: sites } = await supabase.from('sites').select('slug').limit(1000);
+    if (sites && sites.length > 0) {
+      const random = sites[Math.floor(Math.random() * sites.length)];
+      navigate(`/site/${random.slug}`);
+      return;
     }
+    
+    // Fallback to wiki pages
+    const { data: wikiPages } = await supabase.from('wiki_pages').select('url, title').not('content', 'is', null).limit(1000);
+    if (wikiPages && wikiPages.length > 0) {
+      const random = wikiPages[Math.floor(Math.random() * wikiPages.length)];
+      window.open(random.url, '_blank');
+      return;
+    }
+    
+    alert('No sites or wiki pages available yet!');
   };
 
   const handleMoreClick = () => {
@@ -135,7 +143,6 @@ export default function Home() {
   return (
     <Layout user={user}>
       <main className="flex-grow flex flex-col items-center justify-center px-4 py-8 sm:py-12">
-        {/* MASSIVE LOGO */}
         <div className="text-center mb-6">
           <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold tracking-tight">
             Z&E <span className="text-blue-600 dark:text-blue-400">NET</span>
@@ -147,7 +154,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* SEARCH BAR */}
         <form onSubmit={handleSearch} className="w-full max-w-2xl mb-6 relative">
           <input
             type="text"
@@ -177,7 +183,6 @@ export default function Home() {
           )}
         </form>
 
-        {/* BUTTONS */}
         <div className="flex flex-wrap gap-3 justify-center mb-12">
           <button onClick={handleSearch} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
             Search web
@@ -190,7 +195,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* "ARE THEY SIMPLY THE BEST?!" SECTION */}
         <div className="w-full max-w-4xl mb-8">
           <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
             <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700">

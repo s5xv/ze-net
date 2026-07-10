@@ -26,31 +26,31 @@ export default async function handler(req, res) {
       let successCount = 0;
       let emptyCount = 0;
 
-      // Fetch content for each page
-      for (let i = 0; i < pages.length; i += 20) {
-        const batch = pages.slice(i, i + 20);
-        const titles = batch.map(p => p.title).join('|');
+      // Fetch content for each page individually using extracts
+      for (const page of pages) {
+        const title = page.title;
         
-        const contentResponse = await fetch(
-          `${WIKI_API_URL}?action=parse&page=${encodeURIComponent(titles)}&prop=wikitext&format=json`,
-          { headers: { 'User-Agent': 'Z&ENet/1.0' } }
-        );
-        
-        if (contentResponse.ok) {
-          const contentData = await contentResponse.json();
+        try {
+          const contentResponse = await fetch(
+            `${WIKI_API_URL}?action=query&titles=${encodeURIComponent(title)}&prop=extracts&explaintext=1&format=json`,
+            { headers: { 'User-Agent': 'Z&ENet/1.0' } }
+          );
           
-          for (const pageData of batch) {
-            const title = pageData.title;
+          if (contentResponse.ok) {
+            const contentData = await contentResponse.json();
+            const pagesData = contentData.query?.pages || {};
+            const pageData = Object.values(pagesData)[0];
+            
+            let extract = pageData?.extract || '';
             const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
             const url = `${WIKI_BASE_URL}/${encodeURIComponent(title.replace(/ /g, '_'))}`;
             
-            // Try to get content from parse result
-            let content = '';
-            if (contentData.parse?.wikitext?.['*']) {
-              content = contentData.parse.wikitext['*'];
-            }
-            
-            const isEmpty = !content || content.trim().length === 0;
+            // Check if empty or placeholder
+            const isEmpty = !extract || 
+                           extract.trim().length === 0 || 
+                           extract.includes('There is currently no text in this page') ||
+                           extract.includes('associated-pages') ||
+                           extract.length < 20;
             
             if (isEmpty) {
               emptyCount++;
@@ -63,11 +63,16 @@ export default async function handler(req, res) {
               slug: slug,
               url: url,
               category: 'General',
-              content: isEmpty ? null : content,
+              content: isEmpty ? null : extract,
               last_updated: new Date().toISOString()
             }, { onConflict: 'slug' });
           }
+        } catch (e) {
+          console.error(`Failed to fetch ${title}:`, e);
         }
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       return res.status(200).json({ 
