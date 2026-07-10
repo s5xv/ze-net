@@ -91,8 +91,19 @@ export default function Home() {
   };
 
   const fetchAds = async () => {
-    const { data } = await supabase.from('ads').select('*').eq('is_active', true).order('created_at', { ascending: false });
-    setAds(data || []);
+    // Fetch only active ads
+    const { data, error } = await supabase
+      .from('ads')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching ads:', error);
+      setAds([]);
+    } else {
+      setAds(data || []);
+    }
   };
 
   const handleSearch = (e) => {
@@ -134,7 +145,6 @@ export default function Home() {
     navigate('/utilities');
   };
 
-  // Fix URL - ensure it has protocol
   const fixUrl = (url) => {
     if (!url) return '#';
     if (url.startsWith('http://') || url.startsWith('https://')) {
