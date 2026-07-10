@@ -9,6 +9,7 @@ export default function Home({ user }) {
   const [q, setQ] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [topSearches, setTopSearches] = useState([]);
   const { isDark, toggleTheme } = useTheme();
   const [stats, setStats] = useState({ onlinePlayers: 0, totalSites: 0 });
   const [balance, setBalance] = useState(0);
@@ -17,6 +18,7 @@ export default function Home({ user }) {
 
   useEffect(() => {
     fetchStats();
+    fetchTopSearches();
     if (user) fetchBalance();
     
     const start = Date.now();
@@ -37,29 +39,37 @@ export default function Home({ user }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Working Autocomplete
+  // Adaptive Autocomplete - shows top searches + real-time suggestions
   useEffect(() => {
-    if (q.length < 2) {
-      setSuggestions([]);
+    if (q.length < 1) {
+      // Show top searches when input is empty
+      setSuggestions(topSearches.map(t => ({ type: 'popular', text: t.query })));
+      setShowSuggestions(topSearches.length > 0);
       return;
     }
 
     const fetchSuggestions = async () => {
-      // Search both sites and wiki
+      // Search sites (including shortcuts)
       const { data: siteData } = await supabase
         .from('sites')
-        .select('name, slug')
-        .ilike('name', `%${q}%`)
+        .select('name, slug, shortcuts')
+        .or(`name.ilike.%${q}%,shortcuts.ilike.%${q}%`)
         .limit(5);
 
+      // Search wiki
       const { data: wikiData } = await supabase
         .from('wiki_pages')
         .select('title')
         .ilike('title', `%${q}%`)
-        .limit(5);
+        .limit(3);
 
       const combined = [
-        ...(siteData || []).map(s => ({ type: 'site', text: s.name, slug: s.slug })),
+        ...(siteData || []).map(s => ({ 
+          type: 'site', 
+          text: s.name, 
+          slug: s.slug,
+          shortcuts: s.shortcuts 
+        })),
         ...(wikiData || []).map(w => ({ type: 'wiki', text: w.title }))
       ].sort((a, b) => a.text.localeCompare(b.text)).slice(0, 8);
 
@@ -67,9 +77,9 @@ export default function Home({ user }) {
       setShowSuggestions(combined.length > 0);
     };
 
-    const timeoutId = setTimeout(fetchSuggestions, 300);
+    const timeoutId = setTimeout(fetchSuggestions, 200);
     return () => clearTimeout(timeoutId);
-  }, [q]);
+  }, [q, topSearches]);
 
   const fetchStats = async () => {
     try {
@@ -78,6 +88,27 @@ export default function Home({ user }) {
       const { count } = await supabase.from('sites').select('*', { count: 'exact', head: true });
       setStats({ onlinePlayers: data.players?.length || 0, totalSites: count || 0 });
     } catch (err) { console.error(err); }
+  };
+
+  const fetchTopSearches = async () => {
+    // Get top 5 searches this week
+    const { data } = await supabase
+      .from('search_analytics')
+      .select('query')
+      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      .limit(100);
+    
+    if (data) {
+      const counts = {};
+      data.forEach(item => {
+        counts[item.query] = (counts[item.query] || 0) + 1;
+      });
+      const top = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([query]) => ({ query }));
+      setTopSearches(top);
+    }
   };
 
   const fetchBalance = async () => {
@@ -96,6 +127,8 @@ export default function Home({ user }) {
   const handleSuggestionClick = (suggestion) => {
     if (suggestion.type === 'site') {
       navigate(`/site/${suggestion.slug}`);
+    } else if (suggestion.type === 'popular') {
+      navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
     } else {
       navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
     }
@@ -107,7 +140,6 @@ export default function Home({ user }) {
     if (data?.length) navigate(`/site/${data[Math.floor(Math.random() * data.length)].slug}`);
   };
 
-  // Get user display info
   const userDisplayName = user?.user_metadata?.global_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
   const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.avatar;
   const fullAvatarUrl = userAvatar 
@@ -116,7 +148,6 @@ export default function Home({ user }) {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#202124] text-gray-900 dark:text-gray-100 flex flex-col">
-      
       {/* TOP BAR */}
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-4 sm:gap-6 text-sm text-gray-600 dark:text-gray-400">
@@ -160,7 +191,6 @@ export default function Home({ user }) {
 
       {/* MAIN CONTENT */}
       <main className="flex-grow flex flex-col items-center justify-center px-4 py-8 sm:py-12">
-        
         {/* MASSIVE LOGO */}
         <div className="text-center mb-6">
           <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold tracking-tight">
@@ -173,7 +203,7 @@ export default function Home({ user }) {
           </div>
         </div>
 
-        {/* SEARCH BAR WITH AUTOCOMPLETE */}
+        {/* SEARCH BAR WITH ADAPTIVE AUTOCOMPLETE */}
         <form onSubmit={handleSearch} className="w-full max-w-2xl mb-6 relative">
           <input
             type="text"
@@ -186,19 +216,28 @@ export default function Home({ user }) {
           
           {/* Autocomplete Dropdown */}
           {showSuggestions && (
-            <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50">
+            <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-96 overflow-y-auto">
               {suggestions.map((s, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => handleSuggestionClick(s)}
-                  className="w-full text-left px-6 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] flex items-center gap-3 transition-colors"
+                  className="w-full text-left px-6 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
                 >
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <span className="text-gray-700 dark:text-gray-300">{s.text}</span>
-                  <span className="text-xs text-gray-400 ml-auto">{s.type === 'site' ? 'Site' : 'Wiki'}</span>
+                  {s.type === 'popular' ? (
+                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  )}
+                  <span className="text-gray-700 dark:text-gray-300 flex-grow">{s.text}</span>
+                  {s.type === 'popular' && <span className="text-xs text-orange-500">Trending</span>}
+                  {s.type === 'site' && <span className="text-xs text-gray-400">Site</span>}
+                  {s.type === 'wiki' && <span className="text-xs text-gray-400">Wiki</span>}
+                  {s.shortcuts && <span className="text-xs text-gray-400">({s.shortcuts.join(', ')})</span>}
                 </button>
               ))}
             </div>
@@ -221,8 +260,6 @@ export default function Home({ user }) {
         {/* "ARE THEY SIMPLY THE BEST?!" SECTION */}
         <div className="w-full max-w-4xl mb-8">
           <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
-            
-            {/* Left Side: Character Image */}
             <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700">
               <div className="text-center">
                 <div className="text-8xl sm:text-9xl mb-2"></div>
@@ -230,7 +267,6 @@ export default function Home({ user }) {
               </div>
             </div>
 
-            {/* Right Side: Text & Rainbow (Scrollable) */}
             <div className="w-1/2 sm:w-3/5 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto">
               <div>
                 <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">
@@ -244,16 +280,13 @@ export default function Home({ user }) {
                 </p>
               </div>
               
-              {/* Rainbow Bar */}
               <div className="h-6 w-full bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 via-blue-500 via-indigo-500 to-purple-500 rounded-full mt-auto"></div>
             </div>
-
           </div>
         </div>
 
       </main>
 
-      {/* FOOTER */}
       <footer className="bg-gray-100 dark:bg-[#171717] border-t border-gray-200 dark:border-gray-800 py-4 text-center text-xs text-gray-500">
         <p>Z&E Net is an independent search directory not affiliated with DemocracyCraft.</p>
         <p className="mt-1">© {new Date().getFullYear()} Z&E Net</p>
