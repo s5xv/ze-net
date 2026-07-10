@@ -14,11 +14,13 @@ export default function Home() {
   const [topSearches, setTopSearches] = useState([]);
   const { isDark } = useTheme();
   const [stats, setStats] = useState({ onlinePlayers: 0, totalSites: 0 });
+  const [ads, setAds] = useState([]);
   const suggestionsRef = useRef(null);
 
   useEffect(() => {
     fetchStats();
     fetchTopSearches();
+    fetchAds();
   }, []);
 
   useEffect(() => {
@@ -66,7 +68,6 @@ export default function Home() {
 
   const fetchStats = async () => {
     try {
-      // Use our proxy API instead of direct call
       const res = await fetch('/api?endpoint=online-players');
       const data = await res.json();
       const { count } = await supabase.from('sites').select('*', { count: 'exact', head: true });
@@ -89,6 +90,11 @@ export default function Home() {
     }
   };
 
+  const fetchAds = async () => {
+    const { data } = await supabase.from('ads').select('*').eq('is_active', true).order('created_at', { ascending: false });
+    setAds(data || []);
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (q.trim()) {
@@ -107,15 +113,13 @@ export default function Home() {
   };
 
   const handleFeelingLucky = async () => {
-    // Try sites first
-    const { data: sites } = await supabase.from('sites').select('slug').limit(1000);
-    if (sites && sites.length > 0) {
-      const random = sites[Math.floor(Math.random() * sites.length)];
+    const { data } = await supabase.from('sites').select('slug').limit(1000);
+    if (data && data.length > 0) {
+      const random = data[Math.floor(Math.random() * data.length)];
       navigate(`/site/${random.slug}`);
       return;
     }
     
-    // Fallback to wiki pages
     const { data: wikiPages } = await supabase.from('wiki_pages').select('url, title').not('content', 'is', null).limit(1000);
     if (wikiPages && wikiPages.length > 0) {
       const random = wikiPages[Math.floor(Math.random() * wikiPages.length)];
@@ -161,7 +165,7 @@ export default function Home() {
             onChange={(e) => setQ(e.target.value)}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             placeholder="What's on your mind today?..."
-            className="w-full px-6 py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+            className="w-full px-6 py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
           />
           
           {showSuggestions && (
@@ -194,6 +198,31 @@ export default function Home() {
             More...
           </button>
         </div>
+
+        {/* ADS SECTION */}
+        {ads.length > 0 && (
+          <div className="w-full max-w-4xl mb-8">
+            <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4 text-center">Sponsored</h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {ads.map((ad) => (
+                <a
+                  key={ad.id}
+                  href={ad.link_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-white dark:bg-[#303134] border-2 border-blue-500/30 dark:border-blue-400/30 rounded-xl p-4 hover:shadow-lg transition-all group"
+                >
+                  {ad.image_url && (
+                    <img src={ad.image_url} alt={ad.title} className="w-full h-32 object-cover rounded-lg mb-3" />
+                  )}
+                  <h4 className="font-bold text-blue-600 dark:text-blue-400 mb-1 group-hover:underline">{ad.title}</h4>
+                  {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
+                  <span className="text-xs text-gray-400 mt-2 block">Sponsored</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="w-full max-w-4xl mb-8">
           <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
