@@ -31,7 +31,6 @@ export default function Docs() {
           <p className="text-gray-600 dark:text-gray-400 text-lg">Everything you need to know about Z&E Net</p>
         </div>
 
-        {/* Quick Start Guide */}
         <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm mb-8">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">🚀 Quick Start Guide</h2>
           <div className="grid md:grid-cols-2 gap-4">
@@ -54,7 +53,6 @@ export default function Docs() {
           </div>
         </div>
 
-        {/* FAQ Accordion */}
         <div className="space-y-4">
           <h2 className="text-2xl font-bold mb-4">Frequently Asked Questions</h2>
           {faqs.map((faq, i) => (

@@ -54,7 +54,7 @@ export default function Wiki() {
 
   const openPageModal = async (page) => {
     setActivePage(page);
-    const { data } = await supabase.from('wiki_comments').select('*, user_metadata:users(name)').eq('wiki_page_id', page.id).order('created_at', { ascending: false });
+    const { data } = await supabase.from('wiki_comments').select('*').eq('wiki_page_id', page.id).order('created_at', { ascending: false });
     setComments(data || []);
   };
 
@@ -144,7 +144,10 @@ export default function Wiki() {
                 ) : (
                   <p className="text-sm text-gray-500 italic">This page exists but has no content</p>
                 )}
-                <button className="mt-3 text-xs text-blue-600 hover:underline">Discuss & Review →</button>
+                <div className="mt-3 flex justify-between items-center">
+                  <span className="text-xs text-gray-500">Click to discuss</span>
+                  <a href={page.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-blue-600 hover:underline">Open Wiki </a>
+                </div>
               </div>
             ))}
           </div>
