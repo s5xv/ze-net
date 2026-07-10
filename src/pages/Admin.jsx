@@ -418,7 +418,7 @@ export default function Admin() {
             <div className="space-y-3">
               {sites.map((site) => (
                 <div key={site.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{site.name} {site.is_verified && <span className="text-blue-500">✓</span>}</h3><p className="text-sm text-gray-500">{site.category} • Shortcuts: {site.shortcuts?.join(', ') || 'None'}</p></div>
+                  <div><h3 className="font-semibold">{site.name} {site.is_verified && <span className="text-blue-500">✓</span>}</h3><p className="text-sm text-gray-500">{site.category} • Shortcuts: {site.shortcuts || 'None'}</p></div>
                   <button onClick={() => handleDelete('sites', site.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
                 </div>
               ))}
