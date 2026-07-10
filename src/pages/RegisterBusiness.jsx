@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
@@ -20,41 +20,20 @@ export default function RegisterBusiness() {
     website_url: ''
   });
 
+  // Clean, concise list tailored for a Minecraft server economy
   const categories = [
-    // Retail & Shopping
-    'Retail Shop', 'Department Store', 'Convenience Store', 'Grocery Store', 'Supermarket',
-    'Clothing Store', 'Shoe Store', 'Jewelry Store', 'Electronics Store', 'Furniture Store',
-    'Bookstore', 'Toy Store', 'Pet Store', 'Florist', 'Gift Shop', 'Antique Shop',
-    
-    // Food & Dining
-    'Restaurant', 'Fast Food', 'Cafe', 'Bakery', 'Bar', 'Pub', 'Nightclub',
-    'Food Truck', 'Ice Cream Shop', 'Pizza Place', 'Sushi Restaurant', 'Steakhouse',
-    
-    // Services
-    'Legal Service', 'Accounting Service', 'Real Estate Agency', 'Insurance Agency',
-    'Travel Agency', 'Consulting Firm', 'Marketing Agency', 'Advertising Agency',
-    'Cleaning Service', 'Landscaping Service', 'Repair Service', 'Plumbing Service',
-    'Electrical Service', 'Moving Company', 'Security Service',
-    
-    // Creative & Arts
-    'Art Studio', 'Music Studio', 'Photography Studio', 'Design Studio',
-    'Tattoo Parlor', 'Hair Salon', 'Barbershop', 'Spa', 'Gym', 'Yoga Studio',
-    
-    // Professional
-    'Corporate Office', 'Bank', 'Law Firm', 'Medical Clinic', 'Dental Office',
-    'Veterinary Clinic', 'Pharmacy', 'Post Office', 'Library',
-    
-    // Entertainment
-    'Movie Theater', 'Bowling Alley', 'Arcade', 'Casino', 'Theater',
-    'Music Venue', 'Sports Arena', 'Amusement Park',
-    
-    // Industrial
-    'Warehouse', 'Factory', 'Workshop', 'Garage', 'Storage Facility',
-    
-    // Other
-    'Hotel', 'Motel', 'Hostel', 'Church', 'School', 'University', 'Government Building',
-    'Police Station', 'Fire Station', 'Hospital', 'Parking Garage', 'Gas Station',
-    'Auto Repair', 'Car Dealership', 'Construction Company', 'Other'
+    'Retail Shop',
+    'Restaurant / Food',
+    'Real Estate',
+    'Bank / Finance',
+    'Service (Building, Mining, etc)',
+    'Farm / Agriculture',
+    'Entertainment / Casino',
+    'Government / Public Service',
+    'Technology / Redstone',
+    'Transportation',
+    'Hotel / Accommodation',
+    'Other'
   ];
 
   const handleSubmit = async (e) => {
