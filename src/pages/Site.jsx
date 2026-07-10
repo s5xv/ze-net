@@ -19,6 +19,11 @@ export default function Site() {
   const [comments, setComments] = useState([]);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
   const [newComment, setNewComment] = useState('');
+  
+  // Report State
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reporting, setReporting] = useState(false);
 
   useEffect(() => { fetchSite(); }, [slug]);
 
@@ -50,6 +55,33 @@ export default function Site() {
       setComments(commentsData || []);
     }
     setLoading(false);
+  };
+
+  const handleReport = async (e) => {
+    e.preventDefault();
+    if (!user) { alert('Please sign in to report'); return; }
+    if (!reportReason.trim()) { alert('Please enter a reason'); return; }
+    
+    setReporting(true);
+    try {
+      const { error } = await supabase.from('reports').insert({
+        reporter_id: user.id,
+        target_type: 'site',
+        target_id: site.id,
+        target_name: site.name,
+        reason: reportReason,
+        status: 'pending'
+      });
+      
+      if (error) throw error;
+      alert('Report submitted successfully. Admins will review it.');
+      setShowReportModal(false);
+      setReportReason('');
+    } catch (err) {
+      alert('Error submitting report: ' + err.message);
+    } finally {
+      setReporting(false);
+    }
   };
 
   const handleComment = async (e) => {
@@ -108,7 +140,6 @@ export default function Site() {
         <div className="bg-white dark:bg-[#303134] rounded-xl p-6 sm:p-8 border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
             <div className="flex-grow">
-              {/* REAL VERIFIED BADGE HERE */}
               <div className="flex items-center flex-wrap gap-2 mb-2">
                 <h1 className="text-3xl sm:text-4xl font-bold">{site.name}</h1>
                 {site.is_verified && (
@@ -124,11 +155,12 @@ export default function Site() {
             <div className="flex gap-2 flex-shrink-0 flex-wrap">
               <button onClick={handleBookmark} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isBookmarked ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isBookmarked ? '★ Bookmarked' : '☆ Bookmark'}</button>
               <button onClick={handleUpvote} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${hasUpvoted ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{hasUpvoted ? '✓ Upvoted' : 'Upvote'} ({upvotes})</button>
+              <button onClick={() => setShowReportModal(true)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40"> Report</button>
             </div>
           </div>
 
           <div className="prose dark:prose-invert max-w-none mb-6">
-            <p className="text-base sm:text-lg text-gray-700 dark:text-gray-300 leading-relaxed">{site.description}</p>
+            <p className="text-base sm:text-lg text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{site.description}</p>
           </div>
 
           {site.url && (
@@ -145,6 +177,32 @@ export default function Site() {
             <div><p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{site.click_count || 0}</p><p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Clicks</p></div>
           </div>
         </div>
+
+        {/* Report Modal */}
+        {showReportModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-[#303134] rounded-xl p-6 max-w-md w-full border border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-bold mb-4">Report {site.name}</h2>
+              <p className="text-sm text-gray-500 mb-4">Please describe the issue. Admins will review this report.</p>
+              <form onSubmit={handleReport}>
+                <textarea 
+                  value={reportReason} 
+                  onChange={(e) => setReportReason(e.target.value)} 
+                  placeholder="Reason for report (e.g., scam, inappropriate content, broken link)..." 
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg mb-4 focus:outline-none focus:border-blue-500" 
+                  rows="4" 
+                  required 
+                />
+                <div className="flex gap-2 justify-end">
+                  <button type="button" onClick={() => setShowReportModal(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg text-sm">Cancel</button>
+                  <button type="submit" disabled={reporting} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:bg-gray-400">
+                    {reporting ? 'Submitting...' : 'Submit Report'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Reviews Section */}
         <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm mb-6">

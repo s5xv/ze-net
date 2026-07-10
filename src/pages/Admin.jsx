@@ -39,6 +39,7 @@ export default function Admin() {
   const [withdrawals, setWithdrawals] = useState([]);
   const [analytics, setAnalytics] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [reports, setReports] = useState([]); // NEW
   const [premiumListings, setPremiumListings] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [siteRequests, setSiteRequests] = useState([]);
@@ -53,7 +54,6 @@ export default function Admin() {
   const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
   const [showManualDeposit, setShowManualDeposit] = useState(false);
   
-  // Updated states to include description and discord link
   const [newSite, setNewSite] = useState({
     business_name: '', owner_discord: '', category: 'Retail Shop',
     plot_number: '', shortcut: '', discord_invite: '', website_url: '', description: ''
@@ -67,6 +67,9 @@ export default function Admin() {
   const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '' });
   const [manualDeposit, setManualDeposit] = useState({ userId: '', amount: '', reason: '', notes: '' });
   const [newPremium, setNewPremium] = useState({ siteId: '', tier: 'basic', days: 30 });
+
+  // Report punishment state
+  const [selectedPunishment, setSelectedPunishment] = useState({});
 
   useEffect(() => {
     const auth = localStorage.getItem('admin_auth');
@@ -105,6 +108,8 @@ export default function Admin() {
     setAnalytics(analyticsData || []);
     const { data: messagesData } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
     setMessages(messagesData || []);
+    const { data: reportsData } = await supabase.from('reports').select('*').order('created_at', { ascending: false }); // NEW
+    setReports(reportsData || []);
     const { data: premiumData } = await supabase.from('premium_listings').select('*, sites(name)').order('created_at', { ascending: false });
     setPremiumListings(premiumData || []);
     const { data: announcementsData } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
@@ -125,31 +130,20 @@ export default function Admin() {
     setStats({ totalSites: sitesData?.length || 0, totalViews, totalClicks, pendingWithdrawals: withdrawalsData?.length || 0 });
   };
 
-  // INSTANT SITE CREATION (Matches public form + includes description & discord)
   const handleAddSite = async (e) => {
     e.preventDefault();
     const shortcutsArray = newSite.shortcut ? newSite.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
     const slug = generateSlug(newSite.business_name);
-    
-    // Combine description with discord link if provided, so it shows on the site page
     let finalDescription = newSite.description || `${newSite.business_name} - ${newSite.category}`;
-    if (newSite.discord_invite) {
-      finalDescription += `\nDiscord: ${newSite.discord_invite}`;
-    }
+    if (newSite.discord_invite) finalDescription += `\nDiscord: ${newSite.discord_invite}`;
 
     const { error } = await supabase.from('sites').insert({
-      name: newSite.business_name,
-      slug,
-      description: finalDescription,
-      category: newSite.category,
-      url: newSite.website_url || '#',
-      shortcuts: shortcutsArray,
-      is_verified: false
+      name: newSite.business_name, slug, description: finalDescription,
+      category: newSite.category, url: newSite.website_url || '#', shortcuts: shortcutsArray, is_verified: false
     });
 
-    if (error) {
-      alert('Error creating site: ' + error.message);
-    } else {
+    if (error) alert('Error creating site: ' + error.message);
+    else {
       alert('Site created instantly!');
       setShowAddSite(false);
       setNewSite({ business_name: '', owner_discord: '', category: 'Retail Shop', plot_number: '', shortcut: '', discord_invite: '', website_url: '', description: '' });
@@ -157,21 +151,14 @@ export default function Admin() {
     }
   };
 
-  // INSTANT AD CREATION (Matches public form)
   const handleAddAd = async (e) => {
     e.preventDefault();
     const { error } = await supabase.from('ads').insert({
-      title: newAd.company_name,
-      description: `Sponsored by ${newAd.company_name}`,
-      link_url: newAd.redirect_url,
-      image_url: newAd.banner_image,
-      tier: newAd.tier,
-      is_active: true
+      title: newAd.company_name, description: `Sponsored by ${newAd.company_name}`,
+      link_url: newAd.redirect_url, image_url: newAd.banner_image, tier: newAd.tier, is_active: true
     });
-
-    if (error) {
-      alert('Error creating ad: ' + error.message);
-    } else {
+    if (error) alert('Error creating ad: ' + error.message);
+    else {
       alert('Ad created and activated instantly!');
       setShowAddAd(false);
       setNewAd({ company_name: '', contact_discord: '', redirect_url: '', banner_image: '', tier: 'bronze' });
@@ -228,6 +215,28 @@ export default function Admin() {
       if (error) alert('Error deleting: ' + error.message);
       else fetchData();
     }
+  };
+
+  // NEW: Handle Report Resolution
+  const handleResolveReport = async (report) => {
+    const punishment = selectedPunishment[report.id] || 'No Action';
+    if (!confirm(`Resolve this report with punishment: "${punishment}"?`)) return;
+
+    // 1. Update report status
+    await supabase.from('reports').update({ status: 'resolved', punishment }).eq('id', report.id);
+
+    // 2. Execute punishment if needed
+    if (punishment === 'Delete Site' && report.target_type === 'site') {
+      await supabase.from('sites').delete().eq('id', report.target_id);
+      alert('Report resolved and site deleted.');
+    } else if (punishment === 'Delete Comment' && report.target_type === 'comment') {
+      await supabase.from('site_comments').delete().eq('id', report.target_id);
+      alert('Report resolved and comment deleted.');
+    } else {
+      alert(`Report resolved with: ${punishment}`);
+    }
+    
+    fetchData();
   };
 
   const handleApproveWithdrawal = async (id, userId, amount) => {
@@ -348,14 +357,14 @@ export default function Admin() {
         </div>
 
         <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-          {['sites', 'ads', 'premium', 'announcements', 'requests', 'business', 'ad-submissions', 'verifications', 'deposits', 'withdrawals', 'messages', 'analytics', 'users', 'wiki'].map((tab) => (
+          {['sites', 'ads', 'premium', 'announcements', 'requests', 'business', 'ad-submissions', 'verifications', 'reports', 'deposits', 'withdrawals', 'messages', 'analytics', 'users', 'wiki'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === tab ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
               {tab.charAt(0).toUpperCase() + tab.slice(1).replace('-', ' ')}
             </button>
           ))}
         </div>
 
-        {/* SITES TAB - MATCHES PUBLIC FORM + DESCRIPTION + DISCORD */}
+        {/* SITES TAB */}
         {activeTab === 'sites' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -381,13 +390,10 @@ export default function Admin() {
                     </select>
                   </div>
                 </div>
-                
-                {/* NEW: Description Field */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Description *</label>
                   <textarea required value={newSite.description} onChange={(e) => setNewSite({...newSite, description: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="3" placeholder="Describe the site..." />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">Search Shortcut</label>
@@ -398,13 +404,10 @@ export default function Admin() {
                     <input type="text" value={newSite.plot_number} onChange={(e) => setNewSite({...newSite, plot_number: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="e.g., A123" />
                   </div>
                 </div>
-                
-                {/* NEW: Discord Link Field */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Discord Invite Link</label>
                   <input type="url" value={newSite.discord_invite} onChange={(e) => setNewSite({...newSite, discord_invite: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://discord.gg/..." />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium mb-1">Website URL</label>
                   <input type="url" value={newSite.website_url} onChange={(e) => setNewSite({...newSite, website_url: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://..." />
@@ -423,7 +426,7 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ADS TAB - MATCHES PUBLIC FORM */}
+        {/* ADS TAB */}
         {activeTab === 'ads' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -480,6 +483,50 @@ export default function Admin() {
           </div>
         )}
 
+        {/* REPORTS TAB (NEW) */}
+        {activeTab === 'reports' && (
+          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <h2 className="text-xl font-bold mb-6">Reports ({reports.filter(r => r.status === 'pending').length} pending)</h2>
+            {reports.length === 0 ? <p className="text-gray-500 text-center py-12">No reports</p> : (
+              <div className="space-y-4">
+                {reports.map((report) => (
+                  <div key={report.id} className={`p-4 border rounded-lg ${report.status === 'pending' ? 'bg-red-500/5 border-red-500/20' : 'bg-gray-50 dark:bg-[#202124] opacity-60'}`}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold">Reported: {report.target_name || report.target_type}</h3>
+                          <span className={`px-2 py-0.5 text-xs font-bold rounded ${report.status === 'pending' ? 'bg-red-500/10 text-red-600' : 'bg-green-500/10 text-green-600'}`}>
+                            {report.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">Type: {report.target_type} • Date: {new Date(report.created_at).toLocaleString()}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-[#303134] p-2 rounded mt-2">Reason: {report.reason}</p>
+                        {report.punishment && <p className="text-xs text-blue-600 mt-2">Punishment Applied: {report.punishment}</p>}
+                      </div>
+                    </div>
+                    {report.status === 'pending' && (
+                      <div className="flex gap-2 items-center mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <select 
+                          value={selectedPunishment[report.id] || 'Warning'} 
+                          onChange={(e) => setSelectedPunishment({...selectedPunishment, [report.id]: e.target.value})}
+                          className="px-3 py-1.5 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg text-sm"
+                        >
+                          <option value="Warning">Warning</option>
+                          <option value="Delete Site">Delete Site</option>
+                          <option value="Delete Comment">Delete Comment</option>
+                          <option value="No Action">No Action</option>
+                        </select>
+                        <button onClick={() => handleResolveReport(report)} className="px-4 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Resolve Report</button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* VERIFICATIONS TAB */}
         {activeTab === 'verifications' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Site Verifications ({verificationRequests.filter(r => r.status === 'pending').length} pending)</h2>
@@ -498,6 +545,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* BUSINESS TAB */}
         {activeTab === 'business' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Business Registrations</h2>
@@ -512,6 +560,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* AD SUBMISSIONS TAB */}
         {activeTab === 'ad-submissions' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Ad Submissions</h2>
@@ -526,6 +575,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* PREMIUM TAB */}
         {activeTab === 'premium' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Premium Listings</h2>
@@ -548,6 +598,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* ANNOUNCEMENTS TAB */}
         {activeTab === 'announcements' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -572,6 +623,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* REQUESTS TAB */}
         {activeTab === 'requests' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Site Requests</h2>
@@ -586,6 +638,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* DEPOSITS TAB */}
         {activeTab === 'deposits' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -610,6 +663,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* WITHDRAWALS TAB */}
         {activeTab === 'withdrawals' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Withdrawals</h2>
@@ -627,6 +681,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* MESSAGES TAB */}
         {activeTab === 'messages' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Messages</h2>
@@ -641,6 +696,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* ANALYTICS TAB */}
         {activeTab === 'analytics' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Search Analytics</h2>
@@ -655,6 +711,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* USERS TAB */}
         {activeTab === 'users' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Linked Users</h2>
@@ -662,6 +719,7 @@ export default function Admin() {
           </div>
         )}
 
+        {/* WIKI TAB */}
         {activeTab === 'wiki' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Wiki Management</h2>
