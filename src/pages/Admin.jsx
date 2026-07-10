@@ -7,9 +7,22 @@ import { useAuth } from '../hooks/useAuth';
 
 const ADMIN_PASSWORD = 'Khalid124_';
 
-// Helper to generate a safe slug
 const generateSlug = (name) => {
   return (name || 'site').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+};
+
+const businessCategories = [
+  'Retail Shop', 'Restaurant / Food', 'Real Estate', 'Bank / Finance',
+  'Service (Building, Mining, etc)', 'Farm / Agriculture', 'Entertainment / Casino',
+  'Government / Public Service', 'Technology / Redstone', 'Transportation',
+  'Hotel / Accommodation', 'Other'
+];
+
+const adTiers = {
+  bronze: { name: 'Bronze - Standard Ad', price: 500, duration: '1 week' },
+  silver: { name: 'Silver - Premium Ad', price: 1200, duration: '2 weeks' },
+  gold: { name: 'Gold - Featured Banner', price: 2500, duration: '1 month' },
+  platinum: { name: 'Platinum - Sponsored', price: 5000, duration: '1 month' }
 };
 
 export default function Admin() {
@@ -40,8 +53,17 @@ export default function Admin() {
   const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
   const [showManualDeposit, setShowManualDeposit] = useState(false);
   
-  const [newSite, setNewSite] = useState({ name: '', description: '', category: 'Other', owner_discord_id: '', shortcuts: '', url: '' });
-  const [newAd, setNewAd] = useState({ title: '', description: '', link_url: '', image_url: '', tier: 'bronze' });
+  // Updated states to match public forms
+  const [newSite, setNewSite] = useState({
+    business_name: '', owner_discord: '', category: 'Retail Shop',
+    plot_number: '', shortcut: '', discord_invite: '', website_url: ''
+  });
+  
+  const [newAd, setNewAd] = useState({
+    company_name: '', contact_discord: '', redirect_url: '',
+    banner_image: '', tier: 'bronze'
+  });
+
   const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '' });
   const [manualDeposit, setManualDeposit] = useState({ userId: '', amount: '', reason: '', notes: '' });
   const [newPremium, setNewPremium] = useState({ siteId: '', tier: 'basic', days: 30 });
@@ -103,32 +125,52 @@ export default function Admin() {
     setStats({ totalSites: sitesData?.length || 0, totalViews, totalClicks, pendingWithdrawals: withdrawalsData?.length || 0 });
   };
 
-  // FIXED: Now generates a slug automatically
+  // INSTANT SITE CREATION (Matches public form)
   const handleAddSite = async (e) => {
     e.preventDefault();
-    const shortcutsArray = newSite.shortcuts.split(',').map(s => s.trim()).filter(s => s);
-    const slug = generateSlug(newSite.name);
+    const shortcutsArray = newSite.shortcut ? newSite.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
+    const slug = generateSlug(newSite.business_name);
     
-    const { error } = await supabase.from('sites').insert({ 
-      ...newSite, 
-      slug, 
-      shortcuts: shortcutsArray, 
-      url: newSite.url 
+    const { error } = await supabase.from('sites').insert({
+      name: newSite.business_name,
+      slug,
+      description: `${newSite.business_name} - ${newSite.category}. Plot: ${newSite.plot_number || 'N/A'}`,
+      category: newSite.category,
+      url: newSite.website_url || '#',
+      shortcuts: shortcutsArray,
+      is_verified: false
     });
-    
-    if (error) alert('Error: ' + error.message);
-    else { 
-      setShowAddSite(false); 
-      setNewSite({ name: '', description: '', category: 'Other', owner_discord_id: '', shortcuts: '', url: '' }); 
-      fetchData(); 
+
+    if (error) {
+      alert('Error creating site: ' + error.message);
+    } else {
+      alert('Site created instantly!');
+      setShowAddSite(false);
+      setNewSite({ business_name: '', owner_discord: '', category: 'Retail Shop', plot_number: '', shortcut: '', discord_invite: '', website_url: '' });
+      fetchData();
     }
   };
 
+  // INSTANT AD CREATION (Matches public form)
   const handleAddAd = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.from('ads').insert({ ...newAd, is_active: true });
-    if (error) alert('Error: ' + error.message);
-    else { setShowAddAd(false); setNewAd({ title: '', description: '', link_url: '', image_url: '', tier: 'bronze' }); fetchData(); }
+    const { error } = await supabase.from('ads').insert({
+      title: newAd.company_name,
+      description: `Sponsored by ${newAd.company_name}`,
+      link_url: newAd.redirect_url,
+      image_url: newAd.banner_image,
+      tier: newAd.tier,
+      is_active: true
+    });
+
+    if (error) {
+      alert('Error creating ad: ' + error.message);
+    } else {
+      alert('Ad created and activated instantly!');
+      setShowAddAd(false);
+      setNewAd({ company_name: '', contact_discord: '', redirect_url: '', banner_image: '', tier: 'bronze' });
+      fetchData();
+    }
   };
 
   const handleAddAnnouncement = async (e) => {
@@ -197,14 +239,7 @@ export default function Admin() {
 
   const handleApproveSiteRequest = async (req) => {
     if (confirm('Approve?')) {
-      await supabase.from('sites').insert({ 
-        name: req.site_name, 
-        slug: generateSlug(req.site_name), 
-        description: req.description || '', 
-        url: req.site_url, 
-        category: 'Other', 
-        is_verified: false 
-      });
+      await supabase.from('sites').insert({ name: req.site_name, slug: generateSlug(req.site_name), description: req.description || '', url: req.site_url, category: 'Other', is_verified: false });
       await supabase.from('site_requests').update({ status: 'approved' }).eq('id', req.id);
       fetchData();
     }
@@ -214,31 +249,16 @@ export default function Admin() {
     if (confirm('Reject?')) { await supabase.from('site_requests').update({ status: 'rejected' }).eq('id', id); fetchData(); }
   };
 
-  // FIXED: Now generates a slug automatically
   const handleApproveBusiness = async (reg) => {
-    if (!confirm(`Approve "${reg.business_name}"? This will create the site on Z&E Net.`)) return;
-    
+    if (!confirm(`Approve "${reg.business_name}"?`)) return;
     const shortcutsArray = reg.shortcut ? reg.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
-    const slug = generateSlug(reg.business_name);
-    
     const { error } = await supabase.from('sites').insert({
-      name: reg.business_name,
-      slug,
+      name: reg.business_name, slug: generateSlug(reg.business_name),
       description: `${reg.business_name} - ${reg.category}. Plot: ${reg.plot_number || 'N/A'}`,
-      category: reg.category,
-      url: reg.website_url || '#',
-      shortcuts: shortcutsArray,
-      owner_discord_id: reg.user_id,
-      is_verified: false
+      category: reg.category, url: reg.website_url || '#', shortcuts: shortcutsArray, is_verified: false
     });
-
-    if (error) {
-      alert('Error creating site: ' + error.message);
-    } else {
-      await supabase.from('business_registrations').update({ status: 'approved' }).eq('id', reg.id);
-      alert('Site created successfully with shortcut!');
-      fetchData();
-    }
+    if (error) alert('Error: ' + error.message);
+    else { await supabase.from('business_registrations').update({ status: 'approved' }).eq('id', reg.id); alert('Site created!'); fetchData(); }
   };
 
   const handleRejectBusiness = async (id) => {
@@ -248,23 +268,11 @@ export default function Admin() {
   const handleApproveAd = async (submission) => {
     const prices = { bronze: 500, silver: 1200, gold: 2500, platinum: 5000 };
     const price = prices[submission.tier] || 500;
-    
     if (!confirm(`Approve ${submission.tier.toUpperCase()} ad for $${price}?`)) return;
-    
     const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', submission.user_id).single();
     if (!balData || balData.balance < price) return alert('User has insufficient balance');
-    
     await supabase.from('site_balances').update({ balance: balData.balance - price }).eq('user_id', submission.user_id);
-    
-    await supabase.from('ads').insert({
-      title: submission.company_name,
-      description: `Sponsored by ${submission.company_name}`,
-      link_url: submission.redirect_url,
-      image_url: submission.banner_image,
-      tier: submission.tier,
-      is_active: true
-    });
-    
+    await supabase.from('ads').insert({ title: submission.company_name, description: `Sponsored by ${submission.company_name}`, link_url: submission.redirect_url, image_url: submission.banner_image, tier: submission.tier, is_active: true });
     await supabase.from('ad_submissions').delete().eq('id', submission.id);
     alert(`Approved! $${price} deducted.`);
     fetchData();
@@ -279,24 +287,12 @@ export default function Admin() {
     const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', req.user_id).single();
     if (!balData || balData.balance < 100) return alert('User has insufficient balance.');
     await supabase.from('site_balances').update({ balance: balData.balance - 100 }).eq('user_id', req.user_id);
-    
     const slug = generateSlug(req.site_name);
     const { data: existingSite } = await supabase.from('sites').select('id').eq('slug', slug).single();
-    
-    if (existingSite) {
-      await supabase.from('sites').update({ is_verified: true }).eq('id', existingSite.id);
-    } else {
-      await supabase.from('sites').insert({ 
-        name: req.site_name, 
-        slug, 
-        url: req.site_url || '', 
-        is_verified: true, 
-        category: 'Other' 
-      });
-    }
+    if (existingSite) { await supabase.from('sites').update({ is_verified: true }).eq('id', existingSite.id); } 
+    else { await supabase.from('sites').insert({ name: req.site_name, slug, url: req.site_url || '', is_verified: true, category: 'Other' }); }
     await supabase.from('site_verification_requests').update({ status: 'approved' }).eq('id', req.id);
-    alert('Verified!');
-    fetchData();
+    alert('Verified!'); fetchData();
   };
 
   const handleRejectVerification = async (id) => {
@@ -353,25 +349,47 @@ export default function Admin() {
           ))}
         </div>
 
+        {/* SITES TAB - MATCHES PUBLIC FORM */}
         {activeTab === 'sites' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Site Management</h2>
-              <button onClick={() => setShowAddSite(!showAddSite)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">{showAddSite ? 'Cancel' : '+ Add Site'}</button>
+              <button onClick={() => setShowAddSite(!showAddSite)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">{showAddSite ? 'Cancel' : '+ Add Site Instantly'}</button>
             </div>
             {showAddSite && (
-              <form onSubmit={handleAddSite} className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4">
-                <input type="text" placeholder="Site Name" value={newSite.name} onChange={(e) => setNewSite({...newSite, name: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
-                <textarea placeholder="Description" value={newSite.description} onChange={(e) => setNewSite({...newSite, description: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="3" required />
-                <input type="text" placeholder="URL" value={newSite.url} onChange={(e) => setNewSite({...newSite, url: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
-                <div className="grid grid-cols-2 gap-4">
-                  <select value={newSite.category} onChange={(e) => setNewSite({...newSite, category: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
-                    {['Government', 'Corporate', 'Service', 'Charity', 'Community', 'Business', 'Build Project', 'Event', 'Politics', 'Creative', 'Emergency', 'Other', 'Bank', 'Shop', 'Restaurant'].map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <input type="text" placeholder="Owner Discord ID" value={newSite.owner_discord_id} onChange={(e) => setNewSite({...newSite, owner_discord_id: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
+              <form onSubmit={handleAddSite} className="mb-6 p-6 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4 border border-gray-200 dark:border-gray-700">
+                <h3 className="font-bold text-lg mb-2">Create New Site</h3>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Business Name *</label>
+                  <input type="text" required value={newSite.business_name} onChange={(e) => setNewSite({...newSite, business_name: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="Exact name used in game" />
                 </div>
-                <input type="text" placeholder="Shortcuts (comma separated)" value={newSite.shortcuts} onChange={(e) => setNewSite({...newSite, shortcuts: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
-                <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Add Site</button>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Owner Discord Username</label>
+                    <input type="text" value={newSite.owner_discord} onChange={(e) => setNewSite({...newSite, owner_discord: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="username" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Category *</label>
+                    <select required value={newSite.category} onChange={(e) => setNewSite({...newSite, category: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
+                      {businessCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Search Shortcut</label>
+                    <input type="text" value={newSite.shortcut} onChange={(e) => setNewSite({...newSite, shortcut: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="e.g., rvr, bank" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Plot Number</label>
+                    <input type="text" value={newSite.plot_number} onChange={(e) => setNewSite({...newSite, plot_number: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="e.g., A123" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Website URL</label>
+                  <input type="url" value={newSite.website_url} onChange={(e) => setNewSite({...newSite, website_url: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://..." />
+                </div>
+                <button type="submit" className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Create Site Instantly</button>
               </form>
             )}
             <div className="space-y-3">
@@ -385,22 +403,47 @@ export default function Admin() {
           </div>
         )}
 
+        {/* ADS TAB - MATCHES PUBLIC FORM */}
         {activeTab === 'ads' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Ad Management</h2>
-              <button onClick={() => setShowAddAd(!showAddAd)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">{showAddAd ? 'Cancel' : '+ Add Ad'}</button>
+              <button onClick={() => setShowAddAd(!showAddAd)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">{showAddAd ? 'Cancel' : '+ Add Ad Instantly'}</button>
             </div>
             {showAddAd && (
-              <form onSubmit={handleAddAd} className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4">
-                <input type="text" placeholder="Ad Title" value={newAd.title} onChange={(e) => setNewAd({...newAd, title: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
-                <textarea placeholder="Description" value={newAd.description} onChange={(e) => setNewAd({...newAd, description: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="2" required />
-                <input type="text" placeholder="Image URL" value={newAd.image_url} onChange={(e) => setNewAd({...newAd, image_url: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
-                <input type="text" placeholder="Link URL" value={newAd.link_url} onChange={(e) => setNewAd({...newAd, link_url: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
-                <select value={newAd.tier} onChange={(e) => setNewAd({...newAd, tier: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
-                  <option value="bronze">Bronze ($500)</option><option value="silver">Silver ($1200)</option><option value="gold">Gold ($2500)</option><option value="platinum">Platinum ($5000)</option>
-                </select>
-                <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Add Ad</button>
+              <form onSubmit={handleAddAd} className="mb-6 p-6 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4 border border-gray-200 dark:border-gray-700">
+                <h3 className="font-bold text-lg mb-2">Create New Ad</h3>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Company Name *</label>
+                  <input type="text" required value={newAd.company_name} onChange={(e) => setNewAd({...newAd, company_name: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Contact Discord Username</label>
+                  <input type="text" value={newAd.contact_discord} onChange={(e) => setNewAd({...newAd, contact_discord: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="username" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Target Redirect URL *</label>
+                  <input type="url" required value={newAd.redirect_url} onChange={(e) => setNewAd({...newAd, redirect_url: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Banner Image URL</label>
+                  <input type="url" value={newAd.banner_image} onChange={(e) => setNewAd({...newAd, banner_image: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Select Tier *</label>
+                  <div className="space-y-2">
+                    {Object.entries(adTiers).map(([key, tier]) => (
+                      <label key={key} className={`block p-3 border-2 rounded-lg cursor-pointer transition-all ${newAd.tier === key ? 'border-blue-500 bg-blue-500/10' : 'border-gray-300 dark:border-gray-700'}`}>
+                        <input type="radio" name="tier" value={key} checked={newAd.tier === key} onChange={(e) => setNewAd({...newAd, tier: e.target.value})} className="sr-only" />
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold">{tier.name} ({tier.duration})</span>
+                          <span className="font-bold text-blue-600">${tier.price}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <button type="submit" className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Create Ad Instantly</button>
               </form>
             )}
             <div className="space-y-3">
@@ -425,19 +468,8 @@ export default function Admin() {
                 {verificationRequests.map((req) => (
                   <div key={req.id} className={`p-4 border rounded-lg ${req.status === 'pending' ? 'bg-blue-500/5 border-blue-500/20' : 'bg-gray-50 dark:bg-[#202124]'}`}>
                     <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{req.site_name}</h3>
-                          {req.status === 'pending' && <span className="px-2 py-0.5 text-xs font-bold text-blue-600 bg-blue-500/10 rounded">PENDING</span>}
-                        </div>
-                        <p className="text-xs text-gray-500 mb-2">URL: {req.site_url || 'None'}</p>
-                      </div>
-                      {req.status === 'pending' && (
-                        <div className="flex gap-2">
-                          <button onClick={() => handleApproveVerification(req)} className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg">Approve (-$100)</button>
-                          <button onClick={() => handleRejectVerification(req.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Reject</button>
-                        </div>
-                      )}
+                      <div><h3 className="font-semibold">{req.site_name}</h3><p className="text-xs text-gray-500 mb-2">URL: {req.site_url || 'None'}</p></div>
+                      {req.status === 'pending' && (<div className="flex gap-2"><button onClick={() => handleApproveVerification(req)} className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg">Approve (-$100)</button><button onClick={() => handleRejectVerification(req.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Reject</button></div>)}
                     </div>
                   </div>
                 ))}
@@ -452,16 +484,8 @@ export default function Admin() {
             <div className="space-y-3">
               {businessRegistrations.map((reg) => (
                 <div key={reg.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold">{reg.business_name}</h3>
-                    <p className="text-xs text-gray-500">{reg.category} • Plot: {reg.plot_number || 'N/A'} • Shortcut: {reg.shortcut || 'None'}</p>
-                  </div>
-                  {reg.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <button onClick={() => handleApproveBusiness(reg)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve & Create Site</button>
-                      <button onClick={() => handleRejectBusiness(reg.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button>
-                    </div>
-                  )}
+                  <div><h3 className="font-semibold">{reg.business_name}</h3><p className="text-xs text-gray-500">{reg.category} • Plot: {reg.plot_number || 'N/A'} • Shortcut: {reg.shortcut || 'None'}</p></div>
+                  {reg.status === 'pending' && (<div className="flex gap-2"><button onClick={() => handleApproveBusiness(reg)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve</button><button onClick={() => handleRejectBusiness(reg.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button></div>)}
                 </div>
               ))}
             </div>
@@ -474,13 +498,8 @@ export default function Admin() {
             <div className="space-y-3">
               {adSubmissions.map((sub) => (
                 <div key={sub.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{sub.company_name}</h3><p className="text-xs text-gray-500">Tier: {sub.tier.toUpperCase()} • ${sub.tier === 'gold' ? 2500 : sub.tier === 'silver' ? 1200 : sub.tier === 'platinum' ? 5000 : 500}</p></div>
-                  {sub.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <button onClick={() => handleApproveAd(sub)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve & Charge</button>
-                      <button onClick={() => handleRejectAd(sub.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button>
-                    </div>
-                  )}
+                  <div><h3 className="font-semibold">{sub.company_name}</h3><p className="text-xs text-gray-500">Tier: {sub.tier.toUpperCase()}</p></div>
+                  {sub.status === 'pending' && (<div className="flex gap-2"><button onClick={() => handleApproveAd(sub)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve & Charge</button><button onClick={() => handleRejectAd(sub.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button></div>)}
                 </div>
               ))}
             </div>
@@ -540,12 +559,7 @@ export default function Admin() {
               {siteRequests.map((req) => (
                 <div key={req.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
                   <div><h3 className="font-semibold">{req.site_name}</h3><p className="text-xs text-gray-500">{req.status}</p></div>
-                  {req.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <button onClick={() => handleApproveSiteRequest(req)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve</button>
-                      <button onClick={() => handleRejectSiteRequest(req.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button>
-                    </div>
-                  )}
+                  {req.status === 'pending' && (<div className="flex gap-2"><button onClick={() => handleApproveSiteRequest(req)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve</button><button onClick={() => handleRejectSiteRequest(req.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button></div>)}
                 </div>
               ))}
             </div>
