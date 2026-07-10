@@ -104,6 +104,7 @@ export default function Layout({ children, user }) {
                 <a href="/achievements" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Achievements</a>
                 <a href="/leaderboard" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Leaderboard</a>
                 <a href="/docs" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Docs & FAQ</a>
+                <a href="/contact" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Contact Us</a>
                 <a href="/contact" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Contact</a>
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                 {user && (
