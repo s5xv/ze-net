@@ -17,14 +17,21 @@ export default function Search() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (query) fetchResults();
+    if (query) {
+      fetchResults();
+      // Send to Discord webhook
+      fetch('/api/search-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, userId: user?.id })
+      }).catch(err => console.error('Webhook error:', err));
+    }
   }, [query]);
 
   const fetchResults = async () => {
     setLoading(true);
     const searchTerm = query.toLowerCase().trim();
     
-    // Search wiki pages (case-insensitive)
     const { data: wikiData } = await supabase
       .from('wiki_pages')
       .select('*')
@@ -33,7 +40,6 @@ export default function Search() {
       .limit(20);
     setWikiResults(wikiData || []);
 
-    // Search sites
     const { data: sitesData } = await supabase
       .from('sites')
       .select('*')
@@ -42,7 +48,6 @@ export default function Search() {
       .limit(10);
     setSiteResults(sitesData || []);
 
-    // Featured snippet (prefer site, fallback to wiki with content)
     if (sitesData?.length) {
       const top = sitesData[0];
       setFeaturedSnippet({ type: 'site', title: top.name, description: top.description || 'No description', url: top.url, slug: top.slug });
