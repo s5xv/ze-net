@@ -21,18 +21,6 @@ export default function Home() {
     fetchStats();
     fetchTopSearches();
     fetchAds();
-    
-    // Set up real-time subscription for ads
-    const subscription = supabase
-      .channel('ads')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ads' }, () => {
-        fetchAds();
-      })
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   useEffect(() => {
@@ -103,6 +91,7 @@ export default function Home() {
   };
 
   const fetchAds = async () => {
+    console.log('Fetching ads...');
     const { data, error } = await supabase
       .from('ads')
       .select('*')
@@ -173,7 +162,7 @@ export default function Home() {
 
   return (
     <Layout user={user}>
-      <main className="flex-grow max-w-7xl mx-auto px-4 py-8 sm:py-12 ">
+      <main className="flex-grow max-w-7xl mx-auto px-4 py-8 sm:py-12 min-h-screen">
         {/* Main content area */}
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="text-center mb-6">
@@ -265,9 +254,13 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Ads Sidebar - Positioned to the left */}
+        {/* Ads - Below content */}
         {ads.length > 0 && (
           <div className="max-w-4xl mx-auto mt-8">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sponsored</h3>
+              <button onClick={fetchAds} className="text-xs text-blue-600 hover:text-blue-700">Refresh Ads</button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {ads.map((ad) => (
                 <a

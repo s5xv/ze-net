@@ -35,7 +35,7 @@ export default function Admin() {
   const [showManualDeposit, setShowManualDeposit] = useState(false);
   
   const [newSite, setNewSite] = useState({ name: '', description: '', category: 'Other', owner_discord_id: '', shortcuts: '', url: '' });
-  const [newAd, setNewAd] = useState({ title: '', description: '', link_url: '', image_url: '' });
+  const [newAd, setNewAd] = useState({ title: '', description: '', link_url: '', image_url: '', tier: 'bronze' });
   const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '' });
   const [manualDeposit, setManualDeposit] = useState({ userId: '', amount: '', reason: '', notes: '' });
   const [newPremium, setNewPremium] = useState({ siteId: '', tier: 'basic', days: 30 });
@@ -105,9 +105,9 @@ export default function Admin() {
 
   const handleAddAd = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.from('ads').insert(newAd);
+    const { error } = await supabase.from('ads').insert({ ...newAd, is_active: true });
     if (error) alert('Error: ' + error.message);
-    else { setShowAddAd(false); setNewAd({ title: '', description: '', link_url: '', image_url: '' }); fetchData(); }
+    else { setShowAddAd(false); setNewAd({ title: '', description: '', link_url: '', image_url: '', tier: 'bronze' }); fetchData(); }
   };
 
   const handleAddAnnouncement = async (e) => {
@@ -137,7 +137,23 @@ export default function Admin() {
   };
 
   const handleDelete = async (table, id) => {
-    if (confirm('Delete this item?')) { await supabase.from(table).delete().eq('id', id); fetchData(); }
+    if (confirm('Delete this item?')) { 
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      if (error) {
+        alert('Error deleting: ' + error.message);
+      } else {
+        fetchData();
+      }
+    }
+  };
+
+  const handleToggleAdActive = async (id, currentStatus) => {
+    const { error } = await supabase.from('ads').update({ is_active: !currentStatus }).eq('id', id);
+    if (error) {
+      alert('Error: ' + error.message);
+    } else {
+      fetchData();
+    }
   };
 
   const handleApproveWithdrawal = async (id, userId, amount) => {
@@ -310,14 +326,28 @@ export default function Admin() {
                 <textarea placeholder="Description" value={newAd.description} onChange={(e) => setNewAd({...newAd, description: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="2" required />
                 <input type="text" placeholder="Image URL" value={newAd.image_url} onChange={(e) => setNewAd({...newAd, image_url: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
                 <input type="text" placeholder="Link URL" value={newAd.link_url} onChange={(e) => setNewAd({...newAd, link_url: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
+                <select value={newAd.tier} onChange={(e) => setNewAd({...newAd, tier: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
+                  <option value="bronze">Bronze</option>
+                  <option value="silver">Silver</option>
+                  <option value="gold">Gold</option>
+                </select>
                 <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Add Ad</button>
               </form>
             )}
             <div className="space-y-3">
               {ads.map((ad) => (
                 <div key={ad.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{ad.title}</h3><p className="text-sm text-gray-500 truncate max-w-md">{ad.link_url}</p></div>
-                  <button onClick={() => handleDelete('ads', ad.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
+                  <div>
+                    <h3 className="font-semibold">{ad.title}</h3>
+                    <p className="text-sm text-gray-500 truncate max-w-md">{ad.link_url}</p>
+                    <p className="text-xs text-gray-400">Tier: {ad.tier || 'bronze'} • Status: {ad.is_active ? 'Active' : 'Inactive'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleToggleAdActive(ad.id, ad.is_active)} className={`px-3 py-1.5 text-xs rounded-lg ${ad.is_active ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'} text-white`}>
+                      {ad.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button onClick={() => handleDelete('ads', ad.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
+                  </div>
                 </div>
               ))}
             </div>
