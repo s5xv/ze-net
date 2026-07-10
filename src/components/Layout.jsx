@@ -6,32 +6,74 @@ export default function Layout({ children, user }) {
   const { isDark, toggleTheme } = useTheme();
   const [showMenu, setShowMenu] = useState(false);
   const [mcName, setMcName] = useState(null);
+  const [screenTime, setScreenTime] = useState(0);
 
+  // Screen time with localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('screenTime');
+    const startTime = localStorage.getItem('screenTimeStart');
+    
+    if (saved) setScreenTime(parseInt(saved));
+    
+    if (!startTime) {
+      localStorage.setItem('screenTimeStart', Date.now().toString());
+    }
+    
+    const interval = setInterval(() => {
+      const start = parseInt(localStorage.getItem('screenTimeStart') || Date.now());
+      const elapsed = Math.floor((Date.now() - start) / 60000);
+      setScreenTime(elapsed);
+      localStorage.setItem('screenTime', elapsed.toString());
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch MC name
   useEffect(() => {
     if (user) {
-      // Get MC name from treasury_tokens or user profile
       const fetchMCName = async () => {
-        const { data } = await supabase
-          .from('treasury_tokens')
-          .select('account_id')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (data?.account_id) {
-          // Fetch MC username from account_id (UUID to name)
-          try {
-            const res = await fetch(`https://api.mojang.com/user/profile/${data.account_id}`);
-            const mcData = await res.json();
-            setMcName(mcData.name);
-          } catch (e) {
-            setMcName(null);
+        try {
+          // First try from treasury_tokens
+          const { data: tokenData } = await supabase
+            .from('treasury_tokens')
+            .select('account_id')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (tokenData?.account_id) {
+            // Try to get MC username from Mojang API
+            try {
+              const res = await fetch(`https://api.mojang.com/user/profile/${tokenData.account_id}`);
+              if (res.ok) {
+                const mcData = await res.json();
+                setMcName(mcData.name);
+                return;
+              }
+            } catch (e) {
+              console.log('Mojang API failed, trying alternative');
+            }
           }
+          
+          // Fallback: try from users table mc_username field
+          const { data: userData } = await supabase
+            .from('users')
+            .select('mc_username')
+            .eq('id', user.id)
+            .single();
+          
+          if (userData?.mc_username) {
+            setMcName(userData.mc_username);
+          }
+        } catch (e) {
+          console.error('Failed to fetch MC name:', e);
         }
       };
       fetchMCName();
     }
   }, [user]);
 
+  // Use MC name if available, otherwise Discord name
   const displayName = mcName || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
   const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.avatar;
   const fullAvatarUrl = userAvatar 
@@ -40,7 +82,7 @@ export default function Layout({ children, user }) {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#202124] text-gray-900 dark:text-gray-100 flex flex-col font-sans">
-      {/* Unified Header */}
+      {/* Header */}
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#303134]">
         <div className="flex items-center gap-4 sm:gap-6 text-sm text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-2">
@@ -49,7 +91,7 @@ export default function Layout({ children, user }) {
               $0.00
             </span>
           </div>
-          <div className="hidden sm:block">Screen time: 0m</div>
+          <div className="hidden sm:block">Screen time: {screenTime}m</div>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
@@ -77,7 +119,11 @@ export default function Layout({ children, user }) {
                 <a href="/forums" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Forums</a>
                 {user && (
                   <button 
-                    onClick={async () => { await supabase.auth.signOut(); window.location.href = '/'; }}
+                    onClick={async () => { 
+                      await supabase.auth.signOut(); 
+                      localStorage.clear();
+                      window.location.href = '/'; 
+                    }}
                     className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-[#3c4043]"
                   >
                     Sign Out
@@ -106,7 +152,7 @@ export default function Layout({ children, user }) {
 
       {children}
 
-      {/* Unified Footer */}
+      {/* Footer */}
       <footer className="bg-gray-100 dark:bg-[#171717] border-t border-gray-200 dark:border-gray-800 py-4 text-center text-xs text-gray-500 mt-auto">
         <p>Z&E Net is an independent search directory not affiliated with DemocracyCraft.</p>
         <p className="mt-1">© {new Date().getFullYear()} Z&E Net</p>

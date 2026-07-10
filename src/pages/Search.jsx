@@ -14,7 +14,6 @@ export default function Search() {
   const [wikiResults, setWikiResults] = useState([]);
   const [featuredSnippet, setFeaturedSnippet] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,9 +26,11 @@ export default function Search() {
     const { data: sitesData } = await supabase.from('sites').select('*').or(`name.ilike.%${query}%,description.ilike.%${query}%,shortcuts.ilike.%${query}%`).order('view_count', { ascending: false }).limit(20);
     setSiteResults(sitesData || []);
 
-    const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${query}%,content.ilike.%${query}%`).not('content', 'is', null).limit(10);
+    // Get wiki pages - include both with and without content
+    const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${query}%,content.ilike.%${query}%`).limit(10);
     setWikiResults(wikiData || []);
 
+    // Featured snippet - only if we have content
     if (sitesData && sitesData.length > 0) {
       const topSite = sitesData[0];
       setFeaturedSnippet({ 
@@ -40,16 +41,17 @@ export default function Search() {
         slug: topSite.slug 
       });
     } else if (wikiData && wikiData.length > 0) {
-      const topWiki = wikiData[0];
-      if (topWiki.content && topWiki.content.length > 0) {
-        const paragraphs = topWiki.content.split('\n').filter(p => p.trim().length > 0);
-        const summary = paragraphs[0]?.substring(0, 250) || topWiki.content.substring(0, 200);
+      // Find first wiki page with actual content
+      const wikiWithContent = wikiData.find(w => w.content && w.content.length > 0);
+      if (wikiWithContent) {
+        const paragraphs = wikiWithContent.content.split('\n').filter(p => p.trim().length > 0);
+        const summary = paragraphs[0]?.substring(0, 250) || wikiWithContent.content.substring(0, 200);
         
         setFeaturedSnippet({ 
           type: 'wiki', 
-          title: topWiki.title, 
+          title: wikiWithContent.title, 
           description: summary + (summary.length >= 250 ? '...' : ''), 
-          url: topWiki.url 
+          url: wikiWithContent.url 
         });
       }
     }
@@ -99,18 +101,21 @@ export default function Search() {
               <div className="mt-8">
                 <h3 className="text-lg font-bold mb-4 text-gray-700 dark:text-gray-300">Wiki Pages</h3>
                 <div className="space-y-3">
-                  {wikiResults.map((page) => (
-                    <a key={page.id} href={page.url} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-shadow">
-                      <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-1">{page.title}</h4>
-                      {page.content ? (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                          {page.content.split('\n').filter(p => p.trim().length > 0)[0]?.substring(0, 200) || page.content.substring(0, 200)}...
-                        </p>
-                      ) : (
-                        <p className="text-sm text-gray-500 italic mt-1">This page exists but has no content</p>
-                      )}
-                    </a>
-                  ))}
+                  {wikiResults.map((page) => {
+                    const hasContent = page.content && page.content.length > 0;
+                    return (
+                      <a key={page.id} href={page.url} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-shadow">
+                        <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-1">{page.title}</h4>
+                        {hasContent ? (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                            {page.content.split('\n').filter(p => p.trim().length > 0)[0]?.substring(0, 200) || page.content.substring(0, 200)}...
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-500 italic mt-1">This page exists but has no content</p>
+                        )}
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
             )}

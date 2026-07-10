@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   try {
     if (action === 'all-pages') {
-      // Get all page titles first
+      // Get all page titles
       const titlesResponse = await fetch(`${WIKI_API_URL}?action=query&list=allpages&aplimit=500&format=json`, {
         headers: { 'User-Agent': 'Z&ENet/1.0' }
       });
@@ -26,31 +26,31 @@ export default async function handler(req, res) {
       let successCount = 0;
       let emptyCount = 0;
 
-      // Fetch content in batches
-      for (let i = 0; i < pages.length; i += 50) {
-        const batch = pages.slice(i, i + 50);
+      // Fetch content for each page
+      for (let i = 0; i < pages.length; i += 20) {
+        const batch = pages.slice(i, i + 20);
         const titles = batch.map(p => p.title).join('|');
         
         const contentResponse = await fetch(
-          `${WIKI_API_URL}?action=query&titles=${encodeURIComponent(titles)}&prop=extracts&explaintext=1&exintro=&format=json`,
+          `${WIKI_API_URL}?action=parse&page=${encodeURIComponent(titles)}&prop=wikitext&format=json`,
           { headers: { 'User-Agent': 'Z&ENet/1.0' } }
         );
         
         if (contentResponse.ok) {
           const contentData = await contentResponse.json();
-          const contentPages = contentData.query?.pages || {};
           
-          for (const pageData of Object.values(contentPages)) {
+          for (const pageData of batch) {
             const title = pageData.title;
-            let extract = pageData.extract || '';
             const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
             const url = `${WIKI_BASE_URL}/${encodeURIComponent(title.replace(/ /g, '_'))}`;
             
-            // Check if empty
-            const isEmpty = !extract || 
-                           extract.trim().length === 0 || 
-                           extract.includes('There is currently no text in this page') ||
-                           extract.includes('associated-pages');
+            // Try to get content from parse result
+            let content = '';
+            if (contentData.parse?.wikitext?.['*']) {
+              content = contentData.parse.wikitext['*'];
+            }
+            
+            const isEmpty = !content || content.trim().length === 0;
             
             if (isEmpty) {
               emptyCount++;
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
               slug: slug,
               url: url,
               category: 'General',
-              content: isEmpty ? null : extract,
+              content: isEmpty ? null : content,
               last_updated: new Date().toISOString()
             }, { onConflict: 'slug' });
           }

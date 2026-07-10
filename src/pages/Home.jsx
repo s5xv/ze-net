@@ -6,7 +6,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -97,23 +97,40 @@ export default function Home() {
   };
 
   const handleSuggestionClick = (suggestion) => {
-    if (suggestion.type === 'site') navigate(`/site/${suggestion.slug}`);
-    else if (suggestion.type === 'popular') navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
-    else navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
+    if (suggestion.type === 'site') {
+      navigate(`/site/${suggestion.slug}`);
+    } else {
+      navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
+    }
     setShowSuggestions(false);
   };
 
   const handleFeelingLucky = async () => {
-    const { data } = await supabase.from('sites').select('slug').limit(1000);
-    if (data?.length) {
+    console.log('Feeling lucky clicked');
+    const { data, error } = await supabase.from('sites').select('slug').limit(1000);
+    console.log('Fetched sites:', data, 'Error:', error);
+    if (data && data.length > 0) {
       const randomSite = data[Math.floor(Math.random() * data.length)];
+      console.log('Navigating to:', randomSite.slug);
       navigate(`/site/${randomSite.slug}`);
+    } else {
+      alert('No sites available yet!');
     }
   };
 
   const handleMoreClick = () => {
     navigate('/utilities');
   };
+
+  if (loading) {
+    return (
+      <Layout user={null}>
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-gray-500">Loading...</div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout user={user}>
