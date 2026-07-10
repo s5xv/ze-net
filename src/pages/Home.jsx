@@ -178,7 +178,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           
           {/* Main Content - 3 columns */}
-          <div className="lg:col-span-3 space-y-8">
+          <div className="lg:col-span-3 space-y-8 flex flex-col items-center">
             <div className="text-center mb-6">
               <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight">
                 Z&E <span className="text-blue-600 dark:text-blue-400">NET</span>
@@ -188,7 +188,7 @@ export default function Home() {
               </div>
             </div>
 
-            <form onSubmit={handleSearch} className="w-full relative">
+            <form onSubmit={handleSearch} className="w-full relative max-w-2xl">
               <input type="text" value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => suggestions.length > 0 && setShowSuggestions(true)} placeholder="What's on your mind today?..." className="w-full px-6 py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
               {showSuggestions && (
                 <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-96 overflow-y-auto">
@@ -319,7 +319,7 @@ export default function Home() {
           {/* Right Sidebar for Bookmarks */}
           <div className="lg:col-span-1">
             {user && (
-              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm sticky top-24">
+              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm ">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                   <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>
                   Your Bookmarks
