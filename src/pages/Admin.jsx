@@ -7,6 +7,11 @@ import { useAuth } from '../hooks/useAuth';
 
 const ADMIN_PASSWORD = 'Khalid124_';
 
+// Helper to generate a safe slug
+const generateSlug = (name) => {
+  return (name || 'site').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+};
+
 export default function Admin() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -98,12 +103,25 @@ export default function Admin() {
     setStats({ totalSites: sitesData?.length || 0, totalViews, totalClicks, pendingWithdrawals: withdrawalsData?.length || 0 });
   };
 
+  // FIXED: Now generates a slug automatically
   const handleAddSite = async (e) => {
     e.preventDefault();
     const shortcutsArray = newSite.shortcuts.split(',').map(s => s.trim()).filter(s => s);
-    const { error } = await supabase.from('sites').insert({ ...newSite, shortcuts: shortcutsArray, url: newSite.url });
+    const slug = generateSlug(newSite.name);
+    
+    const { error } = await supabase.from('sites').insert({ 
+      ...newSite, 
+      slug, 
+      shortcuts: shortcutsArray, 
+      url: newSite.url 
+    });
+    
     if (error) alert('Error: ' + error.message);
-    else { setShowAddSite(false); setNewSite({ name: '', description: '', category: 'Other', owner_discord_id: '', shortcuts: '', url: '' }); fetchData(); }
+    else { 
+      setShowAddSite(false); 
+      setNewSite({ name: '', description: '', category: 'Other', owner_discord_id: '', shortcuts: '', url: '' }); 
+      fetchData(); 
+    }
   };
 
   const handleAddAd = async (e) => {
@@ -179,7 +197,14 @@ export default function Admin() {
 
   const handleApproveSiteRequest = async (req) => {
     if (confirm('Approve?')) {
-      await supabase.from('sites').insert({ name: req.site_name, slug: req.site_name.toLowerCase().replace(/\s+/g, '-'), description: req.description || '', url: req.site_url, category: 'Other', is_verified: false });
+      await supabase.from('sites').insert({ 
+        name: req.site_name, 
+        slug: generateSlug(req.site_name), 
+        description: req.description || '', 
+        url: req.site_url, 
+        category: 'Other', 
+        is_verified: false 
+      });
       await supabase.from('site_requests').update({ status: 'approved' }).eq('id', req.id);
       fetchData();
     }
@@ -189,19 +214,20 @@ export default function Admin() {
     if (confirm('Reject?')) { await supabase.from('site_requests').update({ status: 'rejected' }).eq('id', id); fetchData(); }
   };
 
-  // FIXED: Now actually creates the site with the shortcut
+  // FIXED: Now generates a slug automatically
   const handleApproveBusiness = async (reg) => {
     if (!confirm(`Approve "${reg.business_name}"? This will create the site on Z&E Net.`)) return;
     
     const shortcutsArray = reg.shortcut ? reg.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
+    const slug = generateSlug(reg.business_name);
     
     const { error } = await supabase.from('sites').insert({
       name: reg.business_name,
-      slug: reg.business_name.toLowerCase().replace(/\s+/g, '-'),
+      slug,
       description: `${reg.business_name} - ${reg.category}. Plot: ${reg.plot_number || 'N/A'}`,
       category: reg.category,
       url: reg.website_url || '#',
-      shortcuts: shortcutsArray, // <-- This saves the shortcut!
+      shortcuts: shortcutsArray,
       owner_discord_id: reg.user_id,
       is_verified: false
     });
@@ -219,7 +245,6 @@ export default function Admin() {
     if (confirm('Reject?')) { await supabase.from('business_registrations').delete().eq('id', id); fetchData(); }
   };
 
-  // FIXED: Ad tier pricing logic
   const handleApproveAd = async (submission) => {
     const prices = { bronze: 500, silver: 1200, gold: 2500, platinum: 5000 };
     const price = prices[submission.tier] || 500;
@@ -254,11 +279,20 @@ export default function Admin() {
     const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', req.user_id).single();
     if (!balData || balData.balance < 100) return alert('User has insufficient balance.');
     await supabase.from('site_balances').update({ balance: balData.balance - 100 }).eq('user_id', req.user_id);
-    const { data: existingSite } = await supabase.from('sites').select('id').eq('name', req.site_name).single();
+    
+    const slug = generateSlug(req.site_name);
+    const { data: existingSite } = await supabase.from('sites').select('id').eq('slug', slug).single();
+    
     if (existingSite) {
       await supabase.from('sites').update({ is_verified: true }).eq('id', existingSite.id);
     } else {
-      await supabase.from('sites').insert({ name: req.site_name, slug: req.site_name.toLowerCase().replace(/\s+/g, '-'), url: req.site_url || '', is_verified: true, category: 'Other' });
+      await supabase.from('sites').insert({ 
+        name: req.site_name, 
+        slug, 
+        url: req.site_url || '', 
+        is_verified: true, 
+        category: 'Other' 
+      });
     }
     await supabase.from('site_verification_requests').update({ status: 'approved' }).eq('id', req.id);
     alert('Verified!');
