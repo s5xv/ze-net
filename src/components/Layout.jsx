@@ -44,6 +44,15 @@ export default function Layout({ children, user }) {
   const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.avatar;
   const fullAvatarUrl = userAvatar ? (userAvatar.startsWith('http') ? userAvatar : `https://cdn.discordapp.com/avatars/${user.id}/${userAvatar}.png?size=128`) : null;
 
+  // Format screen time: show hours if >= 60 minutes
+  const formatScreenTime = (minutes) => {
+    if (minutes >= 60) {
+      const hours = (minutes / 60).toFixed(1);
+      return `${hours}h`;
+    }
+    return `${minutes}m`;
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#202124] text-gray-900 dark:text-gray-100 flex flex-col font-sans">
       {/* Compact Header */}
@@ -58,7 +67,7 @@ export default function Layout({ children, user }) {
             <span className="font-medium">Wallet</span>
             <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded text-xs">$0.00</span>
           </div>
-          <div className="hidden lg:block text-xs text-gray-600 dark:text-gray-400">Screen time: {screenTime}m</div>
+          <div className="hidden lg:block text-xs text-gray-600 dark:text-gray-400">Screen time: {formatScreenTime(screenTime)}</div>
         </div>
 
         <div className="flex items-center gap-2">
