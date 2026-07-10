@@ -20,7 +20,6 @@ export default function RegisterBusiness() {
     website_url: ''
   });
 
-  // Clean, concise list tailored for a Minecraft server economy
   const categories = [
     'Retail Shop',
     'Restaurant / Food',
@@ -41,6 +40,16 @@ export default function RegisterBusiness() {
     if (!user) {
       alert('Please sign in to register a business');
       navigate('/login');
+      return;
+    }
+
+    // Validate that at least one contact method is provided
+    const hasPlotNumber = formData.plot_number.trim().length > 0;
+    const hasDiscordInvite = formData.discord_invite.trim().length > 0;
+    const hasWebsiteUrl = formData.website_url.trim().length > 0;
+
+    if (!hasPlotNumber && !hasDiscordInvite && !hasWebsiteUrl) {
+      alert('Please provide at least one of the following:\n- Plot Number\n- Discord Invite Link\n- Website URL');
       return;
     }
 
@@ -127,16 +136,15 @@ export default function RegisterBusiness() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Plot Number *</label>
+              <label className="block text-sm font-medium mb-2">Plot Number</label>
               <input
                 type="text"
-                required
                 value={formData.plot_number}
                 onChange={(e) => setFormData({...formData, plot_number: e.target.value})}
                 className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
                 placeholder="e.g., A123, B456, C789"
               />
-              <p className="text-xs text-gray-500 mt-1">Enter your plot number (e.g., A123, B456)</p>
+              <p className="text-xs text-gray-500 mt-1">Optional - but you must provide at least one: Plot Number, Discord Link, or Website</p>
             </div>
 
             <div>
@@ -151,7 +159,7 @@ export default function RegisterBusiness() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Company Website URL (Optional)</label>
+              <label className="block text-sm font-medium mb-2">Company Website URL</label>
               <input
                 type="url"
                 value={formData.website_url}
