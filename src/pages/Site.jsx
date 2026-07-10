@@ -11,21 +11,18 @@ export default function Site() {
   const navigate = useNavigate();
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [relatedSites, setRelatedSites] = useState([]);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [upvotes, setUpvotes] = useState(0);
   const [hasUpvoted, setHasUpvoted] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [comments, setComments] = useState([]);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
   const [newComment, setNewComment] = useState('');
-  
-  // Report State
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
-  const [reporting, setReporting] = useState(false);
 
-  useEffect(() => { fetchSite(); }, [slug]);
+  useEffect(() => { fetchSite(); }, [slug, user]);
 
   const fetchSite = async () => {
     setLoading(true);
@@ -35,12 +32,13 @@ export default function Site() {
       setSite(data);
       await supabase.from('sites').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
       
-      const { data: related } = await supabase.from('sites').select('*').eq('category', data.category).neq('id', data.id).limit(5);
-      setRelatedSites(related || []);
-
       if (user) {
         const { data: bookmark } = await supabase.from('bookmarks').select('id').eq('user_id', user.id).eq('site_id', data.id).single();
         setIsBookmarked(!!bookmark);
+        
+        const { data: follow } = await supabase.from('site_followers').select('id').eq('user_id', user.id).eq('site_id', data.id).single();
+        setIsFollowing(!!follow);
+
         const { data: upvote } = await supabase.from('site_upvotes').select('id').eq('user_id', user.id).eq('site_id', data.id).single();
         setHasUpvoted(!!upvote);
       }
@@ -57,47 +55,15 @@ export default function Site() {
     setLoading(false);
   };
 
-  const handleReport = async (e) => {
-    e.preventDefault();
-    if (!user) { alert('Please sign in to report'); return; }
-    if (!reportReason.trim()) { alert('Please enter a reason'); return; }
-    
-    setReporting(true);
-    try {
-      const { error } = await supabase.from('reports').insert({
-        reporter_id: user.id,
-        target_type: 'site',
-        target_id: site.id,
-        target_name: site.name,
-        reason: reportReason,
-        status: 'pending'
-      });
-      
-      if (error) throw error;
-      alert('Report submitted successfully. Admins will review it.');
-      setShowReportModal(false);
-      setReportReason('');
-    } catch (err) {
-      alert('Error submitting report: ' + err.message);
-    } finally {
-      setReporting(false);
+  const handleFollow = async () => {
+    if (!user) return alert('Please sign in');
+    if (isFollowing) {
+      await supabase.from('site_followers').delete().eq('user_id', user.id).eq('site_id', site.id);
+      setIsFollowing(false);
+    } else {
+      await supabase.from('site_followers').insert({ user_id: user.id, site_id: site.id });
+      setIsFollowing(true);
     }
-  };
-
-  const handleComment = async (e) => {
-    e.preventDefault();
-    if (!user || !newComment.trim()) return;
-    await supabase.from('site_comments').insert({ site_id: site.id, user_id: user.id, content: newComment.trim() });
-    setNewComment('');
-    fetchSite();
-  };
-
-  const handleReview = async (e) => {
-    e.preventDefault();
-    if (!user) return;
-    await supabase.from('site_reviews').upsert({ site_id: site.id, user_id: user.id, rating: newReview.rating, comment: newReview.comment });
-    setNewReview({ rating: 5, comment: '' });
-    fetchSite();
   };
 
   const handleUpvote = async () => {
@@ -122,17 +88,36 @@ export default function Site() {
     }
   };
 
-  const handleVisit = async (urlObj) => {
-    if (site) {
-      await supabase.from('sites').update({ click_count: (site.click_count || 0) + 1 }).eq('id', site.id);
-      window.open(urlObj.url, '_blank');
-    }
+  const handleReview = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    await supabase.from('site_reviews').upsert({ site_id: site.id, user_id: user.id, rating: newReview.rating, comment: newReview.comment });
+    setNewReview({ rating: 5, comment: '' });
+    fetchSite();
+  };
+
+  const handleComment = async (e) => {
+    e.preventDefault();
+    if (!user || !newComment.trim()) return;
+    await supabase.from('site_comments').insert({ site_id: site.id, user_id: user.id, content: newComment.trim() });
+    setNewComment('');
+    fetchSite();
+  };
+
+  const handleReport = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    await supabase.from('reports').insert({ reporter_id: user.id, target_type: 'site', target_id: site.id, target_name: site.name, reason: reportReason, status: 'pending' });
+    alert('Report submitted.');
+    setShowReportModal(false);
+    setReportReason('');
   };
 
   if (loading) return <Layout user={user}><div className="p-8 text-center">Loading...</div></Layout>;
   if (!site) return <Layout user={user}><div className="p-8 text-center">Site not found</div></Layout>;
 
-  const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+  // Check if user is owner (for Manage button)
+  const isOwner = user && (site.owner_discord_id === user.id);
 
   return (
     <Layout user={user}>
@@ -150,12 +135,17 @@ export default function Site() {
                 )}
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{site.category}</p>
-              {site.owner_name && <p className="text-sm text-gray-500 dark:text-gray-400">Owner: {site.owner_name}</p>}
             </div>
+            
+            {/* ACTION BUTTONS */}
             <div className="flex gap-2 flex-shrink-0 flex-wrap">
+              {isOwner && (
+                <button onClick={() => navigate(`/site/${slug}/manage`)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-purple-600 hover:bg-purple-700 text-white"> Manage</button>
+              )}
+              <button onClick={handleFollow} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isFollowing ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isFollowing ? '✓ Following' : 'Follow'}</button>
               <button onClick={handleBookmark} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isBookmarked ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isBookmarked ? '★ Bookmarked' : '☆ Bookmark'}</button>
-              <button onClick={handleUpvote} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${hasUpvoted ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{hasUpvoted ? '✓ Upvoted' : 'Upvote'} ({upvotes})</button>
-              <button onClick={() => setShowReportModal(true)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40"> Report</button>
+              <button onClick={handleUpvote} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${hasUpvoted ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>Upvote ({upvotes})</button>
+              <button onClick={() => setShowReportModal(true)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/40">Report</button>
             </div>
           </div>
 
@@ -163,103 +153,63 @@ export default function Site() {
             <p className="text-base sm:text-lg text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{site.description}</p>
           </div>
 
-          {site.url && (
+          {site.url && site.url !== '#' && (
             <div className="mb-6">
-              <button onClick={() => handleVisit({ url: site.url })} className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+              <a href={site.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
                 Visit Website
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-              </button>
+              </a>
             </div>
           )}
-
-          <div className="pt-6 border-t border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-4 text-center">
-            <div><p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{site.view_count || 0}</p><p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Views</p></div>
-            <div><p className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{site.click_count || 0}</p><p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Clicks</p></div>
-          </div>
         </div>
 
-        {/* Report Modal */}
-        {showReportModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-[#303134] rounded-xl p-6 max-w-md w-full border border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-bold mb-4">Report {site.name}</h2>
-              <p className="text-sm text-gray-500 mb-4">Please describe the issue. Admins will review this report.</p>
-              <form onSubmit={handleReport}>
-                <textarea 
-                  value={reportReason} 
-                  onChange={(e) => setReportReason(e.target.value)} 
-                  placeholder="Reason for report (e.g., scam, inappropriate content, broken link)..." 
-                  className="w-full px-3 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg mb-4 focus:outline-none focus:border-blue-500" 
-                  rows="4" 
-                  required 
-                />
-                <div className="flex gap-2 justify-end">
-                  <button type="button" onClick={() => setShowReportModal(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg text-sm">Cancel</button>
-                  <button type="submit" disabled={reporting} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:bg-gray-400">
-                    {reporting ? 'Submitting...' : 'Submit Report'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Reviews Section */}
+        {/* REVIEWS */}
         <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
           <h2 className="text-xl font-bold mb-4">Reviews ({reviews.length})</h2>
-          {reviews.length > 0 && (
-            <div className="mb-4 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-2xl font-bold text-yellow-500">{avgRating.toFixed(1)}</span>
-                <div className="flex">{[1,2,3,4,5].map(i => (<span key={i} className={`text-xl ${i <= Math.round(avgRating) ? 'text-yellow-500' : 'text-gray-300 dark:text-gray-700'}`}>★</span>))}</div>
-              </div>
-            </div>
-          )}
           {user && (
             <form onSubmit={handleReview} className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg">
-              <h3 className="font-semibold mb-3">Write a Review</h3>
-              <div className="flex gap-1 mb-3">{[1,2,3,4,5].map(i => (<button key={i} type="button" onClick={() => setNewReview({...newReview, rating: i})} className={`text-3xl transition-transform hover:scale-110 ${i <= newReview.rating ? 'text-yellow-500' : 'text-gray-300 dark:text-gray-700'}`}>★</button>))}</div>
-              <textarea value={newReview.comment} onChange={(e) => setNewReview({...newReview, comment: e.target.value})} placeholder="Share your thoughts..." className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg mb-2" rows="2" />
-              <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">Submit Review</button>
+              <div className="flex gap-1 mb-3">{[1,2,3,4,5].map(i => (<button key={i} type="button" onClick={() => setNewReview({...newReview, rating: i})} className={`text-3xl ${i <= newReview.rating ? 'text-yellow-500' : 'text-gray-300'}`}>★</button>))}</div>
+              <textarea value={newReview.comment} onChange={(e) => setNewReview({...newReview, comment: e.target.value})} placeholder="Write a review..." className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg mb-2" rows="2" />
+              <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Submit Review</button>
             </form>
           )}
-          {reviews.map((review) => (
-            <div key={review.id} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg mb-2">
-              <div className="flex items-center gap-2 mb-1"><div className="flex">{[1,2,3,4,5].map(i => (<span key={i} className={`text-sm ${i <= review.rating ? 'text-yellow-500' : 'text-gray-300'}`}>★</span>))}</div><span className="text-xs text-gray-500">{new Date(review.created_at).toLocaleDateString()}</span></div>
-              {review.comment && <p className="text-sm text-gray-700 dark:text-gray-300">{review.comment}</p>}
+          {reviews.map((r) => (
+            <div key={r.id} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg mb-2">
+              <div className="flex items-center gap-2 mb-1"><span className="text-yellow-500">{'★'.repeat(r.rating)}</span><span className="text-xs text-gray-500">{new Date(r.created_at).toLocaleDateString()}</span></div>
+              {r.comment && <p className="text-sm text-gray-700 dark:text-gray-300">{r.comment}</p>}
             </div>
           ))}
         </div>
 
-        {/* Comments Section */}
-        <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
+        {/* COMMENTS */}
+        <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
           <h2 className="text-xl font-bold mb-4">Comments ({comments.length})</h2>
           {user && (
-            <form onSubmit={handleComment} className="mb-4">
-              <div className="flex gap-2">
-                <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment..." className="flex-grow px-3 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" />
-                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">Post</button>
-              </div>
+            <form onSubmit={handleComment} className="mb-4 flex gap-2">
+              <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment..." className="flex-grow px-3 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" />
+              <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Post</button>
             </form>
           )}
-          {comments.map((comment) => (
-            <div key={comment.id} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg mb-2">
-              <div className="flex items-center justify-between mb-1"><span className="text-xs font-mono text-gray-500">{comment.user_id.slice(0, 8)}...</span><span className="text-xs text-gray-500">{new Date(comment.created_at).toLocaleDateString()}</span></div>
-              <p className="text-sm text-gray-700 dark:text-gray-300">{comment.content}</p>
+          {comments.map((c) => (
+            <div key={c.id} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg mb-2">
+              <p className="text-sm text-gray-700 dark:text-gray-300">{c.content}</p>
+              <p className="text-xs text-gray-500 mt-1">{new Date(c.created_at).toLocaleDateString()}</p>
             </div>
           ))}
         </div>
 
-        {relatedSites.length > 0 && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-            <h2 className="text-xl font-bold mb-4">Related Sites</h2>
-            <div className="space-y-3">
-              {relatedSites.map((related) => (
-                <div key={related.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500/30 transition-colors cursor-pointer" onClick={() => navigate(`/site/${related.slug}`)}>
-                  <h3 className="font-semibold">{related.name}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{related.description}</p>
+        {/* REPORT MODAL */}
+        {showReportModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-[#303134] rounded-xl p-6 max-w-md w-full">
+              <h2 className="text-xl font-bold mb-4">Report {site.name}</h2>
+              <form onSubmit={handleReport}>
+                <textarea value={reportReason} onChange={(e) => setReportReason(e.target.value)} className="w-full px-3 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg mb-4" rows="4" required />
+                <div className="flex gap-2 justify-end">
+                  <button type="button" onClick={() => setShowReportModal(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded-lg">Submit</button>
                 </div>
-              ))}
+              </form>
             </div>
           </div>
         )}
