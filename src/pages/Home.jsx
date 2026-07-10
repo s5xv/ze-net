@@ -63,7 +63,6 @@ export default function Home() {
     } catch (err) { console.error(err); }
   };
 
-  // NEW: Robust fallback logic for the featured card
   const fetchFeaturedContent = async () => {
     // 1. Try to get most searched term this week
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -79,8 +78,7 @@ export default function Home() {
         setFeaturedContent({
           type: 'search',
           leftLabel: 'Trending',
-          title: 'Top Searched This Week',
-          highlight: `"${sorted[0][0]}"`,
+          highlight: sorted[0][0],
           subtitle: `Searched ${sorted[0][1]} times in the last 7 days!`,
           actionText: 'Search it now',
           actionLink: `/search?q=${encodeURIComponent(sorted[0][0])}`
@@ -95,7 +93,6 @@ export default function Home() {
       setFeaturedContent({
         type: 'site',
         leftLabel: 'Top Site',
-        title: 'Most Visited Site',
         highlight: topSite.name,
         subtitle: `Visited ${topSite.view_count} times by the community!`,
         actionText: 'Visit Site',
@@ -110,7 +107,6 @@ export default function Home() {
       setFeaturedContent({
         type: 'wiki',
         leftLabel: 'Wiki',
-        title: 'Featured Wiki Page',
         highlight: topWiki.title,
         subtitle: 'Explore the DemocracyCraft wiki!',
         actionText: 'Read Wiki',
@@ -120,7 +116,7 @@ export default function Home() {
       return;
     }
 
-    // 4. Absolute fallback (Placeholder)
+    // 4. Absolute fallback
     setFeaturedContent(null);
   };
 
@@ -196,7 +192,6 @@ export default function Home() {
             <button onClick={() => navigate('/utilities')} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">More...</button>
           </div>
 
-          {/* UPDATED QUICK LINKS - Verify Site is now BLUE */}
           <div className="flex flex-wrap gap-3 justify-center">
             <a href="/register-business" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Register Business</a>
             <a href="/submit-ad" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Submit Ad</a>
@@ -206,7 +201,7 @@ export default function Home() {
             <a href="/achievements" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Achievements</a>
           </div>
 
-          {/* DYNAMIC FEATURED CARD */}
+          {/* UPDATED FEATURED CARD */}
           <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
             <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700">
               <div className="text-center">
@@ -215,11 +210,17 @@ export default function Home() {
               </div>
             </div>
             <div className="w-1/2 sm:w-3/5 p-6 sm:p-8 flex flex-col justify-center overflow-y-auto">
+              {/* Main Title Always Shows */}
+              <h2 className="text-3xl sm:text-4xl font-bold mb-2 leading-tight">Are they simply the best?!</h2>
+              
               {featuredContent ? (
                 <>
-                  <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">{featuredContent.title}</h2>
-                  <p className="text-xl sm:text-2xl text-blue-600 dark:text-blue-400 mb-6 font-medium break-words">{featuredContent.highlight}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500 italic mb-4">{featuredContent.subtitle}</p>
+                  {/* Dynamic Subtitle in smaller font */}
+                  <p className="text-lg sm:text-xl text-blue-600 dark:text-blue-400 font-medium mb-2">
+                    {featuredContent.type === 'site' ? 'Featured Site: ' : featuredContent.type === 'wiki' ? 'Featured Wiki: ' : 'Top Searched: '}
+                    <span className="text-gray-800 dark:text-gray-100">{featuredContent.highlight}</span>
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 italic mb-4">{featuredContent.subtitle}</p>
                   <button 
                     onClick={() => featuredContent.external ? window.open(featuredContent.actionLink, '_blank') : navigate(featuredContent.actionLink)} 
                     className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium w-fit"
@@ -228,12 +229,9 @@ export default function Home() {
                   </button>
                 </>
               ) : (
-                <>
-                  <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">Are they simply the best?!</h2>
-                  <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-6">Are placeholders simply better?</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500 italic">(This will show the most searched term, top site, or featured wiki once data is available!)</p>
-                </>
+                <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-6">Are placeholders simply better?</p>
               )}
+              
               <div className="h-6 w-full bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 via-blue-500 via-indigo-500 to-purple-500 rounded-full mt-auto"></div>
             </div>
           </div>
