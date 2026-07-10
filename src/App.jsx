@@ -31,7 +31,6 @@ import NotFound from './pages/NotFound';
 
 function AuthHandler() {
   const navigate = useNavigate();
-
   useEffect(() => {
     const handleCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
@@ -46,7 +45,6 @@ function AuthHandler() {
     };
     handleCallback();
   }, [navigate]);
-
   return null;
 }
 
@@ -66,13 +64,7 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center">
-        <div className="text-gray-500 font-mono text-sm">INITIALIZING...</div>
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center"><div className="text-gray-500">Loading...</div></div>;
 
   return (
     <ErrorBoundary>

@@ -16,6 +16,8 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('sites');
   const [sites, setSites] = useState([]);
   const [stats, setStats] = useState({ totalSites: 0, totalViews: 0, totalClicks: 0, pendingWithdrawals: 0 });
+  const [users, setUsers] = useState([]);
+  const [wikiPages, setWikiPages] = useState([]);
 
   useEffect(() => {
     const auth = localStorage.getItem('admin_auth');
@@ -33,6 +35,11 @@ export default function Admin() {
     setSites(sitesData || []);
     const totalViews = sitesData?.reduce((sum, s) => sum + (s.view_count || 0), 0) || 0;
     const totalClicks = sitesData?.reduce((sum, s) => sum + (s.click_count || 0), 0) || 0;
+    const { data: usersData } = await supabase.from('users').select('id, mc_username').limit(100);
+    setUsers(usersData || []);
+    const { data: wikiData } = await supabase.from('wiki_pages').select('id, title, content').limit(100);
+    setWikiPages(wikiData || []);
+
     setStats({ totalSites: sitesData?.length || 0, totalViews, totalClicks, pendingWithdrawals: 0 });
   };
 
@@ -75,7 +82,7 @@ export default function Admin() {
         </div>
 
         <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-          {['sites', 'ads', 'premium', 'announcements', 'requests', 'deposits', 'withdrawals', 'messages', 'analytics'].map((tab) => (
+          {['sites', 'ads', 'premium', 'announcements', 'requests', 'deposits', 'withdrawals', 'messages', 'analytics', 'users', 'wiki'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === tab ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -99,3 +106,38 @@ export default function Admin() {
     </Layout>
   );
 }
+
+        {activeTab === 'users' && (
+          <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
+            <h2 className="text-xl font-bold mb-6">User Management</h2>
+            <div className="space-y-3">
+              {users.map((u) => (
+                <div key={u.id} className="p-4 bg-neutral-50 dark:bg-[#09090b] border border-neutral-200 dark:border-white/5 rounded-lg flex justify-between items-center">
+                  <div>
+                    <p className="font-mono text-sm">{u.id.slice(0, 16)}...</p>
+                    {u.mc_username && <p className="text-xs text-green-500">MC: {u.mc_username}</p>}
+                  </div>
+                  <button className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Ban User</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'wiki' && (
+          <div className="bg-white dark:bg-[#111111] rounded-xl border border-neutral-200 dark:border-white/5 p-6">
+            <h2 className="text-xl font-bold mb-6">Wiki Management</h2>
+            <button onClick={() => fetch('/api?endpoint=wiki-scrape&action=all-pages').then(r => r.json()).then(d => alert(d.message))} className="mb-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">Force Sync Wiki</button>
+            <div className="space-y-3">
+              {wikiPages.map((p) => (
+                <div key={p.id} className="p-4 bg-neutral-50 dark:bg-[#09090b] border border-neutral-200 dark:border-white/5 rounded-lg flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold">{p.title}</p>
+                    <p className="text-xs text-neutral-500">{p.content ? 'Has Content' : 'Empty'}</p>
+                  </div>
+                  <button onClick={async () => { await supabase.from('wiki_pages').delete().eq('id', p.id); fetchData(); }} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
