@@ -38,7 +38,7 @@ export default function SiteManage() {
 
     // Check if user is owner
     if (!user || data.owner_user_id !== user.id) {
-      alert('You don't have permission to manage this site');
+      alert("You don't have permission to manage this site");
       navigate(`/site/${slug}`);
       return;
     }
