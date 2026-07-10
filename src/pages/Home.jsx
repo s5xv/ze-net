@@ -91,7 +91,6 @@ export default function Home() {
   };
 
   const fetchAds = async () => {
-    // Fetch only active ads
     const { data, error } = await supabase
       .from('ads')
       .select('*')
@@ -141,10 +140,6 @@ export default function Home() {
     alert('No sites or wiki pages available yet!');
   };
 
-  const handleMoreClick = () => {
-    navigate('/utilities');
-  };
-
   const fixUrl = (url) => {
     if (!url) return '#';
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -165,7 +160,7 @@ export default function Home() {
 
   return (
     <Layout user={user}>
-      <main className="flex-grow max-w-7xl mx-auto px-4 py-8 sm:py-12">
+      <main className="flex-grow max-w-7xl mx-auto px-4 py-8 sm:py-12 min-h-screen">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Content - 3 columns */}
           <div className="lg:col-span-3 space-y-8">
@@ -216,9 +211,28 @@ export default function Home() {
               <button onClick={handleFeelingLucky} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
                 I'm feeling lucky
               </button>
-              <button onClick={handleMoreClick} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
+              <button onClick={() => navigate('/utilities')} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
                 More...
               </button>
+            </div>
+
+            {/* Quick Links - Centered */}
+            <div className="flex flex-wrap gap-3 justify-center">
+              <a href="/register-business" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                Register Business
+              </a>
+              <a href="/submit-ad" className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
+                Submit Ad
+              </a>
+              <a href="/wiki" className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors">
+                Wiki
+              </a>
+              <a href="/departments" className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors">
+                Departments
+              </a>
+              <a href="/achievements" className="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors">
+                Achievements
+              </a>
             </div>
 
             <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
@@ -312,19 +326,6 @@ export default function Home() {
                 </div>
               </div>
             )}
-
-            {/* Quick Links */}
-            <div>
-              <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Quick Links</h3>
-              <div className="space-y-2">
-                <a href="/register-business" className="block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium text-center transition-colors">
-                  Register Business
-                </a>
-                <a href="/submit-ad" className="block px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium text-center transition-colors">
-                  Submit Ad
-                </a>
-              </div>
-            </div>
           </div>
         </div>
       </main>

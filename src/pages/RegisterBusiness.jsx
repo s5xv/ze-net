@@ -15,18 +15,46 @@ export default function RegisterBusiness() {
     business_name: '',
     owner_discord: '',
     category: 'Retail Shop',
-    plot_coordinates: '',
+    plot_number: '',
     discord_invite: '',
     website_url: ''
   });
 
   const categories = [
-    'Retail Shop',
-    'Legal Service',
-    'Real Estate',
-    'Art Studio',
-    'Restaurant',
-    'Corporate Office'
+    // Retail & Shopping
+    'Retail Shop', 'Department Store', 'Convenience Store', 'Grocery Store', 'Supermarket',
+    'Clothing Store', 'Shoe Store', 'Jewelry Store', 'Electronics Store', 'Furniture Store',
+    'Bookstore', 'Toy Store', 'Pet Store', 'Florist', 'Gift Shop', 'Antique Shop',
+    
+    // Food & Dining
+    'Restaurant', 'Fast Food', 'Cafe', 'Bakery', 'Bar', 'Pub', 'Nightclub',
+    'Food Truck', 'Ice Cream Shop', 'Pizza Place', 'Sushi Restaurant', 'Steakhouse',
+    
+    // Services
+    'Legal Service', 'Accounting Service', 'Real Estate Agency', 'Insurance Agency',
+    'Travel Agency', 'Consulting Firm', 'Marketing Agency', 'Advertising Agency',
+    'Cleaning Service', 'Landscaping Service', 'Repair Service', 'Plumbing Service',
+    'Electrical Service', 'Moving Company', 'Security Service',
+    
+    // Creative & Arts
+    'Art Studio', 'Music Studio', 'Photography Studio', 'Design Studio',
+    'Tattoo Parlor', 'Hair Salon', 'Barbershop', 'Spa', 'Gym', 'Yoga Studio',
+    
+    // Professional
+    'Corporate Office', 'Bank', 'Law Firm', 'Medical Clinic', 'Dental Office',
+    'Veterinary Clinic', 'Pharmacy', 'Post Office', 'Library',
+    
+    // Entertainment
+    'Movie Theater', 'Bowling Alley', 'Arcade', 'Casino', 'Theater',
+    'Music Venue', 'Sports Arena', 'Amusement Park',
+    
+    // Industrial
+    'Warehouse', 'Factory', 'Workshop', 'Garage', 'Storage Facility',
+    
+    // Other
+    'Hotel', 'Motel', 'Hostel', 'Church', 'School', 'University', 'Government Building',
+    'Police Station', 'Fire Station', 'Hospital', 'Parking Garage', 'Gas Station',
+    'Auto Repair', 'Car Dealership', 'Construction Company', 'Other'
   ];
 
   const handleSubmit = async (e) => {
@@ -120,14 +148,16 @@ export default function RegisterBusiness() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">In Game Plot Coordinates</label>
+              <label className="block text-sm font-medium mb-2">Plot Number *</label>
               <input
                 type="text"
-                value={formData.plot_coordinates}
-                onChange={(e) => setFormData({...formData, plot_coordinates: e.target.value})}
+                required
+                value={formData.plot_number}
+                onChange={(e) => setFormData({...formData, plot_number: e.target.value})}
                 className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="X Y Z location data"
+                placeholder="e.g., A123, B456, C789"
               />
+              <p className="text-xs text-gray-500 mt-1">Enter your plot number (e.g., A123, B456)</p>
             </div>
 
             <div>
