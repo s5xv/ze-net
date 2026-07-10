@@ -19,15 +19,26 @@ export default function Admin() {
   // Data states
   const [sites, setSites] = useState([]);
   const [ads, setAds] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [analytics, setAnalytics] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [stats, setStats] = useState({ totalSites: 0, totalViews: 0, totalClicks: 0 });
+  const [premiumListings, setPremiumListings] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [siteRequests, setSiteRequests] = useState([]);
+  const [manualDeposits, setManualDeposits] = useState([]);
+  const [stats, setStats] = useState({ totalSites: 0, totalViews: 0, totalClicks: 0, pendingWithdrawals: 0 });
 
   // Form states
   const [showAddSite, setShowAddSite] = useState(false);
-  const [newSite, setNewSite] = useState({ name: '', description: '', category: 'Other', owner_discord_id: '', shortcuts: '' });
-  
   const [showAddAd, setShowAddAd] = useState(false);
-  const [newAd, setNewAd] = useState({ title: '', description: '', link_url: '' });
+  const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
+  const [showManualDeposit, setShowManualDeposit] = useState(false);
+  
+  const [newSite, setNewSite] = useState({ name: '', description: '', category: 'Other', owner_discord_id: '', shortcuts: '', url: '' });
+  const [newAd, setNewAd] = useState({ title: '', description: '', link_url: '', image_url: '' });
+  const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '' });
+  const [manualDeposit, setManualDeposit] = useState({ userId: '', amount: '', reason: '', notes: '' });
+  const [newPremium, setNewPremium] = useState({ siteId: '', tier: 'basic', days: 30 });
 
   useEffect(() => {
     const auth = localStorage.getItem('admin_auth');
@@ -60,32 +71,105 @@ export default function Admin() {
     setSites(sitesData || []);
     const { data: adsData } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
     setAds(adsData || []);
+    const { data: withdrawalsData } = await supabase.from('pending_withdrawals').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+    setWithdrawals(withdrawalsData || []);
+    const { data: analyticsData } = await supabase.from('search_analytics').select('*').order('created_at', { ascending: false }).limit(50);
+    setAnalytics(analyticsData || []);
     const { data: messagesData } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
     setMessages(messagesData || []);
-    
+    const { data: premiumData } = await supabase.from('premium_listings').select('*, sites(name)').order('created_at', { ascending: false });
+    setPremiumListings(premiumData || []);
+    const { data: announcementsData } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+    setAnnouncements(announcementsData || []);
+    const { data: siteRequestsData } = await supabase.from('site_requests').select('*').order('created_at', { ascending: false });
+    setSiteRequests(siteRequestsData || []);
+    const { data: manualDepositsData } = await supabase.from('manual_deposits').select('*').order('created_at', { ascending: false }).limit(50);
+    setManualDeposits(manualDepositsData || []);
+
     const totalViews = sitesData?.reduce((sum, s) => sum + (s.view_count || 0), 0) || 0;
     const totalClicks = sitesData?.reduce((sum, s) => sum + (s.click_count || 0), 0) || 0;
-    setStats({ totalSites: sitesData?.length || 0, totalViews, totalClicks });
+    setStats({ totalSites: sitesData?.length || 0, totalViews, totalClicks, pendingWithdrawals: withdrawalsData?.length || 0 });
   };
 
   const handleAddSite = async (e) => {
     e.preventDefault();
     const shortcutsArray = newSite.shortcuts.split(',').map(s => s.trim()).filter(s => s);
-    const { error } = await supabase.from('sites').insert({ ...newSite, shortcuts: shortcutsArray });
+    const { error } = await supabase.from('sites').insert({ ...newSite, shortcuts: shortcutsArray, url: newSite.url });
     if (error) alert('Error: ' + error.message);
-    else { setShowAddSite(false); setNewSite({ name: '', description: '', category: 'Other', owner_discord_id: '', shortcuts: '' }); fetchData(); }
+    else { setShowAddSite(false); setNewSite({ name: '', description: '', category: 'Other', owner_discord_id: '', shortcuts: '', url: '' }); fetchData(); }
   };
 
   const handleAddAd = async (e) => {
     e.preventDefault();
     const { error } = await supabase.from('ads').insert(newAd);
     if (error) alert('Error: ' + error.message);
-    else { setShowAddAd(false); setNewAd({ title: '', description: '', link_url: '' }); fetchData(); }
+    else { setShowAddAd(false); setNewAd({ title: '', description: '', link_url: '', image_url: '' }); fetchData(); }
+  };
+
+  const handleAddAnnouncement = async (e) => {
+    e.preventDefault();
+    const { error } = await supabase.from('announcements').insert(newAnnouncement);
+    if (error) alert('Error: ' + error.message);
+    else { setShowAddAnnouncement(false); setNewAnnouncement({ title: '', message: '' }); fetchData(); }
+  };
+
+  const handleAddPremium = async () => {
+    if (!newPremium.siteId || !newPremium.days) return alert('Select site and days');
+    const endDate = new Date(); endDate.setDate(endDate.getDate() + newPremium.days);
+    const { error } = await supabase.from('premium_listings').insert({ site_id: newPremium.siteId, tier: newPremium.tier, end_date: endDate.toISOString() });
+    if (error) alert('Error: ' + error.message);
+    else { setNewPremium({ siteId: '', tier: 'basic', days: 30 }); fetchData(); }
+  };
+
+  const handleManualDeposit = async (e) => {
+    e.preventDefault();
+    if (!manualDeposit.userId || !manualDeposit.amount) return alert('Enter user ID and amount');
+    try {
+      const res = await fetch('/api?endpoint=manual-deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: manualDeposit.userId, amount: parseFloat(manualDeposit.amount), reason: manualDeposit.reason, adminNotes: manualDeposit.notes })
+      });
+      const data = await res.json();
+      if (data.success) { alert(`Success! New balance: $${data.newBalance.toFixed(2)}`); setShowManualDeposit(false); setManualDeposit({ userId: '', amount: '', reason: '', notes: '' }); fetchData(); }
+      else { alert('Error: ' + data.error); }
+    } catch (err) { alert('Error: ' + err.message); }
   };
 
   const handleDelete = async (table, id) => {
     if (confirm('Delete this item?')) {
       await supabase.from(table).delete().eq('id', id);
+      fetchData();
+    }
+  };
+
+  const handleApproveWithdrawal = async (id, userId, amount) => {
+    if (confirm(`Approve withdrawal of $${amount}?`)) {
+      await supabase.from('pending_withdrawals').update({ status: 'approved' }).eq('id', id);
+      const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', userId).single();
+      if (balData) await supabase.from('site_balances').update({ balance: balData.balance - amount }).eq('user_id', userId);
+      alert('Approved! Pay user manually in-game.'); fetchData();
+    }
+  };
+
+  const handleRejectWithdrawal = async (id) => {
+    if (confirm('Reject withdrawal?')) {
+      await supabase.from('pending_withdrawals').update({ status: 'rejected' }).eq('id', id);
+      fetchData();
+    }
+  };
+
+  const handleApproveSiteRequest = async (req) => {
+    if (confirm('Approve site request?')) {
+      await supabase.from('sites').insert({ name: req.site_name, slug: req.site_name.toLowerCase().replace(/\s+/g, '-'), description: req.description || '', url: req.site_url, urls: [{ label: 'Website', url: req.site_url }], category: 'Other', owner_name: '', is_verified: false, is_sponsored: false });
+      await supabase.from('site_requests').update({ status: 'approved' }).eq('id', req.id);
+      fetchData();
+    }
+  };
+
+  const handleRejectSiteRequest = async (id) => {
+    if (confirm('Reject site request?')) {
+      await supabase.from('site_requests').update({ status: 'rejected' }).eq('id', id);
       fetchData();
     }
   };
@@ -114,7 +198,7 @@ export default function Admin() {
           <button onClick={() => { localStorage.removeItem('admin_auth'); setIsAuthenticated(false); }} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm">Logout</button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
             <span className="text-sm text-gray-500">Total Sites</span>
             <p className="text-3xl font-bold">{stats.totalSites}</p>
@@ -127,10 +211,14 @@ export default function Admin() {
             <span className="text-sm text-gray-500">Total Clicks</span>
             <p className="text-3xl font-bold">{stats.totalClicks}</p>
           </div>
+          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <span className="text-sm text-gray-500">Pending Withdrawals</span>
+            <p className="text-3xl font-bold">{stats.pendingWithdrawals}</p>
+          </div>
         </div>
 
         <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-          {['sites', 'ads', 'messages', 'users', 'wiki'].map((tab) => (
+          {['sites', 'ads', 'premium', 'announcements', 'requests', 'deposits', 'withdrawals', 'messages', 'analytics', 'users', 'wiki'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === tab ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -147,6 +235,7 @@ export default function Admin() {
               <form onSubmit={handleAddSite} className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4">
                 <input type="text" placeholder="Site Name" value={newSite.name} onChange={(e) => setNewSite({...newSite, name: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
                 <textarea placeholder="Description" value={newSite.description} onChange={(e) => setNewSite({...newSite, description: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="3" required />
+                <input type="text" placeholder="URL" value={newSite.url} onChange={(e) => setNewSite({...newSite, url: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
                 <div className="grid grid-cols-2 gap-4">
                   <select value={newSite.category} onChange={(e) => setNewSite({...newSite, category: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
                     {['Government', 'Corporate', 'Service', 'Charity', 'Community', 'Business', 'Build Project', 'Event', 'Politics', 'Creative', 'Emergency', 'Other', 'Bank', 'Shop', 'Restaurant'].map(c => <option key={c} value={c}>{c}</option>)}
@@ -181,6 +270,7 @@ export default function Admin() {
               <form onSubmit={handleAddAd} className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4">
                 <input type="text" placeholder="Ad Title" value={newAd.title} onChange={(e) => setNewAd({...newAd, title: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
                 <textarea placeholder="Description" value={newAd.description} onChange={(e) => setNewAd({...newAd, description: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="2" required />
+                <input type="text" placeholder="Image URL" value={newAd.image_url} onChange={(e) => setNewAd({...newAd, image_url: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
                 <input type="text" placeholder="Link URL" value={newAd.link_url} onChange={(e) => setNewAd({...newAd, link_url: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
                 <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Add Ad</button>
               </form>
@@ -199,21 +289,187 @@ export default function Admin() {
           </div>
         )}
 
-        {activeTab === 'messages' && (
+        {activeTab === 'premium' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Contact Messages</h2>
+            <h2 className="text-xl font-bold mb-6">Premium Listings</h2>
+            <div className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg">
+              <h3 className="font-semibold mb-3">Add Premium Listing</h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                <select value={newPremium.siteId} onChange={(e) => setNewPremium({...newPremium, siteId: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
+                  <option value="">Select Site</option>
+                  {sites.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                </select>
+                <select value={newPremium.tier} onChange={(e) => setNewPremium({...newPremium, tier: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
+                  <option value="basic">Basic (Advertisers)</option>
+                  <option value="elite">Elite</option>
+                </select>
+                <input type="number" placeholder="Days" value={newPremium.days || ''} onChange={(e) => setNewPremium({...newPremium, days: parseInt(e.target.value) || 0})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
+              </div>
+              <button onClick={handleAddPremium} className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">Add Premium</button>
+            </div>
             <div className="space-y-3">
-              {messages.map((msg) => (
-                <div key={msg.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold">{msg.subject}</h3>
-                    <button onClick={() => handleDelete('contact_messages', msg.id)} className="text-red-600 hover:text-red-700 text-sm">Delete</button>
+              {premiumListings.length === 0 ? <p className="text-gray-500 text-center py-12">No premium listings</p> : premiumListings.map((listing) => (
+                <div key={listing.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
+                  <div>
+                    <h3 className="font-semibold">{listing.sites?.name || 'Unknown'}</h3>
+                    <p className="text-sm text-gray-500">Tier: <span className={`font-bold ${listing.tier === 'elite' ? 'text-yellow-500' : 'text-blue-500'}`}>{listing.tier === 'elite' ? '⭐ ELITE' : 'BASIC'}</span> • Expires: {new Date(listing.end_date).toLocaleDateString()}</p>
                   </div>
-                  <p className="text-xs text-gray-500 mb-2">From: {msg.name} ({msg.email})</p>
-                  <p className="text-sm text-gray-700 dark:text-gray-300">{msg.message}</p>
+                  <button onClick={async () => { await supabase.from('premium_listings').delete().eq('id', listing.id); fetchData(); }} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Remove</button>
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'announcements' && (
+          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Announcements</h2>
+              <button onClick={() => setShowAddAnnouncement(!showAddAnnouncement)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">{showAddAnnouncement ? 'Cancel' : '+ Add'}</button>
+            </div>
+            {showAddAnnouncement && (
+              <form onSubmit={handleAddAnnouncement} className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4">
+                <input type="text" placeholder="Title" value={newAnnouncement.title} onChange={(e) => setNewAnnouncement({...newAnnouncement, title: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
+                <textarea placeholder="Message" value={newAnnouncement.message} onChange={(e) => setNewAnnouncement({...newAnnouncement, message: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="3" required />
+                <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Add</button>
+              </form>
+            )}
+            <div className="space-y-3">
+              {announcements.map((ann) => (
+                <div key={ann.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
+                  <div>
+                    <h3 className="font-semibold">{ann.title}</h3>
+                    <p className="text-sm text-gray-500">{ann.message}</p>
+                  </div>
+                  <button onClick={() => handleDelete('announcements', ann.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'requests' && (
+          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <h2 className="text-xl font-bold mb-6">Site Requests ({siteRequests.filter(r => r.status === 'pending').length} pending)</h2>
+            {siteRequests.length === 0 ? <p className="text-gray-500 text-center py-12">No requests</p> : (
+              <div className="space-y-3">
+                {siteRequests.map((req) => (
+                  <div key={req.id} className={`p-4 border rounded-lg ${req.status === 'pending' ? 'bg-blue-500/5 border-blue-500/20' : 'bg-gray-50 dark:bg-[#202124]'}`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold">{req.site_name}</h3>
+                          {req.status === 'pending' && <span className="px-2 py-0.5 text-xs font-bold text-blue-600 bg-blue-500/10 border border-blue-500/20 rounded">PENDING</span>}
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">{req.site_url}</p>
+                        {req.description && <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{req.description}</p>}
+                      </div>
+                      {req.status === 'pending' && (
+                        <div className="flex gap-2">
+                          <button onClick={() => handleApproveSiteRequest(req)} className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg">Approve</button>
+                          <button onClick={() => handleRejectSiteRequest(req.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Reject</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'deposits' && (
+          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold">Manual Deposits</h2>
+              <button onClick={() => setShowManualDeposit(!showManualDeposit)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">{showManualDeposit ? 'Cancel' : '+ Deposit'}</button>
+            </div>
+            {showManualDeposit && (
+              <form onSubmit={handleManualDeposit} className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <input type="text" placeholder="User Discord ID" value={manualDeposit.userId} onChange={(e) => setManualDeposit({...manualDeposit, userId: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
+                  <input type="number" step="0.01" placeholder="Amount ($)" value={manualDeposit.amount} onChange={(e) => setManualDeposit({...manualDeposit, amount: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
+                </div>
+                <input type="text" placeholder="Reason" value={manualDeposit.reason} onChange={(e) => setManualDeposit({...manualDeposit, reason: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
+                <textarea placeholder="Admin Notes" value={manualDeposit.notes} onChange={(e) => setManualDeposit({...manualDeposit, notes: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="2" />
+                <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Process Deposit</button>
+              </form>
+            )}
+            <div className="space-y-3">
+              {manualDeposits.length === 0 ? <p className="text-gray-500 text-center py-12">No deposits</p> : manualDeposits.map((dep) => (
+                <div key={dep.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg">
+                  <p className="font-mono text-sm text-gray-500">User: {dep.user_id.slice(0, 8)}...</p>
+                  <p className="text-2xl font-bold text-green-600">${dep.amount.toFixed(2)}</p>
+                  {dep.reason && <p className="text-sm text-gray-600 dark:text-gray-400">{dep.reason}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'withdrawals' && (
+          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <h2 className="text-xl font-bold mb-6">Pending Withdrawals</h2>
+            {withdrawals.length === 0 ? <p className="text-gray-500 text-center py-12">None</p> : (
+              <div className="space-y-3">
+                {withdrawals.map((w) => (
+                  <div key={w.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
+                    <div>
+                      <p className="font-mono text-sm text-gray-500">User: {w.user_id.slice(0, 8)}...</p>
+                      <p className="text-2xl font-bold text-orange-600">${w.amount.toFixed(2)}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleApproveWithdrawal(w.id, w.user_id, w.amount)} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">Approve</button>
+                      <button onClick={() => handleRejectWithdrawal(w.id)} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium">Reject</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'messages' && (
+          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <h2 className="text-xl font-bold mb-6">Messages ({messages.filter(m => m.status === 'unread').length} unread)</h2>
+            {messages.length === 0 ? <p className="text-gray-500 text-center py-12">None</p> : (
+              <div className="space-y-3">
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`p-4 border rounded-lg ${msg.status === 'unread' ? 'bg-blue-500/5 border-blue-500/20' : 'bg-gray-50 dark:bg-[#202124]'}`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold">{msg.subject}</h3>
+                          {msg.status === 'unread' && <span className="px-2 py-0.5 text-xs font-bold text-blue-600 bg-blue-500/10 border border-blue-500/20 rounded">NEW</span>}
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">From: {msg.name} • {new Date(msg.created_at).toLocaleString()}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{msg.message}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        {msg.status === 'unread' && <button onClick={async () => { await supabase.from('contact_messages').update({ status: 'read' }).eq('id', msg.id); fetchData(); }} className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Mark Read</button>}
+                        <button onClick={() => handleDelete('contact_messages', msg.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <h2 className="text-xl font-bold mb-6">Search Analytics</h2>
+            {analytics.length === 0 ? <p className="text-gray-500 text-center py-12">None</p> : (
+              <div className="space-y-2">
+                {analytics.map((a, i) => (
+                  <div key={i} className="p-3 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
+                    <div><p className="font-medium">{a.query}</p><p className="text-xs text-gray-500">{new Date(a.created_at).toLocaleString()}</p></div>
+                    <span className="text-sm text-gray-500">{a.results_count} results</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -222,7 +478,6 @@ export default function Admin() {
             <h2 className="text-xl font-bold mb-6">Linked Users</h2>
             <p className="text-gray-500 mb-4">Users who have linked their Minecraft accounts.</p>
             <div className="space-y-3">
-              {/* Placeholder for user list - requires fetching from treasury_tokens */}
               <p className="text-gray-500 italic">User management panel. (Check Supabase table 'treasury_tokens' for full list)</p>
             </div>
           </div>
