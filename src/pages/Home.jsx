@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
@@ -7,16 +7,18 @@ import AdminButton from '../components/AdminButton';
 export default function Home({ user }) {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const { isDark, toggleTheme } = useTheme();
   const [stats, setStats] = useState({ onlinePlayers: 0, totalSites: 0 });
   const [balance, setBalance] = useState(0);
   const [sessionTime, setSessionTime] = useState('0m');
+  const suggestionsRef = useRef(null);
 
   useEffect(() => {
     fetchStats();
     if (user) fetchBalance();
     
-    // Simple session timer
     const start = Date.now();
     const timer = setInterval(() => {
       const mins = Math.floor((Date.now() - start) / 60000);
@@ -24,6 +26,50 @@ export default function Home({ user }) {
     }, 60000);
     return () => clearInterval(timer);
   }, [user]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Working Autocomplete
+  useEffect(() => {
+    if (q.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    const fetchSuggestions = async () => {
+      // Search both sites and wiki
+      const { data: siteData } = await supabase
+        .from('sites')
+        .select('name, slug')
+        .ilike('name', `%${q}%`)
+        .limit(5);
+
+      const { data: wikiData } = await supabase
+        .from('wiki_pages')
+        .select('title')
+        .ilike('title', `%${q}%`)
+        .limit(5);
+
+      const combined = [
+        ...(siteData || []).map(s => ({ type: 'site', text: s.name, slug: s.slug })),
+        ...(wikiData || []).map(w => ({ type: 'wiki', text: w.title }))
+      ].sort((a, b) => a.text.localeCompare(b.text)).slice(0, 8);
+
+      setSuggestions(combined);
+      setShowSuggestions(combined.length > 0);
+    };
+
+    const timeoutId = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(timeoutId);
+  }, [q]);
 
   const fetchStats = async () => {
     try {
@@ -41,7 +87,19 @@ export default function Home({ user }) {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+    if (q.trim()) {
+      navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    if (suggestion.type === 'site') {
+      navigate(`/site/${suggestion.slug}`);
+    } else {
+      navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
+    }
+    setShowSuggestions(false);
   };
 
   const handleFeelingLucky = async () => {
@@ -49,10 +107,17 @@ export default function Home({ user }) {
     if (data?.length) navigate(`/site/${data[Math.floor(Math.random() * data.length)].slug}`);
   };
 
+  // Get user display info
+  const userDisplayName = user?.user_metadata?.global_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+  const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.avatar;
+  const fullAvatarUrl = userAvatar 
+    ? (userAvatar.startsWith('http') ? userAvatar : `https://cdn.discordapp.com/avatars/${user.id}/${userAvatar}.png?size=128`)
+    : null;
+
   return (
     <div className="min-h-screen bg-white dark:bg-[#202124] text-gray-900 dark:text-gray-100 flex flex-col">
       
-      {/* TOP BAR - Matching Sketch */}
+      {/* TOP BAR */}
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-4 sm:gap-6 text-sm text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-2">
@@ -66,25 +131,26 @@ export default function Home({ user }) {
 
         <div className="flex items-center gap-3 sm:gap-4">
           <button onClick={toggleTheme} className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600">
-            {isDark ? '☀️ Light' : ' Dark'}
+            {isDark ? '☀️ Light' : '🌙 Dark'}
           </button>
           <button className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 hidden sm:block">Websearch info</button>
           
-          {/* Hamburger Menu */}
           <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
 
-          {/* Avatar / Account */}
           {user ? (
-            <a href="/account" className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
-              {user.user_metadata?.avatar_url ? (
-                <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            <a href="/account" className="flex items-center gap-2 hover:opacity-80">
+              {fullAvatarUrl ? (
+                <img src={fullAvatarUrl} alt={userDisplayName} className="w-8 h-8 rounded-full object-cover border border-gray-300 dark:border-gray-600" />
               ) : (
-                user.user_metadata?.name?.[0]?.toUpperCase() || 'U'
+                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                  {userDisplayName[0]?.toUpperCase()}
+                </div>
               )}
+              <span className="text-sm font-medium hidden sm:inline text-gray-700 dark:text-gray-300">{userDisplayName}</span>
             </a>
           ) : (
             <a href="/login" className="text-sm text-blue-600 hover:underline">Sign in</a>
@@ -107,15 +173,36 @@ export default function Home({ user }) {
           </div>
         </div>
 
-        {/* SEARCH BAR */}
-        <form onSubmit={handleSearch} className="w-full max-w-2xl mb-6">
+        {/* SEARCH BAR WITH AUTOCOMPLETE */}
+        <form onSubmit={handleSearch} className="w-full max-w-2xl mb-6 relative">
           <input
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             placeholder="What's on your mind today?..."
             className="w-full px-6 py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
           />
+          
+          {/* Autocomplete Dropdown */}
+          {showSuggestions && (
+            <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50">
+              {suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => handleSuggestionClick(s)}
+                  className="w-full text-left px-6 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] flex items-center gap-3 transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <span className="text-gray-700 dark:text-gray-300">{s.text}</span>
+                  <span className="text-xs text-gray-400 ml-auto">{s.type === 'site' ? 'Site' : 'Wiki'}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </form>
 
         {/* BUTTONS */}
@@ -131,14 +218,14 @@ export default function Home({ user }) {
           </button>
         </div>
 
-        {/* "ARE THEY SIMPLY THE BEST?!" SECTION - Matching Sketch */}
+        {/* "ARE THEY SIMPLY THE BEST?!" SECTION */}
         <div className="w-full max-w-4xl mb-8">
           <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
             
             {/* Left Side: Character Image */}
             <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700">
               <div className="text-center">
-                <div className="text-8xl sm:text-9xl mb-2">🧍</div>
+                <div className="text-8xl sm:text-9xl mb-2"></div>
                 <p className="text-xs text-gray-500">Character</p>
               </div>
             </div>
@@ -150,12 +237,15 @@ export default function Home({ user }) {
                   Are they simply the best?!
                 </h2>
                 <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-6">
-                  Are rainbows simply better?
+                  Are placeholders simply better?
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-500 italic">
+                  (This will show most searched site/wiki/person this week once people start browsing!)
                 </p>
               </div>
               
               {/* Rainbow Bar */}
-              <div className="h-6 w-full bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 rounded-full mt-auto"></div>
+              <div className="h-6 w-full bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 via-blue-500 via-indigo-500 to-purple-500 rounded-full mt-auto"></div>
             </div>
 
           </div>
