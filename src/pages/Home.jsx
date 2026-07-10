@@ -24,7 +24,6 @@ export default function Home() {
     fetchAds();
   }, []);
 
-  // ... (keep existing useEffect for suggestions and click outside) ...
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
@@ -152,9 +151,11 @@ export default function Home() {
             <button onClick={() => navigate('/utilities')} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">More...</button>
           </div>
 
+          {/* UPDATED QUICK LINKS WITH VERIFY SITE */}
           <div className="flex flex-wrap gap-3 justify-center">
             <a href="/register-business" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Register Business</a>
             <a href="/submit-ad" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Submit Ad</a>
+            <a href="/verify-site" className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors">Verify Site</a>
             <a href="/wiki" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Wiki</a>
             <a href="/departments" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Departments</a>
             <a href="/achievements" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Achievements</a>
@@ -200,7 +201,7 @@ export default function Home() {
                   {ad.image_url && <img src={ad.image_url} alt={ad.title} className="w-full h-32 object-cover rounded-lg mb-3" onError={(e) => e.target.style.display = 'none'} />}
                   <h4 className={`font-bold mb-1 group-hover:underline ${ad.tier === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : ad.tier === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>{ad.title}</h4>
                   {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
-                  <span className={`text-xs mt-2 block ${ad.tier === 'gold' ? 'text-yellow-500' : ad.tier === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>{ad.tier === 'gold' ? '⭐ Gold Sponsor' : ad.tier === 'silver' ? '🥈 Silver Sponsor' : ' Bronze'}</span>
+                  <span className={`text-xs mt-2 block ${ad.tier === 'gold' ? 'text-yellow-500' : ad.tier === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>{ad.tier === 'gold' ? '⭐ Gold Sponsor' : ad.tier === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}</span>
                 </a>
               ))}
             </div>

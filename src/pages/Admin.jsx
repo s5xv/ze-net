@@ -10,7 +10,7 @@ const ADMIN_PASSWORD = 'Khalid124_';
 export default function Admin() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState('sites');
@@ -98,7 +98,6 @@ export default function Admin() {
     setStats({ totalSites: sitesData?.length || 0, totalViews, totalClicks, pendingWithdrawals: withdrawalsData?.length || 0 });
   };
 
-  // --- Handlers ---
   const handleAddSite = async (e) => {
     e.preventDefault();
     const shortcutsArray = newSite.shortcuts.split(',').map(s => s.trim()).filter(s => s);
@@ -190,22 +189,59 @@ export default function Admin() {
     if (confirm('Reject?')) { await supabase.from('site_requests').update({ status: 'rejected' }).eq('id', id); fetchData(); }
   };
 
-  const handleApproveBusiness = async (id) => {
-    if (confirm('Approve?')) { await supabase.from('business_registrations').update({ status: 'approved' }).eq('id', id); fetchData(); }
+  // FIXED: Now actually creates the site with the shortcut
+  const handleApproveBusiness = async (reg) => {
+    if (!confirm(`Approve "${reg.business_name}"? This will create the site on Z&E Net.`)) return;
+    
+    const shortcutsArray = reg.shortcut ? reg.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
+    
+    const { error } = await supabase.from('sites').insert({
+      name: reg.business_name,
+      slug: reg.business_name.toLowerCase().replace(/\s+/g, '-'),
+      description: `${reg.business_name} - ${reg.category}. Plot: ${reg.plot_number || 'N/A'}`,
+      category: reg.category,
+      url: reg.website_url || '#',
+      shortcuts: shortcutsArray, // <-- This saves the shortcut!
+      owner_discord_id: reg.user_id,
+      is_verified: false
+    });
+
+    if (error) {
+      alert('Error creating site: ' + error.message);
+    } else {
+      await supabase.from('business_registrations').update({ status: 'approved' }).eq('id', reg.id);
+      alert('Site created successfully with shortcut!');
+      fetchData();
+    }
   };
 
   const handleRejectBusiness = async (id) => {
     if (confirm('Reject?')) { await supabase.from('business_registrations').delete().eq('id', id); fetchData(); }
   };
 
+  // FIXED: Ad tier pricing logic
   const handleApproveAd = async (submission) => {
-    const price = submission.tier === 'gold' ? 2500 : submission.tier === 'silver' ? 1200 : submission.tier === 'platinum' ? 5000 : 500;
-    if (!confirm(`Approve? Deducts $${price}.`)) return;
+    const prices = { bronze: 500, silver: 1200, gold: 2500, platinum: 5000 };
+    const price = prices[submission.tier] || 500;
+    
+    if (!confirm(`Approve ${submission.tier.toUpperCase()} ad for $${price}?`)) return;
+    
     const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', submission.user_id).single();
-    if (!balData || balData.balance < price) return alert('Insufficient balance');
+    if (!balData || balData.balance < price) return alert('User has insufficient balance');
+    
     await supabase.from('site_balances').update({ balance: balData.balance - price }).eq('user_id', submission.user_id);
-    await supabase.from('ads').insert({ title: submission.company_name, description: `Sponsored by ${submission.company_name}`, link_url: submission.redirect_url, image_url: submission.banner_image, tier: submission.tier, is_active: true });
+    
+    await supabase.from('ads').insert({
+      title: submission.company_name,
+      description: `Sponsored by ${submission.company_name}`,
+      link_url: submission.redirect_url,
+      image_url: submission.banner_image,
+      tier: submission.tier,
+      is_active: true
+    });
+    
     await supabase.from('ad_submissions').delete().eq('id', submission.id);
+    alert(`Approved! $${price} deducted.`);
     fetchData();
   };
 
@@ -213,34 +249,24 @@ export default function Admin() {
     if (confirm('Reject?')) { await supabase.from('ad_submissions').delete().eq('id', id); fetchData(); }
   };
 
-  // --- NEW: Verification Handlers ---
   const handleApproveVerification = async (req) => {
-    if (!confirm(`Approve verification for "${req.site_name}"? This will deduct $100 from their balance.`)) return;
-    
+    if (!confirm(`Approve verification for "${req.site_name}"? Deducts $100.`)) return;
     const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', req.user_id).single();
-    if (!balData || balData.balance < 100) return alert('User has insufficient balance ($100 required).');
-    
-    // Deduct $100
+    if (!balData || balData.balance < 100) return alert('User has insufficient balance.');
     await supabase.from('site_balances').update({ balance: balData.balance - 100 }).eq('user_id', req.user_id);
-    
-    // Find the site and set is_verified = true (or create it if it doesn't exist)
     const { data: existingSite } = await supabase.from('sites').select('id').eq('name', req.site_name).single();
     if (existingSite) {
       await supabase.from('sites').update({ is_verified: true }).eq('id', existingSite.id);
     } else {
       await supabase.from('sites').insert({ name: req.site_name, slug: req.site_name.toLowerCase().replace(/\s+/g, '-'), url: req.site_url || '', is_verified: true, category: 'Other' });
     }
-    
     await supabase.from('site_verification_requests').update({ status: 'approved' }).eq('id', req.id);
-    alert('Verified! $100 deducted and badge added.');
+    alert('Verified!');
     fetchData();
   };
 
   const handleRejectVerification = async (id) => {
-    if (confirm('Reject verification request? No money will be deducted.')) {
-      await supabase.from('site_verification_requests').update({ status: 'rejected' }).eq('id', id);
-      fetchData();
-    }
+    if (confirm('Reject?')) { await supabase.from('site_verification_requests').update({ status: 'rejected' }).eq('id', id); fetchData(); }
   };
 
   const handleSendWeeklyAnalytics = async () => {
@@ -293,7 +319,6 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* SITES TAB */}
         {activeTab === 'sites' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -318,7 +343,7 @@ export default function Admin() {
             <div className="space-y-3">
               {sites.map((site) => (
                 <div key={site.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{site.name} {site.is_verified && <span className="text-blue-500">✓</span>}</h3><p className="text-sm text-gray-500">{site.category}</p></div>
+                  <div><h3 className="font-semibold">{site.name} {site.is_verified && <span className="text-blue-500">✓</span>}</h3><p className="text-sm text-gray-500">{site.category} • Shortcuts: {site.shortcuts?.join(', ') || 'None'}</p></div>
                   <button onClick={() => handleDelete('sites', site.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
                 </div>
               ))}
@@ -326,7 +351,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ADS TAB */}
         {activeTab === 'ads' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -340,7 +364,7 @@ export default function Admin() {
                 <input type="text" placeholder="Image URL" value={newAd.image_url} onChange={(e) => setNewAd({...newAd, image_url: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
                 <input type="text" placeholder="Link URL" value={newAd.link_url} onChange={(e) => setNewAd({...newAd, link_url: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
                 <select value={newAd.tier} onChange={(e) => setNewAd({...newAd, tier: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
-                  <option value="bronze">Bronze</option><option value="silver">Silver</option><option value="gold">Gold</option><option value="platinum">Platinum</option>
+                  <option value="bronze">Bronze ($500)</option><option value="silver">Silver ($1200)</option><option value="gold">Gold ($2500)</option><option value="platinum">Platinum ($5000)</option>
                 </select>
                 <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Add Ad</button>
               </form>
@@ -359,7 +383,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* VERIFICATIONS TAB (NEW) */}
         {activeTab === 'verifications' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Site Verifications ({verificationRequests.filter(r => r.status === 'pending').length} pending)</h2>
@@ -372,10 +395,8 @@ export default function Admin() {
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-semibold">{req.site_name}</h3>
                           {req.status === 'pending' && <span className="px-2 py-0.5 text-xs font-bold text-blue-600 bg-blue-500/10 rounded">PENDING</span>}
-                          {req.status === 'approved' && <span className="px-2 py-0.5 text-xs font-bold text-green-600 bg-green-500/10 rounded">APPROVED</span>}
                         </div>
                         <p className="text-xs text-gray-500 mb-2">URL: {req.site_url || 'None'}</p>
-                        <p className="text-xs text-gray-400">User ID: {req.user_id?.slice(0,8)}...</p>
                       </div>
                       {req.status === 'pending' && (
                         <div className="flex gap-2">
@@ -391,7 +412,47 @@ export default function Admin() {
           </div>
         )}
 
-        {/* PREMIUM TAB */}
+        {activeTab === 'business' && (
+          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <h2 className="text-xl font-bold mb-6">Business Registrations</h2>
+            <div className="space-y-3">
+              {businessRegistrations.map((reg) => (
+                <div key={reg.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
+                  <div>
+                    <h3 className="font-semibold">{reg.business_name}</h3>
+                    <p className="text-xs text-gray-500">{reg.category} • Plot: {reg.plot_number || 'N/A'} • Shortcut: {reg.shortcut || 'None'}</p>
+                  </div>
+                  {reg.status === 'pending' && (
+                    <div className="flex gap-2">
+                      <button onClick={() => handleApproveBusiness(reg)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve & Create Site</button>
+                      <button onClick={() => handleRejectBusiness(reg.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'ad-submissions' && (
+          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+            <h2 className="text-xl font-bold mb-6">Ad Submissions</h2>
+            <div className="space-y-3">
+              {adSubmissions.map((sub) => (
+                <div key={sub.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
+                  <div><h3 className="font-semibold">{sub.company_name}</h3><p className="text-xs text-gray-500">Tier: {sub.tier.toUpperCase()} • ${sub.tier === 'gold' ? 2500 : sub.tier === 'silver' ? 1200 : sub.tier === 'platinum' ? 5000 : 500}</p></div>
+                  {sub.status === 'pending' && (
+                    <div className="flex gap-2">
+                      <button onClick={() => handleApproveAd(sub)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve & Charge</button>
+                      <button onClick={() => handleRejectAd(sub.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'premium' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Premium Listings</h2>
@@ -414,7 +475,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ANNOUNCEMENTS TAB */}
         {activeTab === 'announcements' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -439,7 +499,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* REQUESTS TAB */}
         {activeTab === 'requests' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Site Requests</h2>
@@ -459,47 +518,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* BUSINESS TAB */}
-        {activeTab === 'business' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Business Registrations</h2>
-            <div className="space-y-3">
-              {businessRegistrations.map((reg) => (
-                <div key={reg.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{reg.business_name}</h3><p className="text-xs text-gray-500">{reg.category} • Plot: {reg.plot_number || 'N/A'} • Shortcut: {reg.shortcut || 'N/A'}</p></div>
-                  {reg.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <button onClick={() => handleApproveBusiness(reg.id)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve</button>
-                      <button onClick={() => handleRejectBusiness(reg.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* AD SUBMISSIONS TAB */}
-        {activeTab === 'ad-submissions' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Ad Submissions</h2>
-            <div className="space-y-3">
-              {adSubmissions.map((sub) => (
-                <div key={sub.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{sub.company_name}</h3><p className="text-xs text-gray-500">Tier: {sub.tier}</p></div>
-                  {sub.status === 'pending' && (
-                    <div className="flex gap-2">
-                      <button onClick={() => handleApproveAd(sub)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve</button>
-                      <button onClick={() => handleRejectAd(sub.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* DEPOSITS TAB */}
         {activeTab === 'deposits' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -524,7 +542,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* WITHDRAWALS TAB */}
         {activeTab === 'withdrawals' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Withdrawals</h2>
@@ -542,7 +559,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* MESSAGES TAB */}
         {activeTab === 'messages' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Messages</h2>
@@ -557,7 +573,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ANALYTICS TAB */}
         {activeTab === 'analytics' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Search Analytics</h2>
@@ -572,7 +587,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* USERS TAB */}
         {activeTab === 'users' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Linked Users</h2>
@@ -580,7 +594,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* WIKI TAB */}
         {activeTab === 'wiki' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Wiki Management</h2>

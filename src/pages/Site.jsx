@@ -4,7 +4,6 @@ import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
-import { checkAndUnlockAchievements, updateChallengeProgress } from '../utils/tracker';
 
 export default function Site() {
   const { user } = useAuth();
@@ -31,12 +30,6 @@ export default function Site() {
       setSite(data);
       await supabase.from('sites').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
       
-      // TRACK SITE VISIT
-      if (user) {
-        updateChallengeProgress(user.id, data.id);
-        checkAndUnlockAchievements(user.id);
-      }
-
       const { data: related } = await supabase.from('sites').select('*').eq('category', data.category).neq('id', data.id).limit(5);
       setRelatedSites(related || []);
 
@@ -64,9 +57,6 @@ export default function Site() {
     if (!user || !newComment.trim()) return;
     await supabase.from('site_comments').insert({ site_id: site.id, user_id: user.id, content: newComment.trim() });
     setNewComment('');
-    
-    // TRACK COMMENT
-    checkAndUnlockAchievements(user.id);
     fetchSite();
   };
 
@@ -75,13 +65,9 @@ export default function Site() {
     if (!user) return;
     await supabase.from('site_reviews').upsert({ site_id: site.id, user_id: user.id, rating: newReview.rating, comment: newReview.comment });
     setNewReview({ rating: 5, comment: '' });
-    
-    // TRACK REVIEW
-    checkAndUnlockAchievements(user.id);
     fetchSite();
   };
 
-  // ... (keep existing handleShare, handleBookmark, handleUpvote, handleVisit functions) ...
   const handleUpvote = async () => {
     if (!user) return alert('Please sign in');
     if (hasUpvoted) {
@@ -122,7 +108,16 @@ export default function Site() {
         <div className="bg-white dark:bg-[#303134] rounded-xl p-6 sm:p-8 border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
             <div className="flex-grow">
-              <h1 className="text-3xl sm:text-4xl font-bold mb-2">{site.name}</h1>
+              {/* REAL VERIFIED BADGE HERE */}
+              <div className="flex items-center flex-wrap gap-2 mb-2">
+                <h1 className="text-3xl sm:text-4xl font-bold">{site.name}</h1>
+                {site.is_verified && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold">
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                    Verified
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 font-mono mb-2">{site.category}</p>
               {site.owner_name && <p className="text-sm text-gray-500 dark:text-gray-400">Owner: {site.owner_name}</p>}
             </div>
