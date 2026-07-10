@@ -12,7 +12,7 @@ const generateSlug = (name) => {
 };
 
 const businessCategories = [
-  'Retail Shop', 'Restaurant / Food', 'Real Estate', 'Bank / Finance',
+  'Retail Shop', 'Restaurant / Food', 'Real Estate', 'Bank / Finance', 'Legal Services',
   'Service (Building, Mining, etc)', 'Farm / Agriculture', 'Entertainment / Casino',
   'Government / Public Service', 'Technology / Redstone', 'Transportation',
   'Hotel / Accommodation', 'Other'
