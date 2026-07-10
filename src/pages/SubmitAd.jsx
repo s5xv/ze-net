@@ -21,9 +21,34 @@ export default function SubmitAd() {
   });
 
   const tiers = {
-    bronze: { name: 'Bronze Tier', price: 500, duration: '1 week', features: 'Basic search ranking boost' },
-    silver: { name: 'Silver Tier', price: 1200, duration: '2 weeks', features: 'Highlighted search placement + custom shortlink' },
-    gold: { name: 'Gold Tier', price: 2500, duration: '1 month', features: 'Top search priority + homepage banner' }
+    bronze: { 
+      name: 'Bronze - Standard Ad', 
+      price: 500, 
+      duration: '1 week', 
+      features: 'Regular sidebar placement',
+      type: 'normal'
+    },
+    silver: { 
+      name: 'Silver - Premium Ad', 
+      price: 1200, 
+      duration: '2 weeks', 
+      features: 'Highlighted placement + custom shortlink',
+      type: 'normal'
+    },
+    gold: { 
+      name: 'Gold - Featured Banner', 
+      price: 2500, 
+      duration: '1 month', 
+      features: 'Top banner + homepage featured spot',
+      type: 'sponsored'
+    },
+    platinum: { 
+      name: 'Platinum - Sponsored', 
+      price: 5000, 
+      duration: '1 month', 
+      features: 'Top search results + priority placement everywhere',
+      type: 'sponsored'
+    }
   };
 
   useEffect(() => {
@@ -165,7 +190,10 @@ export default function SubmitAd() {
                     />
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-bold">{tier.name}</p>
+                        <p className="font-bold flex items-center gap-2">
+                          {tier.name}
+                          {tier.type === 'sponsored' && <span className="text-xs bg-yellow-500 text-white px-2 py-0.5 rounded">SPONSORED</span>}
+                        </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">{tier.duration}</p>
                         <p className="text-xs text-gray-500 mt-1">{tier.features}</p>
                       </div>

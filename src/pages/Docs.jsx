@@ -31,6 +31,60 @@ export default function Docs() {
           <p className="text-gray-600 dark:text-gray-400 text-lg">Everything you need to know about Z&E Net</p>
         </div>
 
+        {/* Ad Pricing Section */}
+        <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm mb-8">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">💰 Ad Pricing & Tiers</h2>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-gray-50 dark:bg-[#202124] rounded-lg border-l-4 border-gray-500">
+              <h3 className="font-bold text-lg mb-2">🥉 Bronze - Standard Ad ($500/week)</h3>
+              <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                <li>• Regular sidebar placement</li>
+                <li>• Standard visibility</li>
+                <li>• Basic analytics</li>
+              </ul>
+            </div>
+
+            <div className="p-4 bg-gray-50 dark:bg-[#202124] rounded-lg border-l-4 border-blue-500">
+              <h3 className="font-bold text-lg mb-2">🥈 Silver - Premium Ad ($1,200/2 weeks)</h3>
+              <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                <li>• Highlighted placement in sidebar</li>
+                <li>• Custom shortlink redirect</li>
+                <li>• Priority over Bronze ads</li>
+              </ul>
+            </div>
+
+            <div className="p-4 bg-yellow-500/10 dark:bg-yellow-500/5 rounded-lg border-l-4 border-yellow-500">
+              <h3 className="font-bold text-lg mb-2">🥇 Gold - Featured Banner ($2,500/month)</h3>
+              <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                <li>• Top banner on homepage</li>
+                <li>• Featured spot in sidebar</li>
+                <li>• Priority over Silver/Bronze</li>
+              </ul>
+            </div>
+
+            <div className="p-4 bg-purple-500/10 dark:bg-purple-500/5 rounded-lg border-l-4 border-purple-500">
+              <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                ⭐ Platinum - Sponsored ($5,000/month)
+                <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded">SPONSORED</span>
+              </h3>
+              <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                <li>• <strong>Appears at TOP of search results</strong></li>
+                <li>• Priority placement everywhere</li>
+                <li>• Featured badge on site listing</li>
+                <li>• Premium analytics dashboard</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 p-4 bg-blue-500/10 dark:bg-blue-500/5 rounded-lg">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              <strong>How it works:</strong> Submit your ad → Admin reviews → If approved, balance is deducted automatically → Ad goes live!
+            </p>
+          </div>
+        </div>
+
+        {/* Quick Start Guide */}
         <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm mb-8">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">🚀 Quick Start Guide</h2>
           <div className="grid md:grid-cols-2 gap-4">
@@ -53,6 +107,7 @@ export default function Docs() {
           </div>
         </div>
 
+        {/* FAQ Accordion */}
         <div className="space-y-4">
           <h2 className="text-2xl font-bold mb-4">Frequently Asked Questions</h2>
           {faqs.map((faq, i) => (
