@@ -173,7 +173,7 @@ export default function Home() {
 
   return (
     <Layout user={user}>
-      <main className="flex-grow max-w-7xl mx-auto px-4 py-8 sm:py-12 min-h-screen">
+      <main className="flex-grow max-w-7xl mx-auto px-4 py-8 sm:py-12 ">
         {/* Main content area */}
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="text-center mb-6">

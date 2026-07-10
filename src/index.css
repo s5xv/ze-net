@@ -3,12 +3,14 @@
 @tailwind utilities;
 
 html, body {
-  overscroll-behavior-y: none;
-  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Only block horizontal scroll */
+  overflow-y: auto;   /* Explicitly allow vertical scrolling */
+  height: auto;       /* Let the page grow naturally */
 }
 
 body {
-  margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
