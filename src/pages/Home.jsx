@@ -2,32 +2,24 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
-import AdminButton from '../components/AdminButton';
+import Layout from '../components/Layout';
+import { useAuth } from '../hooks/useAuth';
 
-export default function Home({ user }) {
+export default function Home() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [topSearches, setTopSearches] = useState([]);
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [stats, setStats] = useState({ onlinePlayers: 0, totalSites: 0 });
-  const [balance, setBalance] = useState(0);
-  const [sessionTime, setSessionTime] = useState('0m');
   const suggestionsRef = useRef(null);
 
   useEffect(() => {
     fetchStats();
     fetchTopSearches();
-    if (user) fetchBalance();
-    
-    const start = Date.now();
-    const timer = setInterval(() => {
-      const mins = Math.floor((Date.now() - start) / 60000);
-      setSessionTime(`${mins}m`);
-    }, 60000);
-    return () => clearInterval(timer);
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -39,24 +31,20 @@ export default function Home({ user }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Adaptive Autocomplete - shows top searches + real-time suggestions
   useEffect(() => {
     if (q.length < 1) {
-      // Show top searches when input is empty
       setSuggestions(topSearches.map(t => ({ type: 'popular', text: t.query })));
       setShowSuggestions(topSearches.length > 0);
       return;
     }
 
     const fetchSuggestions = async () => {
-      // Search sites (including shortcuts)
       const { data: siteData } = await supabase
         .from('sites')
         .select('name, slug, shortcuts')
         .or(`name.ilike.%${q}%,shortcuts.ilike.%${q}%`)
         .limit(5);
 
-      // Search wiki
       const { data: wikiData } = await supabase
         .from('wiki_pages')
         .select('title')
@@ -64,12 +52,7 @@ export default function Home({ user }) {
         .limit(3);
 
       const combined = [
-        ...(siteData || []).map(s => ({ 
-          type: 'site', 
-          text: s.name, 
-          slug: s.slug,
-          shortcuts: s.shortcuts 
-        })),
+        ...(siteData || []).map(s => ({ type: 'site', text: s.name, slug: s.slug, shortcuts: s.shortcuts })),
         ...(wikiData || []).map(w => ({ type: 'wiki', text: w.title }))
       ].sort((a, b) => a.text.localeCompare(b.text)).slice(0, 8);
 
@@ -91,7 +74,6 @@ export default function Home({ user }) {
   };
 
   const fetchTopSearches = async () => {
-    // Get top 5 searches this week
     const { data } = await supabase
       .from('search_analytics')
       .select('query')
@@ -100,20 +82,10 @@ export default function Home({ user }) {
     
     if (data) {
       const counts = {};
-      data.forEach(item => {
-        counts[item.query] = (counts[item.query] || 0) + 1;
-      });
-      const top = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([query]) => ({ query }));
+      data.forEach(item => { counts[item.query] = (counts[item.query] || 0) + 1; });
+      const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([query]) => ({ query }));
       setTopSearches(top);
     }
-  };
-
-  const fetchBalance = async () => {
-    const { data } = await supabase.from('site_balances').select('balance').eq('user_id', user.id).single();
-    setBalance(data?.balance || 0);
   };
 
   const handleSearch = (e) => {
@@ -125,71 +97,26 @@ export default function Home({ user }) {
   };
 
   const handleSuggestionClick = (suggestion) => {
-    if (suggestion.type === 'site') {
-      navigate(`/site/${suggestion.slug}`);
-    } else if (suggestion.type === 'popular') {
-      navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
-    } else {
-      navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
-    }
+    if (suggestion.type === 'site') navigate(`/site/${suggestion.slug}`);
+    else if (suggestion.type === 'popular') navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
+    else navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
     setShowSuggestions(false);
   };
 
   const handleFeelingLucky = async () => {
-    const { data } = await supabase.from('sites').select('*').limit(1000);
-    if (data?.length) navigate(`/site/${data[Math.floor(Math.random() * data.length)].slug}`);
+    const { data } = await supabase.from('sites').select('slug').limit(1000);
+    if (data?.length) {
+      const randomSite = data[Math.floor(Math.random() * data.length)];
+      navigate(`/site/${randomSite.slug}`);
+    }
   };
 
-  const userDisplayName = user?.user_metadata?.global_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
-  const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.avatar;
-  const fullAvatarUrl = userAvatar 
-    ? (userAvatar.startsWith('http') ? userAvatar : `https://cdn.discordapp.com/avatars/${user.id}/${userAvatar}.png?size=128`)
-    : null;
+  const handleMoreClick = () => {
+    navigate('/utilities');
+  };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#202124] text-gray-900 dark:text-gray-100 flex flex-col">
-      {/* TOP BAR */}
-      <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-4 sm:gap-6 text-sm text-gray-600 dark:text-gray-400">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">Wallet</span>
-            <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded text-xs">
-              ${balance.toFixed(2)}
-            </span>
-          </div>
-          <div className="hidden sm:block">Screen time: {sessionTime}</div>
-        </div>
-
-        <div className="flex items-center gap-3 sm:gap-4">
-          <button onClick={toggleTheme} className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600">
-            {isDark ? '☀️ Light' : '🌙 Dark'}
-          </button>
-          <button className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 hidden sm:block">Websearch info</button>
-          
-          <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-
-          {user ? (
-            <a href="/account" className="flex items-center gap-2 hover:opacity-80">
-              {fullAvatarUrl ? (
-                <img src={fullAvatarUrl} alt={userDisplayName} className="w-8 h-8 rounded-full object-cover border border-gray-300 dark:border-gray-600" />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
-                  {userDisplayName[0]?.toUpperCase()}
-                </div>
-              )}
-              <span className="text-sm font-medium hidden sm:inline text-gray-700 dark:text-gray-300">{userDisplayName}</span>
-            </a>
-          ) : (
-            <a href="/login" className="text-sm text-blue-600 hover:underline">Sign in</a>
-          )}
-        </div>
-      </header>
-
-      {/* MAIN CONTENT */}
+    <Layout user={user}>
       <main className="flex-grow flex flex-col items-center justify-center px-4 py-8 sm:py-12">
         {/* MASSIVE LOGO */}
         <div className="text-center mb-6">
@@ -203,7 +130,7 @@ export default function Home({ user }) {
           </div>
         </div>
 
-        {/* SEARCH BAR WITH ADAPTIVE AUTOCOMPLETE */}
+        {/* SEARCH BAR */}
         <form onSubmit={handleSearch} className="w-full max-w-2xl mb-6 relative">
           <input
             type="text"
@@ -214,30 +141,19 @@ export default function Home({ user }) {
             className="w-full px-6 py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
           />
           
-          {/* Autocomplete Dropdown */}
           {showSuggestions && (
             <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-96 overflow-y-auto">
               {suggestions.map((s, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => handleSuggestionClick(s)}
-                  className="w-full text-left px-6 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"
-                >
+                <button key={i} type="button" onClick={() => handleSuggestionClick(s)} className="w-full text-left px-6 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0">
                   {s.type === 'popular' ? (
-                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
+                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                   ) : (
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                   )}
                   <span className="text-gray-700 dark:text-gray-300 flex-grow">{s.text}</span>
                   {s.type === 'popular' && <span className="text-xs text-orange-500">Trending</span>}
                   {s.type === 'site' && <span className="text-xs text-gray-400">Site</span>}
                   {s.type === 'wiki' && <span className="text-xs text-gray-400">Wiki</span>}
-                  {s.shortcuts && <span className="text-xs text-gray-400">({s.shortcuts.join(', ')})</span>}
                 </button>
               ))}
             </div>
@@ -252,7 +168,7 @@ export default function Home({ user }) {
           <button onClick={handleFeelingLucky} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
             I'm feeling lucky
           </button>
-          <button className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
+          <button onClick={handleMoreClick} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
             More...
           </button>
         </div>
@@ -266,31 +182,17 @@ export default function Home({ user }) {
                 <p className="text-xs text-gray-500">Character</p>
               </div>
             </div>
-
             <div className="w-1/2 sm:w-3/5 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto">
               <div>
-                <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">
-                  Are they simply the best?!
-                </h2>
-                <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-6">
-                  Are placeholders simply better?
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-500 italic">
-                  (This will show most searched site/wiki/person this week once people start browsing!)
-                </p>
+                <h2 className="text-3xl sm:text-4xl font-bold mb-4 leading-tight">Are they simply the best?!</h2>
+                <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-6">Are placeholders simply better?</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500 italic">(This will show most searched site/wiki/person this week once people start browsing!)</p>
               </div>
-              
               <div className="h-6 w-full bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 via-blue-500 via-indigo-500 to-purple-500 rounded-full mt-auto"></div>
             </div>
           </div>
         </div>
-
       </main>
-
-      <footer className="bg-gray-100 dark:bg-[#171717] border-t border-gray-200 dark:border-gray-800 py-4 text-center text-xs text-gray-500">
-        <p>Z&E Net is an independent search directory not affiliated with DemocracyCraft.</p>
-        <p className="mt-1">© {new Date().getFullYear()} Z&E Net</p>
-      </footer>
-    </div>
+    </Layout>
   );
 }
