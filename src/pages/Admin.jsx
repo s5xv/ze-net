@@ -16,7 +16,6 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('sites');
   const [mcName, setMcName] = useState('Admin');
   
-  // Data states
   const [sites, setSites] = useState([]);
   const [ads, setAds] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
@@ -28,7 +27,6 @@ export default function Admin() {
   const [manualDeposits, setManualDeposits] = useState([]);
   const [stats, setStats] = useState({ totalSites: 0, totalViews: 0, totalClicks: 0, pendingWithdrawals: 0 });
 
-  // Form states
   const [showAddSite, setShowAddSite] = useState(false);
   const [showAddAd, setShowAddAd] = useState(false);
   const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
@@ -125,11 +123,7 @@ export default function Admin() {
     e.preventDefault();
     if (!manualDeposit.userId || !manualDeposit.amount) return alert('Enter user ID and amount');
     try {
-      const res = await fetch('/api?endpoint=manual-deposit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: manualDeposit.userId, amount: parseFloat(manualDeposit.amount), reason: manualDeposit.reason, adminNotes: manualDeposit.notes })
-      });
+      const res = await fetch('/api?endpoint=manual-deposit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: manualDeposit.userId, amount: parseFloat(manualDeposit.amount), reason: manualDeposit.reason, adminNotes: manualDeposit.notes }) });
       const data = await res.json();
       if (data.success) { alert(`Success! New balance: $${data.newBalance.toFixed(2)}`); setShowManualDeposit(false); setManualDeposit({ userId: '', amount: '', reason: '', notes: '' }); fetchData(); }
       else { alert('Error: ' + data.error); }
@@ -137,10 +131,7 @@ export default function Admin() {
   };
 
   const handleDelete = async (table, id) => {
-    if (confirm('Delete this item?')) {
-      await supabase.from(table).delete().eq('id', id);
-      fetchData();
-    }
+    if (confirm('Delete this item?')) { await supabase.from(table).delete().eq('id', id); fetchData(); }
   };
 
   const handleApproveWithdrawal = async (id, userId, amount) => {
@@ -153,10 +144,7 @@ export default function Admin() {
   };
 
   const handleRejectWithdrawal = async (id) => {
-    if (confirm('Reject withdrawal?')) {
-      await supabase.from('pending_withdrawals').update({ status: 'rejected' }).eq('id', id);
-      fetchData();
-    }
+    if (confirm('Reject withdrawal?')) { await supabase.from('pending_withdrawals').update({ status: 'rejected' }).eq('id', id); fetchData(); }
   };
 
   const handleApproveSiteRequest = async (req) => {
@@ -168,10 +156,7 @@ export default function Admin() {
   };
 
   const handleRejectSiteRequest = async (id) => {
-    if (confirm('Reject site request?')) {
-      await supabase.from('site_requests').update({ status: 'rejected' }).eq('id', id);
-      fetchData();
-    }
+    if (confirm('Reject site request?')) { await supabase.from('site_requests').update({ status: 'rejected' }).eq('id', id); fetchData(); }
   };
 
   if (!isAuthenticated) {
@@ -199,22 +184,10 @@ export default function Admin() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-            <span className="text-sm text-gray-500">Total Sites</span>
-            <p className="text-3xl font-bold">{stats.totalSites}</p>
-          </div>
-          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-            <span className="text-sm text-gray-500">Total Views</span>
-            <p className="text-3xl font-bold">{stats.totalViews}</p>
-          </div>
-          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-            <span className="text-sm text-gray-500">Total Clicks</span>
-            <p className="text-3xl font-bold">{stats.totalClicks}</p>
-          </div>
-          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-            <span className="text-sm text-gray-500">Pending Withdrawals</span>
-            <p className="text-3xl font-bold">{stats.pendingWithdrawals}</p>
-          </div>
+          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm"><span className="text-sm text-gray-500">Total Sites</span><p className="text-3xl font-bold">{stats.totalSites}</p></div>
+          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm"><span className="text-sm text-gray-500">Total Views</span><p className="text-3xl font-bold">{stats.totalViews}</p></div>
+          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm"><span className="text-sm text-gray-500">Total Clicks</span><p className="text-3xl font-bold">{stats.totalClicks}</p></div>
+          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm"><span className="text-sm text-gray-500">Pending Withdrawals</span><p className="text-3xl font-bold">{stats.pendingWithdrawals}</p></div>
         </div>
 
         <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
@@ -249,10 +222,7 @@ export default function Admin() {
             <div className="space-y-3">
               {sites.map((site) => (
                 <div key={site.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold">{site.name}</h3>
-                    <p className="text-sm text-gray-500">{site.category} • {site.owner_discord_id ? `Owner: ${site.owner_discord_id.slice(0,8)}...` : 'No Owner'}</p>
-                  </div>
+                  <div><h3 className="font-semibold">{site.name}</h3><p className="text-sm text-gray-500">{site.category} • {site.owner_discord_id ? `Owner: ${site.owner_discord_id.slice(0,8)}...` : 'No Owner'}</p></div>
                   <button onClick={() => handleDelete('sites', site.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
                 </div>
               ))}
@@ -278,10 +248,7 @@ export default function Admin() {
             <div className="space-y-3">
               {ads.map((ad) => (
                 <div key={ad.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold">{ad.title}</h3>
-                    <p className="text-sm text-gray-500 truncate max-w-md">{ad.link_url}</p>
-                  </div>
+                  <div><h3 className="font-semibold">{ad.title}</h3><p className="text-sm text-gray-500 truncate max-w-md">{ad.link_url}</p></div>
                   <button onClick={() => handleDelete('ads', ad.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
                 </div>
               ))}
@@ -295,14 +262,8 @@ export default function Admin() {
             <div className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg">
               <h3 className="font-semibold mb-3">Add Premium Listing</h3>
               <div className="grid md:grid-cols-3 gap-4">
-                <select value={newPremium.siteId} onChange={(e) => setNewPremium({...newPremium, siteId: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
-                  <option value="">Select Site</option>
-                  {sites.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}
-                </select>
-                <select value={newPremium.tier} onChange={(e) => setNewPremium({...newPremium, tier: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
-                  <option value="basic">Basic (Advertisers)</option>
-                  <option value="elite">Elite</option>
-                </select>
+                <select value={newPremium.siteId} onChange={(e) => setNewPremium({...newPremium, siteId: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg"><option value="">Select Site</option>{sites.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}</select>
+                <select value={newPremium.tier} onChange={(e) => setNewPremium({...newPremium, tier: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg"><option value="basic">Basic</option><option value="elite">Elite</option></select>
                 <input type="number" placeholder="Days" value={newPremium.days || ''} onChange={(e) => setNewPremium({...newPremium, days: parseInt(e.target.value) || 0})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
               </div>
               <button onClick={handleAddPremium} className="mt-3 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">Add Premium</button>
@@ -310,10 +271,7 @@ export default function Admin() {
             <div className="space-y-3">
               {premiumListings.length === 0 ? <p className="text-gray-500 text-center py-12">No premium listings</p> : premiumListings.map((listing) => (
                 <div key={listing.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold">{listing.sites?.name || 'Unknown'}</h3>
-                    <p className="text-sm text-gray-500">Tier: <span className={`font-bold ${listing.tier === 'elite' ? 'text-yellow-500' : 'text-blue-500'}`}>{listing.tier === 'elite' ? '⭐ ELITE' : 'BASIC'}</span> • Expires: {new Date(listing.end_date).toLocaleDateString()}</p>
-                  </div>
+                  <div><h3 className="font-semibold">{listing.sites?.name || 'Unknown'}</h3><p className="text-sm text-gray-500">Tier: {listing.tier === 'elite' ? '⭐ ELITE' : 'BASIC'} • Expires: {new Date(listing.end_date).toLocaleDateString()}</p></div>
                   <button onClick={async () => { await supabase.from('premium_listings').delete().eq('id', listing.id); fetchData(); }} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Remove</button>
                 </div>
               ))}
@@ -337,10 +295,7 @@ export default function Admin() {
             <div className="space-y-3">
               {announcements.map((ann) => (
                 <div key={ann.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold">{ann.title}</h3>
-                    <p className="text-sm text-gray-500">{ann.message}</p>
-                  </div>
+                  <div><h3 className="font-semibold">{ann.title}</h3><p className="text-sm text-gray-500">{ann.message}</p></div>
                   <button onClick={() => handleDelete('announcements', ann.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
                 </div>
               ))}
@@ -357,19 +312,11 @@ export default function Admin() {
                   <div key={req.id} className={`p-4 border rounded-lg ${req.status === 'pending' ? 'bg-blue-500/5 border-blue-500/20' : 'bg-gray-50 dark:bg-[#202124]'}`}>
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{req.site_name}</h3>
-                          {req.status === 'pending' && <span className="px-2 py-0.5 text-xs font-bold text-blue-600 bg-blue-500/10 border border-blue-500/20 rounded">PENDING</span>}
-                        </div>
+                        <div className="flex items-center gap-2 mb-1"><h3 className="font-semibold">{req.site_name}</h3>{req.status === 'pending' && <span className="px-2 py-0.5 text-xs font-bold text-blue-600 bg-blue-500/10 border border-blue-500/20 rounded">PENDING</span>}</div>
                         <p className="text-xs text-gray-500 mb-2">{req.site_url}</p>
                         {req.description && <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">{req.description}</p>}
                       </div>
-                      {req.status === 'pending' && (
-                        <div className="flex gap-2">
-                          <button onClick={() => handleApproveSiteRequest(req)} className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg">Approve</button>
-                          <button onClick={() => handleRejectSiteRequest(req.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Reject</button>
-                        </div>
-                      )}
+                      {req.status === 'pending' && (<div className="flex gap-2"><button onClick={() => handleApproveSiteRequest(req)} className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg">Approve</button><button onClick={() => handleRejectSiteRequest(req.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Reject</button></div>)}
                     </div>
                   </div>
                 ))}
@@ -414,10 +361,7 @@ export default function Admin() {
               <div className="space-y-3">
                 {withdrawals.map((w) => (
                   <div key={w.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                    <div>
-                      <p className="font-mono text-sm text-gray-500">User: {w.user_id.slice(0, 8)}...</p>
-                      <p className="text-2xl font-bold text-orange-600">${w.amount.toFixed(2)}</p>
-                    </div>
+                    <div><p className="font-mono text-sm text-gray-500">User: {w.user_id.slice(0, 8)}...</p><p className="text-2xl font-bold text-orange-600">${w.amount.toFixed(2)}</p></div>
                     <div className="flex gap-2">
                       <button onClick={() => handleApproveWithdrawal(w.id, w.user_id, w.amount)} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">Approve</button>
                       <button onClick={() => handleRejectWithdrawal(w.id)} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium">Reject</button>
@@ -438,10 +382,7 @@ export default function Admin() {
                   <div key={msg.id} className={`p-4 border rounded-lg ${msg.status === 'unread' ? 'bg-blue-500/5 border-blue-500/20' : 'bg-gray-50 dark:bg-[#202124]'}`}>
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{msg.subject}</h3>
-                          {msg.status === 'unread' && <span className="px-2 py-0.5 text-xs font-bold text-blue-600 bg-blue-500/10 border border-blue-500/20 rounded">NEW</span>}
-                        </div>
+                        <div className="flex items-center gap-2 mb-1"><h3 className="font-semibold">{msg.subject}</h3>{msg.status === 'unread' && <span className="px-2 py-0.5 text-xs font-bold text-blue-600 bg-blue-500/10 border border-blue-500/20 rounded">NEW</span>}</div>
                         <p className="text-xs text-gray-500 mb-2">From: {msg.name} • {new Date(msg.created_at).toLocaleString()}</p>
                         <p className="text-sm text-gray-700 dark:text-gray-300">{msg.message}</p>
                       </div>
@@ -477,9 +418,7 @@ export default function Admin() {
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Linked Users</h2>
             <p className="text-gray-500 mb-4">Users who have linked their Minecraft accounts.</p>
-            <div className="space-y-3">
-              <p className="text-gray-500 italic">User management panel. (Check Supabase table 'treasury_tokens' for full list)</p>
-            </div>
+            <div className="space-y-3"><p className="text-gray-500 italic">User management panel. (Check Supabase table 'treasury_tokens' for full list)</p></div>
           </div>
         )}
 
