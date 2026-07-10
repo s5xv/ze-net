@@ -116,8 +116,8 @@ export default function Site() {
   if (loading) return <Layout user={user}><div className="p-8 text-center">Loading...</div></Layout>;
   if (!site) return <Layout user={user}><div className="p-8 text-center">Site not found</div></Layout>;
 
-  // Check if user is owner (for Manage button)
-  const isOwner = user && (site.owner_discord_id === user.id);
+  // FIXED: Check owner_user_id instead of owner_discord_id
+  const isOwner = user && (site.owner_user_id === user.id);
 
   return (
     <Layout user={user}>
@@ -140,7 +140,7 @@ export default function Site() {
             {/* ACTION BUTTONS */}
             <div className="flex gap-2 flex-shrink-0 flex-wrap">
               {isOwner && (
-                <button onClick={() => navigate(`/site/${slug}/manage`)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-purple-600 hover:bg-purple-700 text-white"> Manage</button>
+                <button onClick={() => navigate(`/site/${slug}/manage`)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-purple-600 hover:bg-purple-700 text-white">⚙ Manage</button>
               )}
               <button onClick={handleFollow} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isFollowing ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isFollowing ? '✓ Following' : 'Follow'}</button>
               <button onClick={handleBookmark} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isBookmarked ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isBookmarked ? '★ Bookmarked' : '☆ Bookmark'}</button>
