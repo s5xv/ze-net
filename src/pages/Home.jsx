@@ -173,37 +173,9 @@ export default function Home() {
       <main className="flex-grow max-w-7xl mx-auto px-4 py-8 sm:py-12 min-h-screen">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           
-          {/* LEFT SIDEBAR - BOOKMARKS */}
-          <div className="lg:col-span-1 order-1 lg:order-1">
-            {user && (
-              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>
-                  Your Bookmarks
-                </h3>
-                {bookmarks.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">No bookmarks yet. Bookmark a site to see it here!</p>
-                ) : (
-                  <div className="space-y-3">
-                    {bookmarks.map((bm) => (
-                      <a 
-                        key={bm.id} 
-                        href={`/site/${bm.sites?.slug}`} 
-                        className="block p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors"
-                      >
-                        <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
-                        <p className="text-xs text-gray-500 truncate">{bm.sites?.category}</p>
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* MAIN CONTENT - CENTERED */}
-          <div className="lg:col-span-3 order-2 lg:order-2 flex flex-col items-center">
-            <div className="w-full max-w-4xl space-y-8">
+          {/* MAIN CONTENT - CENTERED (3 columns) */}
+          <div className="lg:col-span-3 order-2 lg:order-1">
+            <div className="w-full max-w-4xl mx-auto space-y-8">
               <div className="text-center mb-6">
                 <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight">
                   Z&E <span className="text-blue-600 dark:text-blue-400">NET</span>
@@ -338,6 +310,34 @@ export default function Home() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* RIGHT SIDEBAR - BOOKMARKS (FAR RIGHT) */}
+          <div className="lg:col-span-1 order-1 lg:order-2">
+            {user && (
+              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>
+                  Your Bookmarks
+                </h3>
+                {bookmarks.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">No bookmarks yet. Bookmark a site to see it here!</p>
+                ) : (
+                  <div className="space-y-3">
+                    {bookmarks.map((bm) => (
+                      <a 
+                        key={bm.id} 
+                        href={`/site/${bm.sites?.slug}`} 
+                        className="block p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors"
+                      >
+                        <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
+                        <p className="text-xs text-gray-500 truncate">{bm.sites?.category}</p>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </main>
