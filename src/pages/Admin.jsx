@@ -39,7 +39,7 @@ export default function Admin() {
   const [withdrawals, setWithdrawals] = useState([]);
   const [analytics, setAnalytics] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [reports, setReports] = useState([]); // NEW
+  const [reports, setReports] = useState([]);
   const [premiumListings, setPremiumListings] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [siteRequests, setSiteRequests] = useState([]);
@@ -53,10 +53,11 @@ export default function Admin() {
   const [showAddAd, setShowAddAd] = useState(false);
   const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
   const [showManualDeposit, setShowManualDeposit] = useState(false);
+  const [editingSite, setEditingSite] = useState(null);
   
   const [newSite, setNewSite] = useState({
     business_name: '', owner_discord: '', category: 'Retail Shop',
-    plot_number: '', shortcut: '', discord_invite: '', website_url: '', description: ''
+    plot_number: '', shortcut: '', discord_invite: '', website_url: '', description: '', keywords: ''
   });
   
   const [newAd, setNewAd] = useState({
@@ -67,8 +68,6 @@ export default function Admin() {
   const [newAnnouncement, setNewAnnouncement] = useState({ title: '', message: '' });
   const [manualDeposit, setManualDeposit] = useState({ userId: '', amount: '', reason: '', notes: '' });
   const [newPremium, setNewPremium] = useState({ siteId: '', tier: 'basic', days: 30 });
-
-  // Report punishment state
   const [selectedPunishment, setSelectedPunishment] = useState({});
 
   useEffect(() => {
@@ -108,7 +107,7 @@ export default function Admin() {
     setAnalytics(analyticsData || []);
     const { data: messagesData } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
     setMessages(messagesData || []);
-    const { data: reportsData } = await supabase.from('reports').select('*').order('created_at', { ascending: false }); // NEW
+    const { data: reportsData } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
     setReports(reportsData || []);
     const { data: premiumData } = await supabase.from('premium_listings').select('*, sites(name)').order('created_at', { ascending: false });
     setPremiumListings(premiumData || []);
@@ -130,23 +129,52 @@ export default function Admin() {
     setStats({ totalSites: sitesData?.length || 0, totalViews, totalClicks, pendingWithdrawals: withdrawalsData?.length || 0 });
   };
 
+  // FIXED: Uses user.id instead of reg.user_id
   const handleAddSite = async (e) => {
     e.preventDefault();
     const shortcutsArray = newSite.shortcut ? newSite.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
+    const keywordsArray = newSite.keywords ? newSite.keywords.split(',').map(s => s.trim()).filter(s => s) : [];
     const slug = generateSlug(newSite.business_name);
     let finalDescription = newSite.description || `${newSite.business_name} - ${newSite.category}`;
     if (newSite.discord_invite) finalDescription += `\nDiscord: ${newSite.discord_invite}`;
 
     const { error } = await supabase.from('sites').insert({
       name: newSite.business_name, slug, description: finalDescription,
-      category: newSite.category, url: newSite.website_url || '#', shortcuts: shortcutsArray.join(', '), is_verified: false, owner_user_id: reg.user_id
+      category: newSite.category, url: newSite.website_url || '#', 
+      shortcuts: shortcutsArray.join(', '), keywords: keywordsArray,
+      is_verified: false, owner_user_id: user.id
     });
 
     if (error) alert('Error creating site: ' + error.message);
     else {
       alert('Site created instantly!');
       setShowAddSite(false);
-      setNewSite({ business_name: '', owner_discord: '', category: 'Retail Shop', plot_number: '', shortcut: '', discord_invite: '', website_url: '', description: '' });
+      setNewSite({ business_name: '', owner_discord: '', category: 'Retail Shop', plot_number: '', shortcut: '', discord_invite: '', website_url: '', description: '', keywords: '' });
+      fetchData();
+    }
+  };
+
+  const handleUpdateSite = async (e) => {
+    e.preventDefault();
+    if (!editingSite) return;
+    
+    const shortcutsArray = editingSite.shortcut ? editingSite.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
+    const keywordsArray = editingSite.keywords ? editingSite.keywords.split(',').map(s => s.trim()).filter(s => s) : [];
+    
+    const { error } = await supabase.from('sites').update({
+      name: editingSite.name,
+      description: editingSite.description,
+      category: editingSite.category,
+      url: editingSite.url,
+      shortcuts: shortcutsArray.join(', '),
+      keywords: keywordsArray,
+      is_verified: editingSite.is_verified
+    }).eq('id', editingSite.id);
+
+    if (error) alert('Error updating site: ' + error.message);
+    else {
+      alert('Site updated!');
+      setEditingSite(null);
       fetchData();
     }
   };
@@ -217,15 +245,10 @@ export default function Admin() {
     }
   };
 
-  // NEW: Handle Report Resolution
   const handleResolveReport = async (report) => {
     const punishment = selectedPunishment[report.id] || 'No Action';
     if (!confirm(`Resolve this report with punishment: "${punishment}"?`)) return;
-
-    // 1. Update report status
     await supabase.from('reports').update({ status: 'resolved', punishment }).eq('id', report.id);
-
-    // 2. Execute punishment if needed
     if (punishment === 'Delete Site' && report.target_type === 'site') {
       await supabase.from('sites').delete().eq('id', report.target_id);
       alert('Report resolved and site deleted.');
@@ -235,7 +258,6 @@ export default function Admin() {
     } else {
       alert(`Report resolved with: ${punishment}`);
     }
-    
     fetchData();
   };
 
@@ -254,7 +276,7 @@ export default function Admin() {
 
   const handleApproveSiteRequest = async (req) => {
     if (confirm('Approve?')) {
-      await supabase.from('sites').insert({ name: req.site_name, slug: generateSlug(req.site_name), description: req.description || '', url: req.site_url, category: 'Other', is_verified: false, owner_user_id: reg.user_id });
+      await supabase.from('sites').insert({ name: req.site_name, slug: generateSlug(req.site_name), description: req.description || '', url: req.site_url, category: 'Other', is_verified: false });
       await supabase.from('site_requests').update({ status: 'approved' }).eq('id', req.id);
       fetchData();
     }
@@ -264,13 +286,17 @@ export default function Admin() {
     if (confirm('Reject?')) { await supabase.from('site_requests').update({ status: 'rejected' }).eq('id', id); fetchData(); }
   };
 
+  // FIXED: Properly uses reg.user_id
   const handleApproveBusiness = async (reg) => {
     if (!confirm(`Approve "${reg.business_name}"?`)) return;
     const shortcutsArray = reg.shortcut ? reg.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
+    const keywordsArray = reg.keywords ? reg.keywords.split(',').map(s => s.trim()).filter(s => s) : [];
     const { error } = await supabase.from('sites').insert({
       name: reg.business_name, slug: generateSlug(reg.business_name),
       description: reg.description || `${reg.business_name} - ${reg.category}`,
-      category: reg.category, url: reg.website_url || '#', shortcuts: shortcutsArray.join(', '), is_verified: false, owner_user_id: reg.user_id
+      category: reg.category, url: reg.website_url || '#', 
+      shortcuts: shortcutsArray.join(', '), keywords: keywordsArray,
+      is_verified: false, owner_user_id: reg.user_id
     });
     if (error) alert('Error: ' + error.message);
     else { await supabase.from('business_registrations').update({ status: 'approved' }).eq('id', reg.id); alert('Site created!'); fetchData(); }
@@ -364,13 +390,13 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* SITES TAB */}
         {activeTab === 'sites' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Site Management</h2>
               <button onClick={() => setShowAddSite(!showAddSite)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">{showAddSite ? 'Cancel' : '+ Add Site Instantly'}</button>
             </div>
+            
             {showAddSite && (
               <form onSubmit={handleAddSite} className="mb-6 p-6 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4 border border-gray-200 dark:border-gray-700">
                 <h3 className="font-bold text-lg mb-2">Create New Site</h3>
@@ -405,6 +431,10 @@ export default function Admin() {
                   </div>
                 </div>
                 <div>
+                  <label className="block text-sm font-medium mb-1">Keywords (comma separated, max 3)</label>
+                  <input type="text" value={newSite.keywords} onChange={(e) => setNewSite({...newSite, keywords: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="e.g., food, pizza, restaurant" />
+                </div>
+                <div>
                   <label className="block text-sm font-medium mb-1">Discord Invite Link</label>
                   <input type="url" value={newSite.discord_invite} onChange={(e) => setNewSite({...newSite, discord_invite: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://discord.gg/..." />
                 </div>
@@ -415,18 +445,68 @@ export default function Admin() {
                 <button type="submit" className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Create Site Instantly</button>
               </form>
             )}
+
+            {editingSite && (
+              <form onSubmit={handleUpdateSite} className="mb-6 p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg space-y-4 border border-blue-300 dark:border-blue-700">
+                <h3 className="font-bold text-lg mb-2">Editing: {editingSite.name}</h3>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Site Name</label>
+                  <input type="text" value={editingSite.name} onChange={(e) => setEditingSite({...editingSite, name: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <textarea value={editingSite.description} onChange={(e) => setEditingSite({...editingSite, description: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="3" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Category</label>
+                    <select value={editingSite.category} onChange={(e) => setEditingSite({...editingSite, category: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg">
+                      {businessCategories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">URL</label>
+                    <input type="url" value={editingSite.url || ''} onChange={(e) => setEditingSite({...editingSite, url: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Shortcuts</label>
+                    <input type="text" value={editingSite.shortcuts || ''} onChange={(e) => setEditingSite({...editingSite, shortcuts: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Keywords</label>
+                    <input type="text" value={editingSite.keywords?.join(', ') || ''} onChange={(e) => setEditingSite({...editingSite, keywords: e.target.value.split(',').map(s => s.trim())})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" checked={editingSite.is_verified || false} onChange={(e) => setEditingSite({...editingSite, is_verified: e.target.checked})} className="w-4 h-4" />
+                  <label className="text-sm font-medium">Verified</label>
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">Save Changes</button>
+                  <button type="button" onClick={() => setEditingSite(null)} className="px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium">Cancel</button>
+                </div>
+              </form>
+            )}
+
             <div className="space-y-3">
               {sites.map((site) => (
                 <div key={site.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{site.name} {site.is_verified && <span className="text-blue-500">✓</span>}</h3><p className="text-sm text-gray-500">{site.category} • Shortcuts: {site.shortcuts || 'None'}</p></div>
-                  <button onClick={() => handleDelete('sites', site.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
+                  <div>
+                    <h3 className="font-semibold">{site.name} {site.is_verified && <span className="text-blue-500">✓</span>}</h3>
+                    <p className="text-sm text-gray-500">{site.category} • Shortcuts: {site.shortcuts || 'None'} • Keywords: {site.keywords?.join(', ') || 'None'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingSite(site)} className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Edit</button>
+                    <button onClick={() => handleDelete('sites', site.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Delete</button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* ADS TAB */}
         {activeTab === 'ads' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -483,7 +563,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* REPORTS TAB (NEW) */}
         {activeTab === 'reports' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-6">Reports ({reports.filter(r => r.status === 'pending').length} pending)</h2>
@@ -523,207 +602,6 @@ export default function Admin() {
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* VERIFICATIONS TAB */}
-        {activeTab === 'verifications' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Site Verifications ({verificationRequests.filter(r => r.status === 'pending').length} pending)</h2>
-            {verificationRequests.length === 0 ? <p className="text-gray-500 text-center py-12">No requests</p> : (
-              <div className="space-y-3">
-                {verificationRequests.map((req) => (
-                  <div key={req.id} className={`p-4 border rounded-lg ${req.status === 'pending' ? 'bg-blue-500/5 border-blue-500/20' : 'bg-gray-50 dark:bg-[#202124]'}`}>
-                    <div className="flex justify-between items-start">
-                      <div><h3 className="font-semibold">{req.site_name}</h3><p className="text-xs text-gray-500 mb-2">URL: {req.site_url || 'None'}</p></div>
-                      {req.status === 'pending' && (<div className="flex gap-2"><button onClick={() => handleApproveVerification(req)} className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg">Approve (-$100)</button><button onClick={() => handleRejectVerification(req.id)} className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg">Reject</button></div>)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* BUSINESS TAB */}
-        {activeTab === 'business' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Business Registrations</h2>
-            <div className="space-y-3">
-              {businessRegistrations.map((reg) => (
-                <div key={reg.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{reg.business_name}</h3><p className="text-xs text-gray-500">{reg.category} • Plot: {reg.plot_number || 'N/A'} • Shortcut: {reg.shortcut || 'None'}</p></div>
-                  {reg.status === 'pending' && (<div className="flex gap-2"><button onClick={() => handleApproveBusiness(reg)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve</button><button onClick={() => handleRejectBusiness(reg.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button></div>)}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* AD SUBMISSIONS TAB */}
-        {activeTab === 'ad-submissions' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Ad Submissions</h2>
-            <div className="space-y-3">
-              {adSubmissions.map((sub) => (
-                <div key={sub.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{sub.company_name}</h3><p className="text-xs text-gray-500">Tier: {sub.tier.toUpperCase()}</p></div>
-                  {sub.status === 'pending' && (<div className="flex gap-2"><button onClick={() => handleApproveAd(sub)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve & Charge</button><button onClick={() => handleRejectAd(sub.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button></div>)}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* PREMIUM TAB */}
-        {activeTab === 'premium' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Premium Listings</h2>
-            <div className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg">
-              <div className="grid md:grid-cols-3 gap-4">
-                <select value={newPremium.siteId} onChange={(e) => setNewPremium({...newPremium, siteId: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg"><option value="">Select Site</option>{sites.map((s) => (<option key={s.id} value={s.id}>{s.name}</option>))}</select>
-                <select value={newPremium.tier} onChange={(e) => setNewPremium({...newPremium, tier: e.target.value})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg"><option value="basic">Basic</option><option value="elite">Elite</option></select>
-                <input type="number" placeholder="Days" value={newPremium.days || ''} onChange={(e) => setNewPremium({...newPremium, days: parseInt(e.target.value) || 0})} className="px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" />
-              </div>
-              <button onClick={handleAddPremium} className="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg text-sm">Add Premium</button>
-            </div>
-            <div className="space-y-3">
-              {premiumListings.map((listing) => (
-                <div key={listing.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{listing.sites?.name}</h3><p className="text-sm text-gray-500">{listing.tier} • {new Date(listing.end_date).toLocaleDateString()}</p></div>
-                  <button onClick={async () => { await supabase.from('premium_listings').delete().eq('id', listing.id); fetchData(); }} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Remove</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ANNOUNCEMENTS TAB */}
-        {activeTab === 'announcements' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Announcements</h2>
-              <button onClick={() => setShowAddAnnouncement(!showAddAnnouncement)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">{showAddAnnouncement ? 'Cancel' : '+ Add'}</button>
-            </div>
-            {showAddAnnouncement && (
-              <form onSubmit={handleAddAnnouncement} className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4">
-                <input type="text" placeholder="Title" value={newAnnouncement.title} onChange={(e) => setNewAnnouncement({...newAnnouncement, title: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
-                <textarea placeholder="Message" value={newAnnouncement.message} onChange={(e) => setNewAnnouncement({...newAnnouncement, message: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="3" required />
-                <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded-lg">Add</button>
-              </form>
-            )}
-            <div className="space-y-3">
-              {announcements.map((ann) => (
-                <div key={ann.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{ann.title}</h3><p className="text-sm text-gray-500">{ann.message}</p></div>
-                  <button onClick={() => handleDelete('announcements', ann.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Delete</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* REQUESTS TAB */}
-        {activeTab === 'requests' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Site Requests</h2>
-            <div className="space-y-3">
-              {siteRequests.map((req) => (
-                <div key={req.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><h3 className="font-semibold">{req.site_name}</h3><p className="text-xs text-gray-500">{req.status}</p></div>
-                  {req.status === 'pending' && (<div className="flex gap-2"><button onClick={() => handleApproveSiteRequest(req)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve</button><button onClick={() => handleRejectSiteRequest(req.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button></div>)}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* DEPOSITS TAB */}
-        {activeTab === 'deposits' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Manual Deposits</h2>
-              <button onClick={() => setShowManualDeposit(!showManualDeposit)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">{showManualDeposit ? 'Cancel' : '+ Deposit'}</button>
-            </div>
-            {showManualDeposit && (
-              <form onSubmit={handleManualDeposit} className="mb-6 p-4 bg-gray-50 dark:bg-[#202124] rounded-lg space-y-4">
-                <input type="text" placeholder="User ID" value={manualDeposit.userId} onChange={(e) => setManualDeposit({...manualDeposit, userId: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
-                <input type="number" step="0.01" placeholder="Amount" value={manualDeposit.amount} onChange={(e) => setManualDeposit({...manualDeposit, amount: e.target.value})} className="w-full px-3 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" required />
-                <button type="submit" className="px-6 py-2 bg-green-600 text-white rounded-lg">Process</button>
-              </form>
-            )}
-            <div className="space-y-3">
-              {manualDeposits.map((dep) => (
-                <div key={dep.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg">
-                  <p className="text-sm text-gray-500">User: {dep.user_id?.slice(0,8)}...</p>
-                  <p className="text-xl font-bold text-green-600">${dep.amount?.toFixed(2)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* WITHDRAWALS TAB */}
-        {activeTab === 'withdrawals' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Withdrawals</h2>
-            <div className="space-y-3">
-              {withdrawals.map((w) => (
-                <div key={w.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><p className="text-sm text-gray-500">User: {w.user_id?.slice(0,8)}...</p><p className="text-xl font-bold text-orange-600">${w.amount?.toFixed(2)}</p></div>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleApproveWithdrawal(w.id, w.user_id, w.amount)} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg">Approve</button>
-                    <button onClick={() => handleRejectWithdrawal(w.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Reject</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* MESSAGES TAB */}
-        {activeTab === 'messages' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Messages</h2>
-            <div className="space-y-3">
-              {messages.map((msg) => (
-                <div key={msg.id} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-start">
-                  <div><h3 className="font-semibold">{msg.subject}</h3><p className="text-xs text-gray-500">From: {msg.name}</p><p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{msg.message}</p></div>
-                  <button onClick={() => handleDelete('contact_messages', msg.id)} className="px-3 py-1.5 text-xs bg-red-600 text-white rounded-lg">Delete</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ANALYTICS TAB */}
-        {activeTab === 'analytics' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Search Analytics</h2>
-            <div className="space-y-2">
-              {analytics.map((a, i) => (
-                <div key={i} className="p-3 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-center">
-                  <div><p className="font-medium">{a.query}</p><p className="text-xs text-gray-500">{new Date(a.created_at).toLocaleString()}</p></div>
-                  <span className="text-sm text-gray-500">{a.results_count} results</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* USERS TAB */}
-        {activeTab === 'users' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Linked Users</h2>
-            <p className="text-gray-500">Check Supabase 'treasury_tokens' table for full list.</p>
-          </div>
-        )}
-
-        {/* WIKI TAB */}
-        {activeTab === 'wiki' && (
-          <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-6">Wiki Management</h2>
-            <button onClick={() => fetch('/api?endpoint=wiki-scrape&action=all-pages').then(r => r.json()).then(d => alert(d.message))} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Force Sync Wiki</button>
           </div>
         )}
       </div>
