@@ -8,6 +8,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Home from './pages/Home';
 import Search from './pages/Search';
 import Site from './pages/Site';
+import SiteManage from './pages/SiteManage';
 import Login from './pages/Login';
 import Account from './pages/Account';
 import Admin from './pages/Admin';
@@ -25,6 +26,7 @@ import Utilities from './pages/Utilities';
 import Challenge from './pages/Challenge';
 import Achievements from './pages/Achievements';
 import Leaderboard from './pages/Leaderboard';
+import Docs from './pages/Docs';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -34,7 +36,6 @@ function AuthHandler() {
     const handleCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
-
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (!error) {
@@ -43,7 +44,6 @@ function AuthHandler() {
         }
       }
     };
-
     handleCallback();
   }, [navigate]);
 
@@ -62,7 +62,6 @@ function App() {
         if (searchInput) searchInput.focus();
       }
     };
-
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
@@ -83,6 +82,7 @@ function App() {
           <Route path="/" element={<Home user={user} />} />
           <Route path="/search" element={<Search user={user} />} />
           <Route path="/site/:slug" element={<Site user={user} />} />
+          <Route path="/site/:slug/manage" element={<SiteManage user={user} />} />
           <Route path="/login" element={<Login />} />
           <Route path="/account" element={<Account user={user} />} />
           <Route path="/admin" element={<Admin user={user} />} />
@@ -95,11 +95,12 @@ function App() {
           <Route path="/departments/:slug" element={<DepartmentDetail />} />
           <Route path="/forums" element={<Forums />} />
           <Route path="/forums/:forumId" element={<ForumThreads />} />
-          <Route path="/wiki" element={<Wiki />} />
+          <Route path="/wiki" element={<Wiki user={user} />} />
           <Route path="/utilities" element={<Utilities user={user} />} />
           <Route path="/challenge" element={<Challenge user={user} />} />
           <Route path="/achievements" element={<Achievements user={user} />} />
           <Route path="/leaderboard" element={<Leaderboard user={user} />} />
+          <Route path="/docs" element={<Docs user={user} />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
