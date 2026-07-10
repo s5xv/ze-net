@@ -67,7 +67,7 @@ export default function Home() {
   const fetchStats = async () => {
     try {
       // Use our proxy API instead of direct call
-      const res = await fetch('/api/online-players');
+      const res = await fetch('/api?endpoint=online-players');
       const data = await res.json();
       const { count } = await supabase.from('sites').select('*', { count: 'exact', head: true });
       setStats({ onlinePlayers: data.players?.length || 0, totalSites: count || 0 });

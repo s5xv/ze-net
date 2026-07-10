@@ -1,3 +1,5 @@
+import Layout from '../components/Layout';
+import { useAuth } from '../hooks/useAuth';
 import Footer from '../components/Footer';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -89,6 +91,7 @@ export default function LinkAccount({ user }) {
 
   if (!user) {
     return (
+    <Layout user={user}>
       <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
@@ -99,6 +102,7 @@ export default function LinkAccount({ user }) {
   }
 
   return (
+    <Layout user={user}>
     <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
       <div className="flex justify-end gap-4 px-6 py-4">
         <a href="/" className="text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">HOME</a>

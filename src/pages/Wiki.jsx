@@ -54,7 +54,7 @@ export default function Wiki() {
     }
     setSyncing(true);
     try {
-      const res = await fetch('/api/wiki-scrape?action=all-pages');
+      const res = await fetch('/api?endpoint=wiki-scrapefetch('/api?endpoint=wiki-scrape&action=all-pages')action=all-pages');
       const data = await res.json();
       alert(data.message || 'Wiki synced!');
       await fetchWikiData();

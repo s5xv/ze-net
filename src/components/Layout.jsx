@@ -45,7 +45,7 @@ export default function Layout({ children, user }) {
           
           if (tokenData?.account_id) {
             // Use our proxy API instead of direct Mojang call
-            const res = await fetch(`/api/mc-profile?uuid=${tokenData.account_id}`);
+            const res = await fetch(`/api?endpoint=mc-profilefetch(`/api?endpoint=mc-profile&uuid=${tokenData.account_id}`)uuid=${tokenData.account_id}`);
             if (res.ok) {
               const mcData = await res.json();
               if (mcData.name) {

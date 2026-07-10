@@ -1,9 +1,12 @@
+import Layout from '../components/Layout';
+import { useAuth } from '../hooks/useAuth';
 import Footer from '../components/Footer';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 
 export default function MiningGame() {
+  const { user } = useAuth(); {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const [score, setScore] = useState(0);
@@ -17,7 +20,8 @@ export default function MiningGame() {
     if (gameStarted && !gameOver) {
       initGame();
     }
-    return () => {
+    return (
+    <Layout user={user}>) => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
@@ -101,7 +105,8 @@ export default function MiningGame() {
 
     window.addEventListener('keydown', handleKeyPress);
 
-    return () => {
+    return (
+    <Layout user={user}>) => {
       window.removeEventListener('keydown', handleKeyPress);
     };
   };
@@ -120,6 +125,7 @@ export default function MiningGame() {
   };
 
   return (
+    <Layout user={user}>
     <div className="min-h-screen bg-neutral-50 dark:bg-[#09090b] text-neutral-900 dark:text-neutral-100 transition-colors duration-200 flex flex-col">
       <div className="flex flex-wrap justify-end gap-2 sm:gap-4 px-4 sm:px-6 py-4">
         <a href="/" className="text-xs sm:text-sm font-mono font-medium text-neutral-500 dark:text-neutral-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors tracking-wide">HOME</a>

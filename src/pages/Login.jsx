@@ -1,9 +1,12 @@
+import Layout from '../components/Layout';
+import { useAuth } from '../hooks/useAuth';
 import Footer from '../components/Footer';
 import { supabase } from '../services/supabase';
 import { useTheme } from '../hooks/useTheme';
 import { useState } from 'react';
 
 export default function Login() {
+  const { user } = useAuth(); {
   const { isDark, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(false);
 
@@ -30,6 +33,7 @@ export default function Login() {
   };
 
   return (
+    <Layout user={user}>
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100 dark:from-[#09090b] dark:to-[#111111] flex items-center justify-center px-4 py-12">
       {/* Theme Toggle */}
       <div className="absolute top-6 right-6">
