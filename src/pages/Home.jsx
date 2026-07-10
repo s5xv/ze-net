@@ -16,14 +16,20 @@ export default function Home() {
   const { isDark } = useTheme();
   const [stats, setStats] = useState({ totalSites: 0 });
   const [ads, setAds] = useState([]);
-  const [bookmarks, setBookmarks] = useState([]); // NEW
+  const [bookmarks, setBookmarks] = useState([]);
+  
+  // NEW: New & Trending State
+  const [newSites, setNewSites] = useState([]);
+  const [trendingSites, setTrendingSites] = useState([]);
+  
   const suggestionsRef = useRef(null);
 
   useEffect(() => {
     fetchStats();
     fetchFeaturedContent();
     fetchAds();
-    if (user) fetchBookmarks(); // NEW
+    fetchNewAndTrending(); // NEW
+    if (user) fetchBookmarks();
   }, [user]);
 
   useEffect(() => {
@@ -119,7 +125,15 @@ export default function Home() {
     setAds(data || []);
   };
 
-  // NEW: Fetch Bookmarks
+  // NEW: Fetch New and Trending Sites
+  const fetchNewAndTrending = async () => {
+    const { data: newSitesData } = await supabase.from('sites').select('*').order('created_at', { ascending: false }).limit(5);
+    setNewSites(newSitesData || []);
+    
+    const { data: trendingSitesData } = await supabase.from('sites').select('*').order('view_count', { ascending: false }).limit(5);
+    setTrendingSites(trendingSitesData || []);
+  };
+
   const fetchBookmarks = async () => {
     const { data } = await supabase
       .from('bookmarks')
@@ -161,7 +175,6 @@ export default function Home() {
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-7xl mx-auto px-4 py-8 sm:py-12 min-h-screen">
-        {/* NEW: Grid layout with right sidebar for bookmarks */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           
           {/* Main Content - 3 columns */}
@@ -236,6 +249,53 @@ export default function Home() {
               </div>
             </div>
 
+            {/* NEW & TRENDING SECTION */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* New Sites */}
+              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <span className="text-green-500 text-xl">✨</span> New Sites
+                </h3>
+                <div className="space-y-3">
+                  {newSites.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">No new sites yet.</p>
+                  ) : (
+                    newSites.map((site) => (
+                      <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] cursor-pointer transition-colors">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          {site.name}
+                          {site.is_verified && <span className="text-blue-500 text-xs">✓</span>}
+                        </h4>
+                        <p className="text-xs text-gray-500">{site.category} • Added {new Date(site.created_at).toLocaleDateString()}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Trending Sites */}
+              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <span className="text-orange-500 text-xl"></span> Trending This Week
+                </h3>
+                <div className="space-y-3">
+                  {trendingSites.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">No trending sites yet.</p>
+                  ) : (
+                    trendingSites.map((site) => (
+                      <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] cursor-pointer transition-colors">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          {site.name}
+                          {site.is_verified && <span className="text-blue-500 text-xs">✓</span>}
+                        </h4>
+                        <p className="text-xs text-gray-500">{site.category} • {site.view_count || 0} views</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* ADS */}
             {ads.length > 0 && (
               <div className="mt-8">
@@ -256,7 +316,7 @@ export default function Home() {
             )}
           </div>
 
-          {/* NEW: Right Sidebar for Bookmarks */}
+          {/* Right Sidebar for Bookmarks */}
           <div className="lg:col-span-1">
             {user && (
               <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm sticky top-24">

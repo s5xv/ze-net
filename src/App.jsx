@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
 import { useEffect } from 'react';
@@ -9,6 +9,8 @@ import Home from './pages/Home';
 import Search from './pages/Search';
 import Site from './pages/Site';
 import SiteManage from './pages/SiteManage';
+import Profile from './pages/Profile';
+import Collections from './pages/Collections';
 import Login from './pages/Login';
 import Account from './pages/Account';
 import Admin from './pages/Admin';
@@ -66,6 +68,8 @@ function App() {
           <Route path="/search" element={<Search user={user} />} />
           <Route path="/site/:slug" element={<Site user={user} />} />
           <Route path="/site/:slug/manage" element={<SiteManage user={user} />} />
+          <Route path="/profile/:userId" element={<Profile user={user} />} />
+          <Route path="/collections" element={<Collections user={user} />} />
           <Route path="/login" element={<Login />} />
           <Route path="/account" element={<Account user={user} />} />
           <Route path="/admin" element={<Admin user={user} />} />
