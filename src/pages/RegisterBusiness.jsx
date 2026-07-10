@@ -142,9 +142,9 @@ export default function RegisterBusiness() {
                 value={formData.plot_number}
                 onChange={(e) => setFormData({...formData, plot_number: e.target.value})}
                 className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-                placeholder="e.g., A123, B456, C789, 12A, etc."
+                placeholder="e.g., 78, 1, plot 002 Porock, A123, etc."
               />
-              <p className="text-xs text-gray-500 mt-1">Any combination of letters and numbers (e.g., A123, 45B, C789)</p>
+              <p className="text-xs text-gray-500 mt-1">Any format works - numbers only, letters, or mixed (e.g., 78, plot 002 Porock, A123)</p>
             </div>
 
             <div>
