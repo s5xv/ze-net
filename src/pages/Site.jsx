@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTheme } from './hooks/useTheme';
-import { supabase } from './services/supabase';
+import { useTheme } from '../hooks/useTheme';
+import { supabase } from '../services/supabase';
 import Footer from '../components/Footer';
 import SiteReviews from '../components/SiteReviews';
 

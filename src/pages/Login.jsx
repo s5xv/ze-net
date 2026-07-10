@@ -1,6 +1,6 @@
 import Footer from '../components/Footer';
-import { supabase } from './services/supabase';
-import { useTheme } from './hooks/useTheme';
+import { supabase } from '../services/supabase';
+import { useTheme } from '../hooks/useTheme';
 import { useState } from 'react';
 
 export default function Login() {

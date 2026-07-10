@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTheme } from './hooks/useTheme';
-import { supabase } from './services/supabase';
+import { useTheme } from '../hooks/useTheme';
+import { supabase } from '../services/supabase';
 import { useState, useEffect } from 'react';
 
 export default function Category() {

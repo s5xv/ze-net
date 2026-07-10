@@ -1,7 +1,7 @@
 import Footer from '../components/Footer';
 import { useState } from 'react';
-import { useTheme } from './hooks/useTheme';
-import { supabase } from './services/supabase';
+import { useTheme } from '../hooks/useTheme';
+import { supabase } from '../services/supabase';
 
 export default function Contact() {
   const { isDark, toggleTheme } = useTheme();
