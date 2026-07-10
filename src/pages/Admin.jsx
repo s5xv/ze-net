@@ -53,10 +53,10 @@ export default function Admin() {
   const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
   const [showManualDeposit, setShowManualDeposit] = useState(false);
   
-  // Updated states to match public forms
+  // Updated states to include description and discord link
   const [newSite, setNewSite] = useState({
     business_name: '', owner_discord: '', category: 'Retail Shop',
-    plot_number: '', shortcut: '', discord_invite: '', website_url: ''
+    plot_number: '', shortcut: '', discord_invite: '', website_url: '', description: ''
   });
   
   const [newAd, setNewAd] = useState({
@@ -125,16 +125,22 @@ export default function Admin() {
     setStats({ totalSites: sitesData?.length || 0, totalViews, totalClicks, pendingWithdrawals: withdrawalsData?.length || 0 });
   };
 
-  // INSTANT SITE CREATION (Matches public form)
+  // INSTANT SITE CREATION (Matches public form + includes description & discord)
   const handleAddSite = async (e) => {
     e.preventDefault();
     const shortcutsArray = newSite.shortcut ? newSite.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
     const slug = generateSlug(newSite.business_name);
     
+    // Combine description with discord link if provided, so it shows on the site page
+    let finalDescription = newSite.description || `${newSite.business_name} - ${newSite.category}`;
+    if (newSite.discord_invite) {
+      finalDescription += `\nDiscord: ${newSite.discord_invite}`;
+    }
+
     const { error } = await supabase.from('sites').insert({
       name: newSite.business_name,
       slug,
-      description: `${newSite.business_name} - ${newSite.category}. Plot: ${newSite.plot_number || 'N/A'}`,
+      description: finalDescription,
       category: newSite.category,
       url: newSite.website_url || '#',
       shortcuts: shortcutsArray,
@@ -146,7 +152,7 @@ export default function Admin() {
     } else {
       alert('Site created instantly!');
       setShowAddSite(false);
-      setNewSite({ business_name: '', owner_discord: '', category: 'Retail Shop', plot_number: '', shortcut: '', discord_invite: '', website_url: '' });
+      setNewSite({ business_name: '', owner_discord: '', category: 'Retail Shop', plot_number: '', shortcut: '', discord_invite: '', website_url: '', description: '' });
       fetchData();
     }
   };
@@ -254,7 +260,7 @@ export default function Admin() {
     const shortcutsArray = reg.shortcut ? reg.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
     const { error } = await supabase.from('sites').insert({
       name: reg.business_name, slug: generateSlug(reg.business_name),
-      description: `${reg.business_name} - ${reg.category}. Plot: ${reg.plot_number || 'N/A'}`,
+      description: reg.description || `${reg.business_name} - ${reg.category}`,
       category: reg.category, url: reg.website_url || '#', shortcuts: shortcutsArray, is_verified: false
     });
     if (error) alert('Error: ' + error.message);
@@ -349,7 +355,7 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* SITES TAB - MATCHES PUBLIC FORM */}
+        {/* SITES TAB - MATCHES PUBLIC FORM + DESCRIPTION + DISCORD */}
         {activeTab === 'sites' && (
           <div className="bg-white dark:bg-[#303134] rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
             <div className="flex justify-between items-center mb-6">
@@ -375,6 +381,13 @@ export default function Admin() {
                     </select>
                   </div>
                 </div>
+                
+                {/* NEW: Description Field */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description *</label>
+                  <textarea required value={newSite.description} onChange={(e) => setNewSite({...newSite, description: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" rows="3" placeholder="Describe the site..." />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">Search Shortcut</label>
@@ -385,6 +398,13 @@ export default function Admin() {
                     <input type="text" value={newSite.plot_number} onChange={(e) => setNewSite({...newSite, plot_number: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="e.g., A123" />
                   </div>
                 </div>
+                
+                {/* NEW: Discord Link Field */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Discord Invite Link</label>
+                  <input type="url" value={newSite.discord_invite} onChange={(e) => setNewSite({...newSite, discord_invite: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://discord.gg/..." />
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium mb-1">Website URL</label>
                   <input type="url" value={newSite.website_url} onChange={(e) => setNewSite({...newSite, website_url: e.target.value})} className="w-full px-4 py-2 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://..." />

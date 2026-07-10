@@ -18,7 +18,8 @@ export default function RegisterBusiness() {
     plot_number: '',
     shortcut: '',
     discord_invite: '',
-    website_url: ''
+    website_url: '',
+    description: '' // Added description
   });
 
   const categories = [
@@ -95,6 +96,12 @@ export default function RegisterBusiness() {
               <select required value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500">
                 {categories.map(cat => (<option key={cat} value={cat}>{cat}</option>))}
               </select>
+            </div>
+
+            {/* NEW: Description Field */}
+            <div>
+              <label className="block text-sm font-medium mb-2">Description *</label>
+              <textarea required value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" rows="3" placeholder="Describe what your business does..." />
             </div>
 
             <div>
