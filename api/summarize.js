@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Allow CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,13 +13,17 @@ export default async function handler(req, res) {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'Missing GEMINI_API_KEY in Vercel' });
+    
+    // DEBUG: If key is missing, show a visible message on the site!
+    if (!apiKey) {
+      return res.status(200).json({ 
+        summary: "⚠️ AI is ready, but the GEMINI_API_KEY is missing! Go to Vercel Dashboard > Settings > Environment Variables and add it to see real summaries." 
+      });
+    }
 
-    // Format the data for the AI
     const sitesText = results.slice(0, 5).map((s, i) => `${i+1}. ${s.name} (${s.category}): ${s.description || 'No description'}`).join('\n');
     const prompt = `Based on the search query "${query}" and these results:\n${sitesText}\n\nProvide a helpful 2-3 sentence summary of what the user can find.`;
 
-    // Call FREE Google Gemini API
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -37,6 +40,6 @@ export default async function handler(req, res) {
     res.status(200).json({ summary });
   } catch (error) {
     console.error('AI Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(200).json({ summary: `⚠️ AI Error: ${error.message}` });
   }
 }
