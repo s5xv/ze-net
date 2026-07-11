@@ -13,4 +13,9 @@ Sentry.init({
   enableLogs: true
 });
 
+// Expose Sentry to window for console testing
+if (typeof window !== 'undefined') {
+  window.Sentry = Sentry;
+}
+
 export default Sentry;

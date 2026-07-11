@@ -28,7 +28,6 @@ export default function Search() {
     setAiSources([]);
     const searchTerm = query.toLowerCase().trim();
     
-    // 1. Sites
     let sitesQuery = supabase.from('sites').select('*');
     if (searchTerm) {
       sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcuts.ilike.%${searchTerm}%`);
@@ -36,20 +35,16 @@ export default function Search() {
     const { data: sitesData } = await sitesQuery.order('view_count', { ascending: false }).limit(15);
     setSiteResults(sitesData || []);
 
-    // 2. Wiki
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
     setWikiResults(wikiData || []);
 
-    // 3. Departments (SMART SEARCH - Looks in Wiki Pages where titles start with "Department")
     let deptData = [];
     if (searchTerm) {
       try {
-        // If the user is searching for departments, we look specifically at wiki pages that contain "Department" in the title
         if (searchTerm.includes('department') || searchTerm.includes('dept')) {
           const { data, error } = await supabase.from('wiki_pages').select('*').ilike('title', '%Department%').limit(30);
           if (!error && data) deptData = data;
         } else {
-          // Otherwise, search by name
           const { data, error } = await supabase.from('wiki_pages').select('*').ilike('title', `%${searchTerm}%`).limit(10);
           if (!error && data) deptData = data;
         }
@@ -57,7 +52,6 @@ export default function Search() {
     }
     setDeptResults(deptData);
 
-    // AI Summary (Combine everything)
     const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
     if (allResults.length > 0) {
       generateAISummary(allResults);
@@ -81,6 +75,15 @@ export default function Search() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, results })
       });
+      
+      // Check if response is actually JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('AI API returned non-JSON response');
+        setSummarizing(false);
+        return;
+      }
+      
       const data = await res.json();
       if (data.summary) {
         setAiSummary(data.summary);
