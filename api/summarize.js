@@ -16,11 +16,10 @@ export default async function handler(req, res) {
     
     if (!apiKey) {
       return res.status(200).json({ 
-        summary: "️ AI is ready, but the MISTRAL_API_KEY is missing! Go to Vercel Dashboard > Settings > Environment Variables and add it." 
+        summary: "⚠️ AI is ready, but the MISTRAL_API_KEY is missing! Go to Vercel Dashboard > Settings > Environment Variables and add it." 
       });
     }
 
-    // Send up to 30 results to the AI so it sees everything
     const resultsText = results.slice(0, 30).map((r, i) => {
       const name = r.name || r.title || 'Unknown';
       const desc = r.description || r.content || 'No description';
