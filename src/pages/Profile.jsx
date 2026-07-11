@@ -21,10 +21,10 @@ export default function Profile() {
   const fetchProfile = async () => {
     setLoading(true);
     
-    // Get Discord name from profiles table
+    // Get profile data (Discord name and avatar)
     const { data: profileData } = await supabase.from('profiles').select('username, avatar_url').eq('id', userId).single();
     
-    // Get MC username from treasury_tokens (only if it looks like a real MC name, not UUID)
+    // Get MC username from treasury_tokens
     const { data: tokenData } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', userId).single();
     const mcUsername = tokenData?.account_id && !tokenData.account_id.includes('-') ? tokenData.account_id : null;
     
@@ -46,15 +46,16 @@ export default function Profile() {
   if (loading) return <Layout user={user}><div className="p-8 text-center">Loading...</div></Layout>;
   if (!profileUser) return <Layout user={user}><div className="p-8 text-center">User not found</div></Layout>;
 
-  // Show MC name if available, otherwise Discord name
-  const displayName = profileUser.mc_username || profileUser.username;
+  // Show MC name if linked, otherwise show Discord name
+  const displayName = profileUser.mc_username || profileUser.username || 'User';
+  const avatarUrl = profileUser.avatar_url;
 
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="bg-white dark:bg-[#303134] rounded-xl p-8 border border-gray-200 dark:border-gray-700 shadow-sm mb-8 flex items-center gap-6">
-          {profileUser.avatar_url ? (
-            <img src={profileUser.avatar_url} alt={displayName} className="w-24 h-24 rounded-full object-cover border-4 border-blue-500" />
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={displayName} className="w-24 h-24 rounded-full object-cover border-4 border-blue-500" />
           ) : (
             <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-4xl">
               {displayName[0]?.toUpperCase()}
@@ -63,10 +64,9 @@ export default function Profile() {
           <div>
             <h1 className="text-3xl font-bold mb-2">{displayName}</h1>
             <p className="text-gray-500 dark:text-gray-400">{userSites.length} sites owned</p>
-            {profileUser.mc_username && (
+            {profileUser.mc_username ? (
               <p className="text-sm text-green-600 dark:text-green-400 mt-1 font-mono">MC: {profileUser.mc_username}</p>
-            )}
-            {!profileUser.mc_username && (
+            ) : (
               <p className="text-sm text-gray-500 mt-1">Discord: {profileUser.username}</p>
             )}
           </div>
