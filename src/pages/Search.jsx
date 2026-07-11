@@ -28,6 +28,7 @@ export default function Search() {
     setAiSources([]);
     const searchTerm = query.toLowerCase().trim();
     
+    // 1. Sites
     let sitesQuery = supabase.from('sites').select('*');
     if (searchTerm) {
       sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcuts.ilike.%${searchTerm}%`);
@@ -35,18 +36,31 @@ export default function Search() {
     const { data: sitesData } = await sitesQuery.order('view_count', { ascending: false }).limit(15);
     setSiteResults(sitesData || []);
 
+    // 2. Wiki
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(10);
     setWikiResults(wikiData || []);
 
+    // 3. Departments (SMARTER SEARCH)
     let deptData = [];
     if (searchTerm) {
       try {
-        const { data, error } = await supabase.from('departments').select('*').ilike('name', `%${searchTerm}%`).limit(5);
+        let deptQuery = supabase.from('departments').select('*');
+        
+        // If searching exactly for "department" or "departments", fetch ALL of them
+        if (searchTerm === 'department' || searchTerm === 'departments') {
+          deptQuery = deptQuery.order('name', { ascending: true }).limit(20);
+        } else {
+          // Otherwise, search name AND description
+          deptQuery = deptQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`).limit(15);
+        }
+        
+        const { data, error } = await deptQuery;
         if (!error && data) deptData = data;
       } catch (e) { console.error('Dept search error', e); }
     }
     setDeptResults(deptData);
 
+    // AI Summary (Send ALL results to AI)
     const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
     if (allResults.length > 0) {
       generateAISummary(allResults);
@@ -88,7 +102,6 @@ export default function Search() {
 
   const getWikiText = (page) => page.content || page.body || page.text || page.description || '';
 
-  // Helper to render **bold** text from the AI
   const renderMarkdownBold = (text) => {
     if (!text) return null;
     const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -121,7 +134,6 @@ export default function Search() {
         ) : (
           <div className="space-y-6">
             
-            {/* GOOGLE-STYLE AI OVERVIEW CARD */}
             {summarizing && (
               <div className="bg-white dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm animate-pulse">
                 <div className="flex items-center gap-3 mb-4">
@@ -173,10 +185,9 @@ export default function Search() {
               </div>
             )}
 
-            {/* DEPARTMENT RESULTS */}
             {deptResults.length > 0 && (
               <div>
-                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Departments</h2>
+                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Departments ({deptResults.length})</h2>
                 <div className="space-y-3">
                   {deptResults.map((dept) => (
                     <div key={dept.id} onClick={() => navigate(`/departments/${dept.slug || dept.id}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md cursor-pointer transition-all hover:border-purple-500/30">
@@ -188,7 +199,6 @@ export default function Search() {
               </div>
             )}
 
-            {/* WIKI RESULTS */}
             {wikiResults.length > 0 && (
               <div>
                 <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Wiki Pages</h2>
@@ -210,7 +220,6 @@ export default function Search() {
               </div>
             )}
 
-            {/* SITE RESULTS */}
             {siteResults.length > 0 && (
               <div>
                 <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Sites</h2>
