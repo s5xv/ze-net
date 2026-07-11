@@ -26,7 +26,7 @@ export default function Search() {
     setAiSummary(null);
     const searchTerm = query.toLowerCase().trim();
     
-    // 1. Sites (Search name, description, shortcuts)
+    // 1. Sites
     let sitesQuery = supabase.from('sites').select('*');
     if (searchTerm) {
       sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcuts.ilike.%${searchTerm}%`);
@@ -35,10 +35,10 @@ export default function Search() {
     setSiteResults(sitesData || []);
 
     // 2. Wiki
-    const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(5);
+    const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(10);
     setWikiResults(wikiData || []);
 
-    // 3. Departments (Search NAME ONLY to avoid noise)
+    // 3. Departments (Name only)
     let deptData = [];
     if (searchTerm) {
       try {
@@ -48,10 +48,10 @@ export default function Search() {
     }
     setDeptResults(deptData);
 
-    // AI Summary (Include departments if they exist)
-    const aiContext = deptData.length > 0 ? [...(sitesData || []), ...deptData] : (sitesData || []);
-    if (aiContext.length > 0) {
-      generateAISummary(aiContext);
+    // AI Summary (Send ALL results to AI for filtering)
+    const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
+    if (allResults.length > 0) {
+      generateAISummary(allResults);
     } else {
       setSummarizing(false);
     }
@@ -59,7 +59,7 @@ export default function Search() {
     // Analytics
     try {
       if (user) await supabase.from('search_history').insert({ user_id: user.id, query });
-      await supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: (sitesData?.length || 0) + (wikiData?.length || 0) + deptData.length });
+      await supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: allResults.length });
     } catch (err) { console.error('Analytics error:', err); }
     
     setLoading(false);
@@ -109,7 +109,7 @@ export default function Search() {
         ) : (
           <div className="space-y-6">
             
-            {/* CLEAN AI OVERVIEW CARD */}
+            {/* AI OVERVIEW CARD */}
             {summarizing && (
               <div className="bg-white dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm animate-pulse">
                 <div className="flex items-center gap-3">
