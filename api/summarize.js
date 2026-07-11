@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     const sitesText = results.slice(0, 5).map((s, i) => `${i+1}. ${s.name} (${s.category}): ${s.description || 'No description'}`).join('\n');
     const prompt = `Based on the search query "${query}" and these results:\n${sitesText}\n\nProvide a helpful 2-3 sentence summary of what the user can find.`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
