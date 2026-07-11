@@ -13,6 +13,7 @@ export default function Search() {
   const [wikiResults, setWikiResults] = useState([]);
   const [deptResults, setDeptResults] = useState([]);
   const [aiSummary, setAiSummary] = useState(null);
+  const [aiSources, setAiSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [summarizing, setSummarizing] = useState(false);
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function Search() {
   const fetchResults = async () => {
     setLoading(true);
     setAiSummary(null);
+    setAiSources([]);
     const searchTerm = query.toLowerCase().trim();
     
     // 1. Sites
@@ -48,7 +50,7 @@ export default function Search() {
     }
     setDeptResults(deptData);
 
-    // AI Summary (Send ALL results to AI for filtering)
+    // AI Summary
     const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
     if (allResults.length > 0) {
       generateAISummary(allResults);
@@ -74,7 +76,10 @@ export default function Search() {
         body: JSON.stringify({ query, results })
       });
       const data = await res.json();
-      if (data.summary) setAiSummary(data.summary);
+      if (data.summary) {
+        setAiSummary(data.summary);
+        setAiSources(data.sources || []);
+      }
     } catch (err) {
       console.error('AI failed:', err);
     }
@@ -109,30 +114,59 @@ export default function Search() {
         ) : (
           <div className="space-y-6">
             
-            {/* AI OVERVIEW CARD */}
+            {/* GOOGLE-STYLE AI OVERVIEW CARD */}
             {summarizing && (
               <div className="bg-white dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600"></div>
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
+                  </div>
+                  <div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
+                  </div>
                 </div>
-                <div className="mt-4 space-y-2">
+                <div className="space-y-2">
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-4/6"></div>
                 </div>
               </div>
             )}
 
             {aiSummary && (
               <div className="bg-white dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
-                <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                {/* Header with sparkle icon */}
+                <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 border-b border-gray-100 dark:border-gray-800">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
                   </div>
-                  <h3 className="font-semibold text-gray-800 dark:text-gray-100">AI Overview</h3>
+                  <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-lg">AI Overview</h3>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Beta</span>
                 </div>
+                
+                {/* Summary Content */}
                 <div className="p-6">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{aiSummary}</p>
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[15px] whitespace-pre-wrap">{aiSummary}</p>
+                </div>
+                
+                {/* Source Chips */}
+                {aiSources.length > 0 && (
+                  <div className="px-6 pb-4">
+                    <div className="flex flex-wrap gap-2">
+                      {aiSources.slice(0, 4).map((source, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                          {source}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Footer */}
+                <div className="px-6 py-3 bg-gray-50 dark:bg-[#171717] border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Powered by Gemini AI</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 italic">Based on Z&E Net data</span>
                 </div>
               </div>
             )}

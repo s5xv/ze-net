@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Format results for AI
+    // Format results for AI - be very explicit about what data is available
     const resultsText = results.slice(0, 10).map((r, i) => {
       const name = r.name || r.title || 'Unknown';
       const desc = r.description || r.content || 'No description';
@@ -28,24 +28,29 @@ export default async function handler(req, res) {
       return `${i+1}. [${type}] ${name}: ${desc.substring(0, 200)}`;
     }).join('\n');
 
-    // Smarter prompt: Filter THEN summarize
-    const prompt = `You are a search result filter and summarizer. Given the search query "${query}" and these search results:
+    // STRICT prompt: Only use provided data, filter irrelevant results
+    const prompt = `You are a search result assistant for a Minecraft server directory called "Z&E Net" for the DemocracyCraft server.
 
+Search query: "${query}"
+
+Available results from the database:
 ${resultsText}
 
-TASK:
-1. First, identify which results are ACTUALLY relevant to the query "${query}". Ignore results that only contain the search term as a substring in unrelated words (e.g., if searching "ai", ignore results about "aiming", "details", "certain", etc.).
-2. If NO results are truly relevant, say: "No relevant results found for '${query}'. The results shown contain the term but are not directly related."
-3. If some results ARE relevant, provide a 2-3 sentence summary of what the user can find, focusing only on the relevant results.
+IMPORTANT RULES:
+1. ONLY use the results provided above. Do not make up information or use external knowledge.
+2. Identify which results are TRULY relevant to "${query}". Ignore results where the search term only appears as a substring in unrelated words (e.g., if searching "ai", ignore "aiming", "details", "certain", etc.).
+3. If NO results are truly relevant, respond with: "No relevant results found for '${query}' in the Z&E Net directory."
+4. If some results ARE relevant, provide a concise 2-3 sentence summary of what the user can find, mentioning the specific relevant results by name.
+5. Keep the summary focused and helpful. Do not mention irrelevant results.
 
-Be strict about relevance. Only include results that are genuinely about the search topic.`;
+Respond ONLY with the summary text, no extra formatting.`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 200, temperature: 0.3 }
+        generationConfig: { maxOutputTokens: 200, temperature: 0.2 }
       })
     });
 
@@ -53,7 +58,11 @@ Be strict about relevance. Only include results that are genuinely about the sea
     if (data.error) throw new Error(data.error.message);
 
     const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Unable to generate summary.';
-    res.status(200).json({ summary });
+    
+    // Also return source names for the UI
+    const sources = results.slice(0, 5).map(r => r.name || r.title).filter(Boolean);
+    
+    res.status(200).json({ summary, sources });
   } catch (error) {
     console.error('AI Error:', error);
     res.status(200).json({ summary: `⚠️ AI Error: ${error.message}` });
