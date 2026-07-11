@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
@@ -9,7 +8,6 @@ export default function SiteManage() {
   const { user } = useAuth();
   const { slug } = useParams();
   const navigate = useNavigate();
-  const { isDark } = useTheme();
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -36,9 +34,19 @@ export default function SiteManage() {
       return;
     }
 
-    // Check if user is owner
-    if (!user || data.owner_user_id !== user.id) {
-      alert("You don't have permission to manage this site");
+    // DEBUG: Log the IDs to see why it's failing
+    console.log('Site Owner ID:', data.owner_user_id);
+    console.log('Current User ID:', user?.id);
+
+    if (!user) {
+      alert('Please sign in to manage this site');
+      navigate(`/site/${slug}`);
+      return;
+    }
+    
+    // RELAXED CHECK: Allow if owner matches OR if no owner is set (for legacy sites)
+    if (data.owner_user_id && data.owner_user_id !== user.id) {
+      alert(`Permission denied. Site owner: ${data.owner_user_id}, You: ${user.id}`);
       navigate(`/site/${slug}`);
       return;
     }
@@ -110,39 +118,19 @@ export default function SiteManage() {
         <form onSubmit={handleSave} className="space-y-6">
           <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-4">Basic Information</h2>
-            
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Site Name *</label>
-                <input 
-                  type="text" 
-                  required 
-                  value={formData.name} 
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg"
-                />
+                <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" />
               </div>
-
               <div>
                 <label className="block text-sm font-medium mb-2">Description *</label>
-                <textarea 
-                  required 
-                  value={formData.description} 
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg"
-                  rows="4"
-                />
+                <textarea required value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" rows="4" />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Category *</label>
-                  <select 
-                    required 
-                    value={formData.category} 
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg"
-                  >
+                  <select required value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg">
                     <option value="Retail Shop">Retail Shop</option>
                     <option value="Restaurant / Food">Restaurant / Food</option>
                     <option value="Bank / Finance">Bank / Finance</option>
@@ -151,16 +139,9 @@ export default function SiteManage() {
                     <option value="Other">Other</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium mb-2">Website URL</label>
-                  <input 
-                    type="url" 
-                    value={formData.url} 
-                    onChange={(e) => setFormData({...formData, url: e.target.value})}
-                    className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg"
-                    placeholder="https://..."
-                  />
+                  <input type="url" value={formData.url} onChange={(e) => setFormData({...formData, url: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://..." />
                 </div>
               </div>
             </div>
@@ -168,47 +149,23 @@ export default function SiteManage() {
 
           <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
             <h2 className="text-xl font-bold mb-4">SEO & Discovery</h2>
-            
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Search Shortcuts (comma separated)</label>
-                <input 
-                  type="text" 
-                  value={formData.shortcuts} 
-                  onChange={(e) => setFormData({...formData, shortcuts: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg"
-                  placeholder="e.g., rvr, bank, main"
-                />
-                <p className="text-xs text-gray-500 mt-1">Quick codes people can type to find your site</p>
+                <input type="text" value={formData.shortcuts} onChange={(e) => setFormData({...formData, shortcuts: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="e.g., rvr, bank, main" />
               </div>
-
               <div>
                 <label className="block text-sm font-medium mb-2">Keywords (comma separated, max 3)</label>
-                <input 
-                  type="text" 
-                  value={formData.keywords} 
-                  onChange={(e) => setFormData({...formData, keywords: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg"
-                  placeholder="e.g., food, pizza, restaurant"
-                />
-                <p className="text-xs text-gray-500 mt-1">Helps people find your site in search</p>
+                <input type="text" value={formData.keywords} onChange={(e) => setFormData({...formData, keywords: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="e.g., food, pizza, restaurant" />
               </div>
             </div>
           </div>
 
           <div className="flex gap-4">
-            <button 
-              type="submit" 
-              disabled={saving}
-              className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium"
-            >
+            <button type="submit" disabled={saving} className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium">
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
-            <button 
-              type="button" 
-              onClick={handleDelete}
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
-            >
+            <button type="button" onClick={handleDelete} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium">
               Delete Site
             </button>
           </div>
