@@ -181,9 +181,9 @@ export default function Site() {
             
             <div className="flex gap-2 flex-shrink-0 flex-wrap">
               {isOwner && (
-                <button onClick={() => navigate(`/site/${slug}/manage`)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-purple-600 hover:bg-purple-700 text-white">⚙ Manage</button>
+                <button onClick={() => navigate(`/site/${slug}/manage`)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-green-600 hover:bg-green-700 text-white">⚙Manage</button>
               )}
-              <button onClick={() => setShowTipModal(true)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-green-600 hover:bg-green-700 text-white">💰 Tip</button>
+              <button onClick={() => setShowTipModal(true)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-green-600 hover:bg-green-700 text-white</button>
               <button onClick={handleFollow} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isFollowing ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isFollowing ? '✓ Following' : 'Follow'}</button>
               <button onClick={handleBookmark} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isBookmarked ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isBookmarked ? '★ Bookmarked' : '☆ Bookmark'}</button>
               <button onClick={handleUpvote} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${hasUpvoted ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>Upvote ({upvotes})</button>
@@ -229,7 +229,7 @@ export default function Site() {
               </div>
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowTipModal(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg">Cancel</button>
-                <button onClick={handleTip} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">Send Tip</button>
+                <button onClick={handleTip} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white</button>
               </div>
             </div>
           </div>

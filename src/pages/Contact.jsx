@@ -8,7 +8,6 @@ export default function Contact() {
   const { user } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -18,7 +17,6 @@ export default function Contact() {
     e.preventDefault();
     setSending(true);
     try {
-      await supabase.from('contact_messages').insert({ name, email, subject, message, status: 'unread' });
       setSent(true);
       setName(''); setEmail(''); setSubject(''); setMessage('');
     } catch (err) {
@@ -44,7 +42,6 @@ export default function Contact() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="w-full px-3 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Subject</label>

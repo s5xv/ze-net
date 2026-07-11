@@ -25,7 +25,7 @@ export default function Search() {
   });
 
   useEffect(() => {
-    if (query) {
+    if (query || true) {
       fetchResults();
     }
   }, [query, filters]);
