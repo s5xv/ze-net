@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
@@ -38,13 +37,10 @@ export default function Site() {
       if (user) {
         const { data: bookmark } = await supabase.from('bookmarks').select('id').eq('user_id', user.id).eq('site_id', data.id).single();
         setIsBookmarked(!!bookmark);
-        
         const { data: follow } = await supabase.from('site_followers').select('id').eq('user_id', user.id).eq('site_id', data.id).single();
         setIsFollowing(!!follow);
-
         const { data: upvote } = await supabase.from('site_upvotes').select('id').eq('user_id', user.id).eq('site_id', data.id).single();
         setHasUpvoted(!!upvote);
-
         const { data: balData } = await supabase.from('site_balances').select('balance').eq('user_id', user.id).maybeSingle();
         setUserBalance(balData?.balance || 0);
       }
@@ -68,21 +64,10 @@ export default function Site() {
     if (userBalance < tipAmount) return alert('Insufficient balance');
 
     try {
-      // Deduct from sender
       await supabase.from('site_balances').update({ balance: userBalance - tipAmount }).eq('user_id', user.id);
-      
-      // Add to receiver
-      const { data: receiverBal } = await supabase.from('site_balances').select('balance').eq('user_id', site.owner_user_id).single();
+      const { data: receiverBal } = await supabase.from('site_balances').select('balance').eq('user_id', site.owner_user_id).maybeSingle();
       await supabase.from('site_balances').update({ balance: (receiverBal?.balance || 0) + tipAmount }).eq('user_id', site.owner_user_id);
-      
-      // Record the tip
-      await supabase.from('tips').insert({
-        sender_id: user.id,
-        receiver_id: site.owner_user_id,
-        site_id: site.id,
-        amount: tipAmount
-      });
-
+      await supabase.from('tips').insert({ sender_id: user.id, receiver_id: site.owner_user_id, site_id: site.id, amount: tipAmount });
       alert(`Successfully tipped $${tipAmount}!`);
       setShowTipModal(false);
       fetchSite();
@@ -152,7 +137,7 @@ export default function Site() {
   if (loading) return <Layout user={user}><div className="p-8 text-center">Loading...</div></Layout>;
   if (!site) return <Layout user={user}><div className="p-8 text-center">Site not found</div></Layout>;
 
-  const isOwner = user && (site.owner_user_id === user.id);
+  const isOwner = user && site.owner_user_id === user.id;
 
   return (
     <Layout user={user}>
@@ -179,13 +164,14 @@ export default function Site() {
               )}
             </div>
             
+            {/* ACTION BUTTONS (Green, No Emojis) */}
             <div className="flex gap-2 flex-shrink-0 flex-wrap">
               {isOwner && (
-                <button onClick={() => navigate(`/site/${slug}/manage`)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-green-600 hover:bg-green-700 text-white">⚙Manage</button>
+                <button onClick={() => navigate(`/site/${slug}/manage`)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-green-600 hover:bg-green-700 text-white">Manage</button>
               )}
-              <button onClick={() => setShowTipModal(true)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-green-600 hover:bg-green-700 text-white</button>
-              <button onClick={handleFollow} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isFollowing ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isFollowing ? '✓ Following' : 'Follow'}</button>
-              <button onClick={handleBookmark} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isBookmarked ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isBookmarked ? '★ Bookmarked' : '☆ Bookmark'}</button>
+              <button onClick={() => setShowTipModal(true)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-green-600 hover:bg-green-700 text-white">Tip</button>
+              <button onClick={handleFollow} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isFollowing ? 'bg-blue-500 hover:bg-blue-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isFollowing ? 'Following' : 'Follow'}</button>
+              <button onClick={handleBookmark} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${isBookmarked ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>{isBookmarked ? 'Bookmarked' : 'Bookmark'}</button>
               <button onClick={handleUpvote} className={`px-4 py-2 font-medium rounded-lg transition-colors text-sm ${hasUpvoted ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-100 dark:bg-[#3c4043] text-gray-700 dark:text-gray-300'}`}>Upvote ({upvotes})</button>
               <button onClick={() => setShowReportModal(true)} className="px-4 py-2 font-medium rounded-lg transition-colors text-sm bg-red-100 dark:bg-red-900 dark:bg-opacity-20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900 dark:hover:bg-opacity-40">Report</button>
             </div>
@@ -207,29 +193,20 @@ export default function Site() {
 
         {/* TIP MODAL */}
         {showTipModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-[#303134] rounded-xl p-6 max-w-md w-full">
               <h2 className="text-xl font-bold mb-4">Tip {site.name}</h2>
               <p className="text-sm text-gray-500 mb-4">Your balance: ${userBalance.toFixed(2)}</p>
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-2">Tip Amount ($)</label>
-                <input 
-                  type="number" 
-                  min="0.01" 
-                  step="0.01" 
-                  value={tipAmount} 
-                  onChange={(e) => setTipAmount(parseFloat(e.target.value) || 0)} 
-                  className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg"
-                />
+                <input type="number" min="0.01" step="0.01" value={tipAmount} onChange={(e) => setTipAmount(parseFloat(e.target.value) || 0)} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" />
               </div>
               <div className="flex gap-2 mb-4">
-                {[1, 5, 10, 25].map(amt => (
-                  <button key={amt} onClick={() => setTipAmount(amt)} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600">${amt}</button>
-                ))}
+                {[1, 5, 10, 25].map(amt => (<button key={amt} onClick={() => setTipAmount(amt)} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600">${amt}</button>))}
               </div>
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => setShowTipModal(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg">Cancel</button>
-                <button onClick={handleTip} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white</button>
+                <button onClick={handleTip} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">Send Tip</button>
               </div>
             </div>
           </div>
@@ -272,7 +249,7 @@ export default function Site() {
 
         {/* REPORT MODAL */}
         {showReportModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-[#303134] rounded-xl p-6 max-w-md w-full">
               <h2 className="text-xl font-bold mb-4">Report {site.name}</h2>
               <form onSubmit={handleReport}>
