@@ -139,6 +139,38 @@ export default function Site() {
 
   const isOwner = user && site.owner_user_id === user.id;
 
+  
+  
+
+  
+  // STRICT Pay-Per-View Logic (10-Second Dwell Time)
+  useEffect(() => {
+    if (!user || !siteData?.id || !siteData?.user_id || user.id === siteData.user_id) return;
+
+    let timeout;
+    let hasTracked = false;
+
+    const trackView = () => {
+      if (hasTracked) return;
+      hasTracked = true;
+      
+      fetch('/api/track-view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          siteId: siteData.id, 
+          ownerId: siteData.user_id, 
+          viewerId: user.id 
+        })
+      }).catch(err => console.error('PPV Error:', err));
+    };
+
+    // Only trigger payment if user stays on the page for 10 full seconds
+    timeout = setTimeout(trackView, 10000);
+
+    return () => clearTimeout(timeout);
+  }, [siteData?.id, user]);
+
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">

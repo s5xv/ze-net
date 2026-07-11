@@ -23,7 +23,7 @@ export default function SubmitAd() {
   const tiers = {
     bronze: { 
       name: 'Bronze - Standard Ad', 
-      price: 500, 
+      price: 600, 
       duration: '1 week', 
       features: 'Regular sidebar placement',
       type: 'normal'
@@ -37,14 +37,14 @@ export default function SubmitAd() {
     },
     gold: { 
       name: 'Gold - Featured Banner', 
-      price: 2500, 
+      price: 2600, 
       duration: '1 month', 
       features: 'Top banner + homepage featured spot',
       type: 'sponsored'
     },
     platinum: { 
       name: 'Platinum - Sponsored', 
-      price: 5000, 
+      price: 6000, 
       duration: '1 month', 
       features: 'Top search results + priority placement everywhere',
       type: 'sponsored'
@@ -96,7 +96,7 @@ export default function SubmitAd() {
     return (
       <Layout user={user}>
         <main className="flex-grow max-w-2xl mx-auto px-4 py-12">
-          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-8 text-center">
+          <div className="bg-green-600/10 border border-green-600/30 rounded-xl p-8 text-center">
             <div className="text-6xl mb-4">✅</div>
             <h1 className="text-3xl font-bold mb-4">Ad Submitted!</h1>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -119,7 +119,7 @@ export default function SubmitAd() {
           <p className="text-gray-600 dark:text-gray-400 mb-6">Promote your business on Z&E Net</p>
 
           {/* Balance Display */}
-          <div className="mb-6 p-4 bg-gray-100 dark:bg-[#202124] rounded-lg">
+          <div className="mb-6 p-4 bg-gray-110 dark:bg-[#202124] rounded-lg">
             <p className="text-sm text-gray-600 dark:text-gray-400">Your Balance</p>
             <p className="text-2xl font-bold text-green-600">${balance.toFixed(2)}</p>
           </div>
@@ -132,7 +132,7 @@ export default function SubmitAd() {
                 required
                 value={formData.company_name}
                 onChange={(e) => setFormData({...formData, company_name: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-2 bg-gray-110 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-600"
               />
             </div>
 
@@ -143,7 +143,7 @@ export default function SubmitAd() {
                 required
                 value={formData.contact_discord}
                 onChange={(e) => setFormData({...formData, contact_discord: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-2 bg-gray-110 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-600"
                 placeholder="e.g., username#1234"
               />
             </div>
@@ -155,7 +155,7 @@ export default function SubmitAd() {
                 required
                 value={formData.redirect_url}
                 onChange={(e) => setFormData({...formData, redirect_url: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-2 bg-gray-110 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-600"
                 placeholder="https://..."
               />
             </div>
@@ -166,7 +166,7 @@ export default function SubmitAd() {
                 type="url"
                 value={formData.banner_image}
                 onChange={(e) => setFormData({...formData, banner_image: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-2 bg-gray-110 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-600"
                 placeholder="https://... (image URL)"
               />
             </div>
@@ -177,7 +177,7 @@ export default function SubmitAd() {
                 {Object.entries(tiers).map(([key, tier]) => (
                   <label key={key} className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
                     formData.tier === key 
-                      ? 'border-blue-500 bg-blue-500/10' 
+                      ? 'border-blue-600 bg-blue-600/10' 
                       : 'border-gray-300 dark:border-gray-700 hover:border-gray-400'
                   }`}>
                     <input
@@ -192,10 +192,10 @@ export default function SubmitAd() {
                       <div>
                         <p className="font-bold flex items-center gap-2">
                           {tier.name}
-                          {tier.type === 'sponsored' && <span className="text-xs bg-yellow-500 text-white px-2 py-0.5 rounded">SPONSORED</span>}
+                          {tier.type === 'sponsored' && <span className="text-xs bg-yellow-600 text-white px-2 py-0.5 rounded">SPONSORED</span>}
                         </p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">{tier.duration}</p>
-                        <p className="text-xs text-gray-500 mt-1">{tier.features}</p>
+                        <p className="text-xs text-gray-600 mt-1">{tier.features}</p>
                       </div>
                       <p className="text-xl font-bold text-blue-600">${tier.price}</p>
                     </div>
@@ -205,7 +205,7 @@ export default function SubmitAd() {
             </div>
 
             {!canAfford && (
-              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <div className="p-4 bg-red-600/10 border border-red-600/30 rounded-lg">
                 <p className="text-sm text-red-600 dark:text-red-400 font-medium">
                   ⚠️ Insufficient balance. You need ${tiers[formData.tier].price - balance} more.
                 </p>
