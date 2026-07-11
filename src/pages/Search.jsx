@@ -28,7 +28,6 @@ export default function Search() {
     setAiSources([]);
     const searchTerm = query.toLowerCase().trim();
     
-    // 1. Sites
     let sitesQuery = supabase.from('sites').select('*');
     if (searchTerm) {
       sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcuts.ilike.%${searchTerm}%`);
@@ -36,11 +35,9 @@ export default function Search() {
     const { data: sitesData } = await sitesQuery.order('view_count', { ascending: false }).limit(15);
     setSiteResults(sitesData || []);
 
-    // 2. Wiki
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(10);
     setWikiResults(wikiData || []);
 
-    // 3. Departments (Name only)
     let deptData = [];
     if (searchTerm) {
       try {
@@ -50,7 +47,6 @@ export default function Search() {
     }
     setDeptResults(deptData);
 
-    // AI Summary
     const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
     if (allResults.length > 0) {
       generateAISummary(allResults);
@@ -58,7 +54,6 @@ export default function Search() {
       setSummarizing(false);
     }
 
-    // Analytics
     try {
       if (user) await supabase.from('search_history').insert({ user_id: user.id, query });
       await supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: allResults.length });
@@ -93,6 +88,18 @@ export default function Search() {
 
   const getWikiText = (page) => page.content || page.body || page.text || page.description || '';
 
+  // Helper to render **bold** text from the AI
+  const renderMarkdownBold = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="text-blue-600 dark:text-blue-400 font-bold">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-5xl mx-auto px-4 sm:px-6 py-8 w-full">
@@ -121,21 +128,17 @@ export default function Search() {
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center">
                     <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
                   </div>
-                  <div>
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
-                  </div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
                   <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-4/6"></div>
                 </div>
               </div>
             )}
 
             {aiSummary && (
               <div className="bg-white dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
-                {/* Header with sparkle icon */}
                 <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 border-b border-gray-100 dark:border-gray-800">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md">
                     <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
@@ -144,12 +147,12 @@ export default function Search() {
                   <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Beta</span>
                 </div>
                 
-                {/* Summary Content */}
                 <div className="p-6">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[15px] whitespace-pre-wrap">{aiSummary}</p>
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[15px] whitespace-pre-wrap">
+                    {renderMarkdownBold(aiSummary)}
+                  </p>
                 </div>
                 
-                {/* Source Chips */}
                 {aiSources.length > 0 && (
                   <div className="px-6 pb-4">
                     <div className="flex flex-wrap gap-2">
@@ -163,9 +166,8 @@ export default function Search() {
                   </div>
                 )}
                 
-                {/* Footer */}
                 <div className="px-6 py-3 bg-gray-50 dark:bg-[#171717] border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Powered by Gemini AI</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Powered by Mistral AI</span>
                   <span className="text-xs text-gray-400 dark:text-gray-500 italic">Based on Z&E Net data</span>
                 </div>
               </div>

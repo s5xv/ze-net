@@ -24,24 +24,25 @@ export default async function handler(req, res) {
       const name = r.name || r.title || 'Unknown';
       const desc = r.description || r.content || 'No description';
       const type = r.category ? 'Site' : (r.content ? 'Wiki' : 'Department');
-      return `${i+1}. [${type}] ${name}: ${desc.substring(0, 200)}`;
+      return `${i+1}. [${type}] **${name}**: ${desc.substring(0, 250)}`;
     }).join('\n');
 
-    const prompt = `You are a search result assistant for a Minecraft server directory called "Z&E Net" for the DemocracyCraft server.
+    // THE CRAZY GOOD PROMPT
+    const prompt = `You are the 'Z&E Net AI Search Assistant', an expert navigation tool for the DemocracyCraft Minecraft server directory.
 
-Search query: "${query}"
+User Query: "${query}"
 
-Available results from the database:
+Database Results:
 ${resultsText}
 
-IMPORTANT RULES:
-1. ONLY use the results provided above. Do not make up information or use external knowledge.
-2. Identify which results are TRULY relevant to "${query}". Ignore results where the search term only appears as a substring in unrelated words (e.g., if searching "ai", ignore "aiming", "details", "certain", etc.).
-3. If NO results are truly relevant, respond with: "No relevant results found for '${query}' in the Z&E Net directory."
-4. If some results ARE relevant, provide a concise 2-3 sentence summary of what the user can find, mentioning the specific relevant results by name.
-5. Keep the summary focused and helpful. Do not mention irrelevant results.
+Instructions:
+1. STRICT RELEVANCE FILTERING: Analyze the query. Discard any results where the query word only appears as a substring in an unrelated word (e.g., query 'ai' should NOT match 'aiming' or 'details').
+2. SYNTHESIS: If relevant results exist, write a highly engaging, 2-3 sentence summary. Start directly with the answer. Mention the specific names of the best matching sites, wiki pages, or departments.
+3. FORMATTING: Use bold text (markdown) for the names of the sites/departments to make them pop.
+4. ZERO HALLUCINATION: ONLY use the provided database results. Never invent information.
+5. NO RESULTS: If absolutely nothing matches the core intent of the query, reply exactly with: "I couldn't find anything specifically about '${query}' in the Z&E Net directory, but here are the closest matches from the database:" and then list the top 2 results briefly.
 
-Respond ONLY with the summary text, no extra formatting.`;
+Output ONLY the final summary text. Do not include any introductory phrases like "Here is the summary".`;
 
     const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
@@ -54,7 +55,7 @@ Respond ONLY with the summary text, no extra formatting.`;
         messages: [
           { role: 'user', content: prompt }
         ],
-        max_tokens: 200,
+        max_tokens: 250,
         temperature: 0.2
       })
     });
