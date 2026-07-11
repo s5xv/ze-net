@@ -11,7 +11,9 @@ export default function Search() {
   const [q, setQ] = useState(query);
   const [siteResults, setSiteResults] = useState([]);
   const [wikiResults, setWikiResults] = useState([]);
+  const [aiSummary, setAiSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [summarizing, setSummarizing] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,6 +22,7 @@ export default function Search() {
 
   const fetchResults = async () => {
     setLoading(true);
+    setAiSummary(null);
     const searchTerm = query.toLowerCase().trim();
     
     let sitesQuery = supabase.from('sites').select('*');
@@ -33,20 +36,36 @@ export default function Search() {
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(10);
     setWikiResults(wikiData || []);
 
-    try {
-      if (user) {
-        await supabase.from('search_history').insert({ user_id: user.id, query });
-      }
-      await supabase.from('search_analytics').insert({ 
-        query, 
-        user_id: user?.id || null, 
-        results_count: (sitesData?.length || 0) + (wikiData?.length || 0) 
-      });
-    } catch (err) {
-      console.error('Analytics error:', err);
+    // Trigger AI Summary if we have results
+    if (sitesData && sitesData.length > 0) {
+      generateAISummary(sitesData);
+    } else {
+      setSummarizing(false);
     }
+
+    // Safe analytics logging (no .catch() on supabase)
+    try {
+      if (user) await supabase.from('search_history').insert({ user_id: user.id, query });
+      await supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: (sitesData?.length || 0) + (wikiData?.length || 0) });
+    } catch (err) { console.error('Analytics error:', err); }
     
     setLoading(false);
+  };
+
+  const generateAISummary = async (results) => {
+    setSummarizing(true);
+    try {
+      const res = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, results })
+      });
+      const data = await res.json();
+      if (data.summary) setAiSummary(data.summary);
+    } catch (err) {
+      console.error('AI failed:', err);
+    }
+    setSummarizing(false);
   };
 
   const handleSearch = (e) => {
@@ -54,22 +73,14 @@ export default function Search() {
     if (q.trim()) setSearchParams({ q: q.trim() });
   };
 
-  const getWikiText = (page) => {
-    return page.content || page.body || page.text || page.description || '';
-  };
+  const getWikiText = (page) => page.content || page.body || page.text || page.description || '';
 
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-6xl mx-auto px-4 sm:px-6 py-6 w-full">
         <form onSubmit={handleSearch} className="mb-6">
           <div className="flex gap-2">
-            <input 
-              type="text" 
-              value={q} 
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search sites, wiki, shortcuts..."
-              className="flex-grow px-4 py-3 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500"
-            />
+            <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search sites, wiki, shortcuts..." className="flex-grow px-4 py-3 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" />
             <button type="submit" className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">Search</button>
           </div>
         </form>
@@ -78,6 +89,25 @@ export default function Search() {
           <div className="text-center py-12 text-gray-500">Searching...</div>
         ) : (
           <div className="space-y-4">
+            {/* AI SUMMARY BOX */}
+            {summarizing && (
+              <div className="bg-gray-100 dark:bg-[#202124] rounded-xl p-4 text-center text-gray-500 animate-pulse">
+                Generating AI summary...
+              </div>
+            )}
+            {aiSummary && (
+              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl"></div>
+                  <div className="flex-grow">
+                    <h3 className="font-bold text-blue-600 dark:text-blue-400 mb-2">AI Summary</h3>
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{aiSummary}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* WIKI RESULTS */}
             {wikiResults.map((page) => {
               const wikiText = getWikiText(page);
               return (
@@ -92,6 +122,7 @@ export default function Search() {
               );
             })}
 
+            {/* SITE RESULTS */}
             {siteResults.map((site) => (
               <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md cursor-pointer">
                 <div className="flex justify-between items-start">
