@@ -38,7 +38,7 @@ export default function Search() {
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(10);
     setWikiResults(wikiData || []);
 
-    // 3. Departments (NEW!)
+    // 3. Departments
     let deptData = [];
     if (searchTerm) {
       try {
@@ -101,27 +101,43 @@ export default function Search() {
           <div className="text-center py-12 text-gray-500">Searching...</div>
         ) : (
           <div className="space-y-4">
-            {/* AI SUMMARY */}
+            
+            {/* GOOGLE-STYLE AI OVERVIEW CARD */}
             {summarizing && (
-              <div className="bg-gray-100 dark:bg-[#202124] rounded-xl p-4 text-center text-gray-500 animate-pulse">
-                🤖 Generating AI summary...
+              <div className="mb-6 bg-white dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center text-gray-500 animate-pulse shadow-sm">
+                <div className="inline-flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600"></div>
+                  <span className="font-medium">Generating AI Overview...</span>
+                </div>
               </div>
             )}
+
             {aiSummary && (
-              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="text-2xl">🤖</div>
-                  <div className="flex-grow">
-                    <h3 className="font-bold text-blue-600 dark:text-blue-400 mb-2">AI Summary</h3>
-                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{aiSummary}</p>
+              <div className="mb-6 bg-white dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-md">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                   </div>
+                  <h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg">AI Overview</h3>
+                </div>
+                
+                {/* Content */}
+                <div className="p-5">
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[15px] whitespace-pre-wrap">{aiSummary}</p>
+                </div>
+                
+                {/* Footer */}
+                <div className="px-5 py-2 bg-gray-50 dark:bg-[#171717] border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Powered by Gemini AI</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 italic">Always verify important info.</span>
                 </div>
               </div>
             )}
 
             {/* DEPARTMENT RESULTS */}
             {deptResults.map((dept) => (
-              <div key={dept.id} onClick={() => navigate(`/departments/${dept.slug || dept.id}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md cursor-pointer">
+              <div key={dept.id} onClick={() => navigate(`/departments/${dept.slug || dept.id}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md cursor-pointer transition-shadow">
                 <h3 className="text-xl font-semibold text-purple-600 dark:text-purple-400 mb-1">🏛️ {dept.name}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-400">{dept.description || 'Government Department'}</p>
               </div>
@@ -144,7 +160,7 @@ export default function Search() {
 
             {/* SITE RESULTS */}
             {siteResults.map((site) => (
-              <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md cursor-pointer">
+              <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md cursor-pointer transition-shadow">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400 mb-1">
