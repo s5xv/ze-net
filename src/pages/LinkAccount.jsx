@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
@@ -7,23 +7,30 @@ import { supabase } from '../services/supabase';
 export default function LinkAccount() {
   const { user } = useAuth();
   const { isDark } = useTheme();
-  const [code, setCode] = useState('');
   const [linked, setLinked] = useState(false);
+  const [mcName, setMcName] = useState(null);
+  const [checking, setChecking] = useState(false);
 
-  const generateCode = () => {
-    const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    setCode(newCode);
+  useEffect(() => {
+    if (user) {
+      checkLinkStatus();
+      const interval = setInterval(checkLinkStatus, 3000); // Auto-check every 3 seconds
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const checkLinkStatus = async () => {
+    const { data } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', user.id).single();
+    if (data?.account_id) {
+      setLinked(true);
+      setMcName(data.account_id);
+    }
   };
 
-  const checkLink = async () => {
-    if (!code) return;
-    const { data } = await supabase.from('treasury_tokens').select('id').eq('user_id', user.id).eq('token', code).single();
-    if (data) {
-      setLinked(true);
-      alert('Account linked successfully!');
-    } else {
-      alert('Code not found. Did you pay in-game?');
-    }
+  const handleManualCheck = async () => {
+    setChecking(true);
+    await checkLinkStatus();
+    setTimeout(() => setChecking(false), 1000);
   };
 
   if (!user) return <Layout user={user}><div className="p-8 text-center">Please sign in</div></Layout>;
@@ -34,15 +41,34 @@ export default function LinkAccount() {
         <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-8 shadow-sm text-center">
           <h1 className="text-3xl font-bold mb-4">Link Minecraft Account</h1>
           {linked ? (
-            <div className="text-green-500 text-xl font-bold">Account Linked!</div>
+            <div className="text-green-500">
+              <div className="text-2xl font-bold mb-2">✓ Account Linked!</div>
+              <div className="text-xl font-mono">MC: {mcName}</div>
+              <button onClick={() => window.location.href = '/account'} className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                Go to Account
+              </button>
+            </div>
           ) : (
             <>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">Click generate, then run <code className="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded">/paya business ZEN {code || 'CODE'}</code> in-game to link.</p>
-              <div className="flex flex-col gap-4 items-center">
-                <button onClick={generateCode} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">Generate Code</button>
-                {code && <div className="text-2xl font-mono font-bold text-blue-600">{code}</div>}
-                {code && <button onClick={checkLink} className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium">I've Paid In-Game</button>}
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                To link your account, run this command in-game:
+              </p>
+              <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-6 border-2 border-blue-500">
+                <code className="text-xl font-mono text-blue-600 dark:text-blue-400 font-bold">
+                  /paya business ZEN 0.01
+                </code>
               </div>
+              <p className="text-sm text-gray-500 mb-6">
+                Pay <strong>0.01 to 1.00 ZEN</strong> to the "business" account.<br/>
+                The system will auto-detect your payment within a few seconds!
+              </p>
+              <button 
+                onClick={handleManualCheck}
+                disabled={checking}
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium"
+              >
+                {checking ? 'Checking...' : 'Check Payment Status'}
+              </button>
             </>
           )}
         </div>
