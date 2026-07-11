@@ -33,7 +33,6 @@ export default function Search() {
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(10);
     setWikiResults(wikiData || []);
 
-    // FIXED: Removed .catch() calls that were breaking the page
     try {
       if (user) {
         await supabase.from('search_history').insert({ user_id: user.id, query });
