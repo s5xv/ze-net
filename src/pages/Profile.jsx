@@ -21,26 +21,24 @@ export default function Profile() {
   const fetchProfile = async () => {
     setLoading(true);
     
-    // Get profile data
-    const { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    // Get MC username from treasury_tokens
+    const { data: tokenData } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', userId).single();
+    const mcUsername = tokenData?.account_id || null;
     
-    if (profileData) {
-      setProfileUser(profileData);
+    // Get Discord name from auth.users
+    const { data: userData } = await supabase.from('profiles').select('username, avatar_url').eq('id', userId).single();
+    
+    if (userData || mcUsername) {
+      setProfileUser({
+        id: userId,
+        username: userData?.username || 'User',
+        avatar_url: userData?.avatar_url,
+        mc_username: mcUsername
+      });
       
       // Get user's sites
       const { data: sitesData } = await supabase.from('sites').select('*').eq('owner_user_id', userId).order('created_at', { ascending: false });
       setUserSites(sitesData || []);
-    } else {
-      // Fallback: try to get from auth.users
-      const { data: userData } = await supabase.auth.admin.getUserById(userId);
-      if (userData?.user) {
-        setProfileUser({
-          id: userData.user.id,
-          username: userData.user.user_metadata?.name || userData.user.email?.split('@')[0],
-          avatar_url: userData.user.user_metadata?.avatar_url,
-          mc_username: null
-        });
-      }
     }
     setLoading(false);
   };
@@ -48,7 +46,8 @@ export default function Profile() {
   if (loading) return <Layout user={user}><div className="p-8 text-center">Loading...</div></Layout>;
   if (!profileUser) return <Layout user={user}><div className="p-8 text-center">User not found</div></Layout>;
 
-  const displayName = profileUser.mc_username || profileUser.username || profileUser.id.slice(0, 8);
+  // Show MC name if available, otherwise Discord name
+  const displayName = profileUser.mc_username || profileUser.username;
 
   return (
     <Layout user={user}>
@@ -66,6 +65,9 @@ export default function Profile() {
             <p className="text-gray-500 dark:text-gray-400">{userSites.length} sites owned</p>
             {profileUser.mc_username && (
               <p className="text-sm text-green-600 dark:text-green-400 mt-1 font-mono">MC: {profileUser.mc_username}</p>
+            )}
+            {!profileUser.mc_username && (
+              <p className="text-sm text-gray-500 mt-1">Discord: {profileUser.username}</p>
             )}
           </div>
         </div>
