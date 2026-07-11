@@ -11,9 +11,7 @@ export default function Search() {
   const [q, setQ] = useState(query);
   const [siteResults, setSiteResults] = useState([]);
   const [wikiResults, setWikiResults] = useState([]);
-  const [aiSummary, setAiSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [summarizing, setSummarizing] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,7 +20,6 @@ export default function Search() {
 
   const fetchResults = async () => {
     setLoading(true);
-    setAiSummary(null);
     const searchTerm = query.toLowerCase().trim();
     
     let sitesQuery = supabase.from('sites').select('*');
@@ -36,36 +33,12 @@ export default function Search() {
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(10);
     setWikiResults(wikiData || []);
 
-    // Generate AI Summary if we have site results
-    if (sitesData && sitesData.length > 0) {
-      generateAISummary(sitesData);
-    } else {
-      setSummarizing(false);
-    }
-
     if (user) {
       await supabase.from('search_history').insert({ user_id: user.id, query }).catch(() => {});
     }
     await supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: (sitesData?.length || 0) + (wikiData?.length || 0) }).catch(() => {});
+    
     setLoading(false);
-  };
-
-  const generateAISummary = async (results) => {
-    setSummarizing(true);
-    try {
-      const res = await fetch('/api/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, results })
-      });
-      const data = await res.json();
-      if (data.summary) {
-        setAiSummary(data.summary);
-      }
-    } catch (err) {
-      console.error('Failed to generate summary:', err);
-    }
-    setSummarizing(false);
   };
 
   const handleSearch = (e) => {
@@ -73,7 +46,7 @@ export default function Search() {
     if (q.trim()) setSearchParams({ q: q.trim() });
   };
 
-  // Helper to find wiki text regardless of column name
+  // Helper to find wiki text regardless of what the column is named
   const getWikiText = (page) => {
     return page.content || page.body || page.text || page.description || '';
   };
@@ -97,71 +70,50 @@ export default function Search() {
         {loading ? (
           <div className="text-center py-12 text-gray-500">Searching...</div>
         ) : (
-          <>
-            {/* AI SUMMARY */}
-            {summarizing && (
-              <div className="mb-6 bg-gray-100 dark:bg-[#202124] rounded-xl p-4 text-center text-gray-500">
-                <span className="animate-pulse">🤖 Generating AI summary...</span>
-              </div>
-            )}
+          <div className="space-y-4">
+            {/* WIKI RESULTS */}
+            {wikiResults.map((page) => {
+              const wikiText = getWikiText(page);
+              return (
+                <a key={page.id} href={page.url || '#'} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-shadow">
+                  <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-1">{page.title}</h4>
+                  {wikiText && wikiText.length > 10 ? (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{wikiText.substring(0, 150)}...</p>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">Wiki page found (click to view)</p>
+                  )}
+                </a>
+              );
+            })}
 
-            {aiSummary && (
-              <div className="mb-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="text-2xl"></div>
-                  <div className="flex-grow">
-                    <h3 className="font-bold text-blue-600 dark:text-blue-400 mb-2">AI Summary</h3>
-                    <p className="text-gray-700 dark:text-gray-300">{aiSummary}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {/* WIKI RESULTS */}
-              {wikiResults.map((page) => {
-                const wikiText = getWikiText(page);
-                return (
-                  <a key={page.id} href={page.url || '#'} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-shadow">
-                    <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-1">{page.title}</h4>
-                    {wikiText && wikiText.length > 10 ? (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{wikiText.substring(0, 150)}...</p>
-                    ) : (
-                      <p className="text-sm text-gray-500 italic">Wiki page found (click to view)</p>
+            {/* SITE RESULTS */}
+            {siteResults.map((site) => (
+              <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md cursor-pointer">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400 mb-1">
+                      {site.name} {site.is_verified && <span className="text-blue-500 text-sm">✓</span>}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{site.description}</p>
+                    {site.keywords && site.keywords.length > 0 && (
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {site.keywords.map((kw, i) => (
+                          <span key={i} className="px-2 py-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs rounded">{kw}</span>
+                        ))}
+                      </div>
                     )}
-                  </a>
-                );
-              })}
-
-              {/* SITE RESULTS */}
-              {siteResults.map((site) => (
-                <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md cursor-pointer">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-xl font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                        {site.name} {site.is_verified && <span className="text-blue-500 text-sm">✓</span>}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{site.description}</p>
-                      {site.keywords && site.keywords.length > 0 && (
-                        <div className="flex gap-2 mt-2 flex-wrap">
-                          {site.keywords.map((kw, i) => (
-                            <span key={i} className="px-2 py-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs rounded">{kw}</span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-right text-sm text-gray-500">
-                      <p>{site.view_count || 0} views</p>
-                    </div>
+                  </div>
+                  <div className="text-right text-sm text-gray-500">
+                    <p>{site.view_count || 0} views</p>
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
 
-              {siteResults.length === 0 && wikiResults.length === 0 && !loading && (
-                <div className="text-center py-12 text-gray-500">No results found for "{query}"</div>
-              )}
-            </div>
-          </>
+            {siteResults.length === 0 && wikiResults.length === 0 && !loading && (
+              <div className="text-center py-12 text-gray-500">No results found for "{query}"</div>
+            )}
+          </div>
         )}
       </main>
     </Layout>
