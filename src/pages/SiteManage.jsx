@@ -5,25 +5,19 @@ import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 
 export default function SiteManage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth(); // Added loading
   const { slug } = useParams();
   const navigate = useNavigate();
   const [site, setSite] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    category: '',
-    url: '',
-    shortcuts: '',
-    keywords: '',
-    is_verified: false
+    name: '', description: '', category: '', url: '', shortcuts: '', keywords: '', is_verified: false
   });
 
   useEffect(() => {
-    fetchSite();
-  }, [slug, user]);
+    // Only fetch if not loading and user exists
+    if (!loading && user && slug) fetchSite();
+  }, [slug, user, loading]);
 
   const fetchSite = async () => {
     const { data } = await supabase.from('sites').select('*').eq('slug', slug).single();
@@ -34,17 +28,6 @@ export default function SiteManage() {
       return;
     }
 
-    // DEBUG: Log the IDs to see why it's failing
-    console.log('Site Owner ID:', data.owner_user_id);
-    console.log('Current User ID:', user?.id);
-
-    if (!user) {
-      alert('Please sign in to manage this site');
-      navigate(`/site/${slug}`);
-      return;
-    }
-    
-    // RELAXED CHECK: Allow if owner matches OR if no owner is set (for legacy sites)
     if (data.owner_user_id && data.owner_user_id !== user.id) {
       alert(`Permission denied. Site owner: ${data.owner_user_id}, You: ${user.id}`);
       navigate(`/site/${slug}`);
@@ -53,66 +36,48 @@ export default function SiteManage() {
 
     setSite(data);
     setFormData({
-      name: data.name || '',
-      description: data.description || '',
-      category: data.category || '',
-      url: data.url || '',
-      shortcuts: data.shortcuts || '',
-      keywords: data.keywords?.join(', ') || '',
+      name: data.name || '', description: data.description || '', category: data.category || '',
+      url: data.url || '', shortcuts: data.shortcuts || '', keywords: data.keywords?.join(', ') || '',
       is_verified: data.is_verified || false
     });
-    setLoading(false);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-
     const shortcutsArray = formData.shortcuts ? formData.shortcuts.split(',').map(s => s.trim()).filter(s => s) : [];
     const keywordsArray = formData.keywords ? formData.keywords.split(',').map(s => s.trim()).filter(s => s) : [];
 
     const { error } = await supabase.from('sites').update({
-      name: formData.name,
-      description: formData.description,
-      category: formData.category,
-      url: formData.url,
-      shortcuts: shortcutsArray.join(', '),
-      keywords: keywordsArray,
+      name: formData.name, description: formData.description, category: formData.category,
+      url: formData.url, shortcuts: shortcutsArray.join(', '), keywords: keywordsArray,
       is_verified: formData.is_verified
     }).eq('id', site.id);
 
-    if (error) {
-      alert('Error saving: ' + error.message);
-    } else {
-      alert('Site updated successfully!');
-      fetchSite();
-    }
+    if (error) alert('Error saving: ' + error.message);
+    else { alert('Site updated successfully!'); fetchSite(); }
     setSaving(false);
   };
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this site? This cannot be undone.')) {
       const { error } = await supabase.from('sites').delete().eq('id', site.id);
-      if (error) {
-        alert('Error deleting: ' + error.message);
-      } else {
-        alert('Site deleted');
-        navigate('/');
-      }
+      if (error) alert('Error deleting: ' + error.message);
+      else { alert('Site deleted'); navigate('/'); }
     }
   };
 
-  if (loading) return <Layout user={user}><div className="p-8 text-center">Loading...</div></Layout>;
-  if (!site) return null;
+  // Wait for auth to finish loading
+  if (loading) return <Layout user={null}><div className="p-8 text-center">Loading...</div></Layout>;
+  if (!user) return <Layout user={null}><div className="p-8 text-center">Please sign in</div></Layout>;
+  if (!site) return <Layout user={user}><div className="p-8 text-center">Loading site...</div></Layout>;
 
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Manage: {site.name}</h1>
-          <button onClick={() => navigate(`/site/${slug}`)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg text-sm">
-            ← Back to Site
-          </button>
+          <button onClick={() => navigate(`/site/${slug}`)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg text-sm">← Back to Site</button>
         </div>
 
         <form onSubmit={handleSave} className="space-y-6">
@@ -165,9 +130,7 @@ export default function SiteManage() {
             <button type="submit" disabled={saving} className="flex-1 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium">
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
-            <button type="button" onClick={handleDelete} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium">
-              Delete Site
-            </button>
+            <button type="button" onClick={handleDelete} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium">Delete Site</button>
           </div>
         </form>
       </main>
