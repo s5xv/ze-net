@@ -8,29 +8,60 @@ export default function LinkAccount() {
   const { user } = useAuth();
   const { isDark } = useTheme();
   const [linked, setLinked] = useState(false);
-  const [mcName, setMcName] = useState(null);
+  const [mcName, setMcName] = useState('');
   const [checking, setChecking] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user) {
-      checkLinkStatus();
-      const interval = setInterval(checkLinkStatus, 3000); // Auto-check every 3 seconds
-      return () => clearInterval(interval);
-    }
+    if (user) checkLinkStatus();
   }, [user]);
 
   const checkLinkStatus = async () => {
-    const { data } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', user.id).single();
-    if (data?.account_id) {
+    const { data } = await supabase.from('profiles').select('mc_username').eq('id', user.id).single();
+    if (data?.mc_username) {
       setLinked(true);
-      setMcName(data.account_id);
+      setMcName(data.mc_username);
     }
   };
 
-  const handleManualCheck = async () => {
+  const handleVerify = async () => {
+    if (!mcName.trim()) return setError('Please enter your Minecraft username');
     setChecking(true);
-    await checkLinkStatus();
-    setTimeout(() => setChecking(false), 1000);
+    setError('');
+
+    try {
+      // Query ONLY by account_id (MC username) and check amount
+      const { data, error } = await supabase
+        .from('treasury_tokens')
+        .select('*')
+        .eq('account_id', mcName.trim())
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+
+      // Find a payment between 0.01 and 1.00
+      const validPayment = data?.find(p => {
+        const amount = parseFloat(p.amount);
+        return amount >= 0.01 && amount <= 1.00;
+      });
+
+      if (validPayment) {
+        // Payment found! Link the account
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ mc_username: mcName.trim() })
+          .eq('id', user.id);
+
+        if (updateError) throw updateError;
+        setLinked(true);
+      } else {
+        setError('No valid payment found. Did you run `/paya business ZEN 0.01`? Amount must be 0.01-1.00');
+      }
+    } catch (err) {
+      setError('Error: ' + err.message);
+    }
+    setChecking(false);
   };
 
   if (!user) return <Layout user={user}><div className="p-8 text-center">Please sign in</div></Layout>;
@@ -44,30 +75,33 @@ export default function LinkAccount() {
             <div className="text-green-500">
               <div className="text-2xl font-bold mb-2">✓ Account Linked!</div>
               <div className="text-xl font-mono">MC: {mcName}</div>
-              <button onClick={() => window.location.href = '/account'} className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
-                Go to Account
-              </button>
             </div>
           ) : (
             <>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                To link your account, run this command in-game:
-              </p>
-              <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg mb-6 border-2 border-blue-500">
-                <code className="text-xl font-mono text-blue-600 dark:text-blue-400 font-bold">
+                1. Run in-game:<br/>
+                <code className="text-xl font-mono text-blue-600 dark:text-blue-400 font-bold block my-4 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
                   /paya business ZEN 0.01
                 </code>
-              </div>
-              <p className="text-sm text-gray-500 mb-6">
-                Pay <strong>0.01 to 1.00 ZEN</strong> to the "business" account.<br/>
-                The system will auto-detect your payment within a few seconds!
+                2. Enter your Minecraft username:
               </p>
+              
+              <input 
+                type="text" 
+                value={mcName} 
+                onChange={(e) => setMcName(e.target.value)}
+                placeholder="Minecraft Username"
+                className="w-full px-4 py-3 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg mb-4 text-center text-lg font-mono"
+              />
+              
+              {error && <p className="text-red-500 mb-4 text-sm">{error}</p>}
+              
               <button 
-                onClick={handleManualCheck}
+                onClick={handleVerify}
                 disabled={checking}
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium"
+                className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-bold text-lg"
               >
-                {checking ? 'Checking...' : 'Check Payment Status'}
+                {checking ? 'Checking...' : 'Verify Payment'}
               </button>
             </>
           )}

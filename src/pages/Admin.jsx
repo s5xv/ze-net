@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
+import TempAdminGrant from '../components/TempAdminGrant';
 import { useAuth } from '../hooks/useAuth';
 
 const ADMIN_PASSWORD = 'Khalid124_';
