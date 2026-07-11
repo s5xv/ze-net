@@ -114,36 +114,86 @@ export default function Home() {
     setBookmarks(data || []);
   };
 
-  const handleSearch = (e) => { e.preventDefault(); if (q.trim()) { navigate(`/search?q=${encodeURIComponent(q.trim())}`); setShowSuggestions(false); } };
-  const handleSuggestionClick = (s) => { if (s.type === 'site') navigate(`/site/${s.slug}`); else navigate(`/search?q=${encodeURIComponent(s.text)}`); setShowSuggestions(false); };
-  const handleFeelingLucky = async () => { const { data } = await supabase.from('sites').select('slug').limit(1000); if (data?.length) navigate(`/site/${data[Math.floor(Math.random() * data.length)].slug}`); };
-  const fixUrl = (url) => (!url) ? '#' : (url.startsWith('http') ? url : `https://${url}`);
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (q.trim()) {
+      navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+      setShowSuggestions(false);
+    }
+  };
 
-  if (loading) return <Layout user={null}><div className="flex-grow flex items-center justify-center text-gray-500">Loading...</div></Layout>;
+  const handleSuggestionClick = (suggestion) => {
+    if (suggestion.type === 'site') {
+      navigate(`/site/${suggestion.slug}`);
+    } else {
+      navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
+    }
+    setShowSuggestions(false);
+  };
+
+  const handleFeelingLucky = async () => {
+    const { data } = await supabase.from('sites').select('slug').limit(1000);
+    if (data && data.length > 0) {
+      navigate(`/site/${data[Math.floor(Math.random() * data.length)].slug}`);
+    }
+  };
+
+  const fixUrl = (url) => {
+    if (!url) return '#';
+    return url.startsWith('http') ? url : `https://${url}`;
+  };
+
+  if (loading) {
+    return (
+      <Layout user={null}>
+        <div className="flex-grow flex items-center justify-center text-gray-500">Loading...</div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout user={user}>
       <main className="flex-grow px-4 py-8 sm:py-12 min-h-screen relative">
-        {/* MAIN CONTENT - TRULY CENTERED */}
         <div className="max-w-4xl mx-auto space-y-8 relative z-10">
           <div className="text-center mb-6">
-            <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight">Z&E <span className="text-blue-600 dark:text-blue-400">NET</span></h1>
-            <div className="flex justify-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400"><span>total sites: {stats.totalSites}</span></div>
+            <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight">
+              Z&E <span className="text-blue-600 dark:text-blue-400">NET</span>
+            </h1>
+            <div className="flex justify-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
+              <span>total sites: {stats.totalSites}</span>
+            </div>
           </div>
 
           <form onSubmit={handleSearch} className="w-full relative">
-            <input type="text" value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => suggestions.length > 0 && setShowSuggestions(true)} placeholder="What's on your mind today?..." className="w-full px-6 py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              placeholder="What's on your mind today?..."
+              className="w-full px-6 py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            />
             {showSuggestions && (
               <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-96 overflow-y-auto">
-                {suggestions.map((s, i) => (<button key={i} type="button" onClick={() => handleSuggestionClick(s)} className="w-full text-left px-6 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0"><span className="text-gray-700 dark:text-gray-300 flex-grow">{s.text}</span></button>))}
+                {suggestions.map((s, i) => (
+                  <button key={i} type="button" onClick={() => handleSuggestionClick(s)} className="w-full text-left px-6 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0">
+                    <span className="text-gray-700 dark:text-gray-300 flex-grow">{s.text}</span>
+                  </button>
+                ))}
               </div>
             )}
           </form>
 
           <div className="flex flex-wrap gap-3 justify-center">
-            <button onClick={handleSearch} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">Search web</button>
-            <button onClick={handleFeelingLucky} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">I'm feeling lucky</button>
-            <button onClick={() => navigate('/utilities')} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">More...</button>
+            <button onClick={handleSearch} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
+              Search web
+            </button>
+            <button onClick={handleFeelingLucky} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
+              I'm feeling lucky
+            </button>
+            <button onClick={() => navigate('/utilities')} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
+              More...
+            </button>
           </div>
 
           <div className="flex flex-wrap gap-3 justify-center">
@@ -157,58 +207,132 @@ export default function Home() {
 
           <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
             <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700">
-              <div className="text-center"><div className="text-8xl sm:text-9xl mb-2"></div><p className="text-xs text-gray-500">{featuredContent ? featuredContent.leftLabel : 'Character'}</p></div>
+              <div className="text-center">
+                <div className="text-8xl sm:text-9xl mb-2"></div>
+                <p className="text-xs text-gray-500">{featuredContent ? featuredContent.leftLabel : 'Character'}</p>
+              </div>
             </div>
             <div className="w-1/2 sm:w-3/5 p-6 sm:p-8 flex flex-col justify-center overflow-y-auto">
               <h2 className="text-3xl sm:text-4xl font-bold mb-2 leading-tight">Are they simply the best?!</h2>
               {featuredContent ? (
                 <>
-                  <p className="text-lg sm:text-xl text-blue-600 dark:text-blue-400 font-medium mb-2">{featuredContent.type === 'site' ? 'Featured Site: ' : featuredContent.type === 'wiki' ? 'Featured Wiki: ' : 'Top Searched: '}<span className="text-gray-800 dark:text-gray-100">{featuredContent.highlight}</span></p>
+                  <p className="text-lg sm:text-xl text-blue-600 dark:text-blue-400 font-medium mb-2">
+                    {featuredContent.type === 'site' ? 'Featured Site: ' : featuredContent.type === 'wiki' ? 'Featured Wiki: ' : 'Top Searched: '}
+                    <span className="text-gray-800 dark:text-gray-100">{featuredContent.highlight}</span>
+                  </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 italic mb-4">{featuredContent.subtitle}</p>
-                  <button onClick={() => featuredContent.external ? window.open(featuredContent.actionLink, '_blank') : navigate(featuredContent.actionLink)} className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium w-fit">{featuredContent.actionText}</button>
+                  <button
+                    onClick={() => featuredContent.external ? window.open(featuredContent.actionLink, '_blank') : navigate(featuredContent.actionLink)}
+                    className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium w-fit"
+                  >
+                    {featuredContent.actionText}
+                  </button>
                 </>
-              ) : (<p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-6">Are placeholders simply better?</p>)}
+              ) : (
+                <p className="text-xl sm:text-2xl text-gray-600 dark:text-gray-400 mb-6">Are placeholders simply better?</p>
+              )}
               <div className="h-6 w-full bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 via-blue-500 via-indigo-500 to-purple-500 rounded-full mt-auto"></div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><span className="text-green-500 text-xl">✨</span> New Sites</h3>
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <span className="text-green-500 text-xl">✨</span>
+                New Sites
+              </h3>
               <div className="space-y-3">
-                {newSites.length === 0 ? <p className="text-sm text-gray-500 italic">No new sites yet.</p> : newSites.map((site) => (<div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] cursor-pointer transition-colors"><h4 className="font-semibold text-sm flex items-center gap-2">{site.name}{site.is_verified && <span className="text-blue-500 text-xs">✓</span>}</h4><p className="text-xs text-gray-500">{site.category} • Added {new Date(site.created_at).toLocaleDateString()}</p></div>))}
+                {newSites.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">No new sites yet.</p>
+                ) : (
+                  newSites.map((site) => (
+                    <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] cursor-pointer transition-colors">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        {site.name}
+                        {site.is_verified && <span className="text-blue-500 text-xs">✓</span>}
+                      </h4>
+                      <p className="text-xs text-gray-500">{site.category} • Added {new Date(site.created_at).toLocaleDateString()}</p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
+
             <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><span className="text-orange-500 text-xl"></span> Trending This Week</h3>
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <span className="text-orange-500 text-xl">🔥</span>
+                Trending This Week
+              </h3>
               <div className="space-y-3">
-                {trendingSites.length === 0 ? <p className="text-sm text-gray-500 italic">No trending sites yet.</p> : trendingSites.map((site) => (<div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] cursor-pointer transition-colors"><h4 className="font-semibold text-sm flex items-center gap-2">{site.name}{site.is_verified && <span className="text-blue-500 text-xs">✓</span>}</h4><p className="text-xs text-gray-500">{site.category} • {site.view_count || 0} views</p></div>))}
+                {trendingSites.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">No trending sites yet.</p>
+                ) : (
+                  trendingSites.map((site) => (
+                    <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] cursor-pointer transition-colors">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        {site.name}
+                        {site.is_verified && <span className="text-blue-500 text-xs">✓</span>}
+                      </h4>
+                      <p className="text-xs text-gray-500">{site.category} • {site.view_count || 0} views</p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
 
           {ads.length > 0 && (
             <div className="mt-8">
-              <div className="flex justify-between items-center mb-4"><h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sponsored</h3></div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sponsored</h3>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {ads.map((ad) => (<a key={ad.id} href={fixUrl(ad.link_url)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${ad.tier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : ad.tier === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>{ad.image_url && <img src={ad.image_url} alt={ad.title} className="w-full h-32 object-cover rounded-lg mb-3" onError={(e) => e.target.style.display = 'none'} /><h4 className={`font-bold mb-1 group-hover:underline ${ad.tier === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : ad.tier === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>{ad.title}</h4>{ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}<span className={`text-xs mt-2 block ${ad.tier === 'gold' ? 'text-yellow-500' : ad.tier === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>{ad.tier === 'gold' ? '⭐ Gold Sponsor' : ad.tier === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}</span></a>))}
+                {ads.map((ad) => (
+                  <a key={ad.id} href={fixUrl(ad.link_url)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${ad.tier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : ad.tier === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
+                    {ad.image_url && <img src={ad.image_url} alt={ad.title} className="w-full h-32 object-cover rounded-lg mb-3" onError={(e) => { e.target.style.display = 'none'; }} />}
+                    <h4 className={`font-bold mb-1 group-hover:underline ${ad.tier === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : ad.tier === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
+                      {ad.title}
+                    </h4>
+                    {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
+                    <span className={`text-xs mt-2 block ${ad.tier === 'gold' ? 'text-yellow-500' : ad.tier === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>
+                      {ad.tier === 'gold' ? '⭐ Gold Sponsor' : ad.tier === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}
+                    </span>
+                  </a>
+                ))}
               </div>
             </div>
           )}
         </div>
 
-        {/* FAR RIGHT SIDEBAR - ABSOLUTELY POSITIONED ON LARGE SCREENS */}
         <div className="hidden lg:block absolute top-8 right-4 xl:right-10 w-64">
           {user ? (
             <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" /></svg>Your Bookmarks</h3>
-              {bookmarks.length === 0 ? <p className="text-sm text-gray-500 italic">No bookmarks yet.</p> : (<div className="space-y-3">{bookmarks.map((bm) => (<a key={bm.id} href={`/site/${bm.sites?.slug}`} className="block p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors"><h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4><p className="text-xs text-gray-500 truncate">{bm.sites?.category}</p></a>))}</div>)}
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                </svg>
+                Your Bookmarks
+              </h3>
+              {bookmarks.length === 0 ? (
+                <p className="text-sm text-gray-500 italic">No bookmarks yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {bookmarks.map((bm) => (
+                    <a key={bm.id} href={`/site/${bm.sites?.slug}`} className="block p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors">
+                      <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
+                      <p className="text-xs text-gray-500 truncate">{bm.sites?.category}</p>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm text-center">
               <h3 className="text-lg font-bold mb-2">Bookmarks</h3>
               <p className="text-sm text-gray-500 mb-4">Sign in to save sites!</p>
-              <button onClick={() => navigate('/login')} className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">Sign In</button>
+              <button onClick={() => navigate('/login')} className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
+                Sign In
+              </button>
             </div>
           )}
         </div>
