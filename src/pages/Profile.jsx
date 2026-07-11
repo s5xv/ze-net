@@ -21,18 +21,18 @@ export default function Profile() {
   const fetchProfile = async () => {
     setLoading(true);
     
-    // Get MC username from treasury_tokens
+    // Get Discord name from profiles table
+    const { data: profileData } = await supabase.from('profiles').select('username, avatar_url').eq('id', userId).single();
+    
+    // Get MC username from treasury_tokens (only if it looks like a real MC name, not UUID)
     const { data: tokenData } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', userId).single();
-    const mcUsername = tokenData?.account_id || null;
+    const mcUsername = tokenData?.account_id && !tokenData.account_id.includes('-') ? tokenData.account_id : null;
     
-    // Get Discord name from auth.users
-    const { data: userData } = await supabase.from('profiles').select('username, avatar_url').eq('id', userId).single();
-    
-    if (userData || mcUsername) {
+    if (profileData || mcUsername) {
       setProfileUser({
         id: userId,
-        username: userData?.username || 'User',
-        avatar_url: userData?.avatar_url,
+        username: profileData?.username || 'User',
+        avatar_url: profileData?.avatar_url,
         mc_username: mcUsername
       });
       
