@@ -131,162 +131,28 @@ export default function Admin() {
 
   // FIXED: Uses user.id instead of reg.user_id
   const handleAddSite = async (e) => {
-    // Find user by Discord username
-    let ownerUserId = null;
-    if (newSite.owner_discord) {
-      const { data: ownerData } = await supabase.from('profiles').select('id').eq('username', newSite.owner_discord).single();
-      if (ownerData) {
-        ownerUserId = ownerData.id;
-      } else {
-        // Try auth.users table
-        const { data: authData } = await supabase.auth.admin.getUserById('');
-        // Fallback: search by metadata
-        const { data: usersData } = await supabase.from('profiles').select('*').ilike('username', `%${newSite.owner_discord}%`).limit(1);
-        if (usersData && usersData.length > 0) {
-          ownerUserId = usersData[0].id;
-        }
-      }
-    }
     e.preventDefault();
-    // Find user by Discord username
-    let ownerUserId = null;
-    if (newSite.owner_discord) {
-      const { data: ownerData } = await supabase.from('profiles').select('id').eq('username', newSite.owner_discord).single();
-      if (ownerData) {
-        ownerUserId = ownerData.id;
-      } else {
-        // Try auth.users table
-        const { data: authData } = await supabase.auth.admin.getUserById('');
-        // Fallback: search by metadata
-        const { data: usersData } = await supabase.from('profiles').select('*').ilike('username', `%${newSite.owner_discord}%`).limit(1);
-        if (usersData && usersData.length > 0) {
-          ownerUserId = usersData[0].id;
-        }
-      }
-    }
     const shortcutsArray = newSite.shortcut ? newSite.shortcut.split(',').map(s => s.trim()).filter(s => s) : [];
-    // Find user by Discord username
-    let ownerUserId = null;
-    if (newSite.owner_discord) {
-      const { data: ownerData } = await supabase.from('profiles').select('id').eq('username', newSite.owner_discord).single();
-      if (ownerData) {
-        ownerUserId = ownerData.id;
-      } else {
-        // Try auth.users table
-        const { data: authData } = await supabase.auth.admin.getUserById('');
-        // Fallback: search by metadata
-        const { data: usersData } = await supabase.from('profiles').select('*').ilike('username', `%${newSite.owner_discord}%`).limit(1);
-        if (usersData && usersData.length > 0) {
-          ownerUserId = usersData[0].id;
-        }
-      }
-    }
     const keywordsArray = newSite.keywords ? newSite.keywords.split(',').map(s => s.trim()).filter(s => s) : [];
-    // Find user by Discord username
-    let ownerUserId = null;
-    if (newSite.owner_discord) {
-      const { data: ownerData } = await supabase.from('profiles').select('id').eq('username', newSite.owner_discord).single();
-      if (ownerData) {
-        ownerUserId = ownerData.id;
-      } else {
-        // Try auth.users table
-        const { data: authData } = await supabase.auth.admin.getUserById('');
-        // Fallback: search by metadata
-        const { data: usersData } = await supabase.from('profiles').select('*').ilike('username', `%${newSite.owner_discord}%`).limit(1);
-        if (usersData && usersData.length > 0) {
-          ownerUserId = usersData[0].id;
-        }
-      }
-    }
     const slug = generateSlug(newSite.business_name);
-    // Find user by Discord username
-    let ownerUserId = null;
-    if (newSite.owner_discord) {
-      const { data: ownerData } = await supabase.from('profiles').select('id').eq('username', newSite.owner_discord).single();
-      if (ownerData) {
-        ownerUserId = ownerData.id;
-      } else {
-        // Try auth.users table
-        const { data: authData } = await supabase.auth.admin.getUserById('');
-        // Fallback: search by metadata
-        const { data: usersData } = await supabase.from('profiles').select('*').ilike('username', `%${newSite.owner_discord}%`).limit(1);
-        if (usersData && usersData.length > 0) {
-          ownerUserId = usersData[0].id;
-        }
-      }
-    }
     let finalDescription = newSite.description || `${newSite.business_name} - ${newSite.category}`;
-    // Find user by Discord username
-    let ownerUserId = null;
-    if (newSite.owner_discord) {
-      const { data: ownerData } = await supabase.from('profiles').select('id').eq('username', newSite.owner_discord).single();
-      if (ownerData) {
-        ownerUserId = ownerData.id;
-      } else {
-        // Try auth.users table
-        const { data: authData } = await supabase.auth.admin.getUserById('');
-        // Fallback: search by metadata
-        const { data: usersData } = await supabase.from('profiles').select('*').ilike('username', `%${newSite.owner_discord}%`).limit(1);
-        if (usersData && usersData.length > 0) {
-          ownerUserId = usersData[0].id;
-        }
-      }
-    }
     if (newSite.discord_invite) finalDescription += `\nDiscord: ${newSite.discord_invite}`;
-    // Find user by Discord username
+
+    // Try to find owner by Discord username
     let ownerUserId = null;
     if (newSite.owner_discord) {
-      const { data: ownerData } = await supabase.from('profiles').select('id').eq('username', newSite.owner_discord).single();
-      if (ownerData) {
-        ownerUserId = ownerData.id;
-      } else {
-        // Try auth.users table
-        const { data: authData } = await supabase.auth.admin.getUserById('');
-        // Fallback: search by metadata
-        const { data: usersData } = await supabase.from('profiles').select('*').ilike('username', `%${newSite.owner_discord}%`).limit(1);
-        if (usersData && usersData.length > 0) {
-          ownerUserId = usersData[0].id;
-        }
+      const { data: profileData } = await supabase.from('profiles').select('id').ilike('username', `%${newSite.owner_discord}%`).single();
+      if (profileData) {
+        ownerUserId = profileData.id;
       }
     }
 
-    // Find user by Discord username
-    let ownerUserId = null;
-    if (newSite.owner_discord) {
-      const { data: ownerData } = await supabase.from('profiles').select('id').eq('username', newSite.owner_discord).single();
-      if (ownerData) {
-        ownerUserId = ownerData.id;
-      } else {
-        // Try auth.users table
-        const { data: authData } = await supabase.auth.admin.getUserById('');
-        // Fallback: search by metadata
-        const { data: usersData } = await supabase.from('profiles').select('*').ilike('username', `%${newSite.owner_discord}%`).limit(1);
-        if (usersData && usersData.length > 0) {
-          ownerUserId = usersData[0].id;
-        }
-      }
-    }
     const { error } = await supabase.from('sites').insert({
-    // Find user by Discord username
-    let ownerUserId = null;
-    if (newSite.owner_discord) {
-      const { data: ownerData } = await supabase.from('profiles').select('id').eq('username', newSite.owner_discord).single();
-      if (ownerData) {
-        ownerUserId = ownerData.id;
-      } else {
-        // Try auth.users table
-        const { data: authData } = await supabase.auth.admin.getUserById('');
-        // Fallback: search by metadata
-        const { data: usersData } = await supabase.from('profiles').select('*').ilike('username', `%${newSite.owner_discord}%`).limit(1);
-        if (usersData && usersData.length > 0) {
-          ownerUserId = usersData[0].id;
-        }
-      }
-    }
       name: newSite.business_name, slug, description: finalDescription,
       category: newSite.category, url: newSite.website_url || '#', 
       shortcuts: shortcutsArray.join(', '), keywords: keywordsArray,
-      is_verified: false, owner_user_id: ownerUserId || user.id
+      is_verified: false, owner_user_id: ownerUserId || user.id,
+      owner_discord_id: newSite.owner_discord
     });
 
     if (error) alert('Error creating site: ' + error.message);
