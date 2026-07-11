@@ -33,10 +33,19 @@ export default function Search() {
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(10);
     setWikiResults(wikiData || []);
 
-    if (user) {
-      await supabase.from('search_history').insert({ user_id: user.id, query }).catch(() => {});
+    // FIXED: Removed .catch() calls that were breaking the page
+    try {
+      if (user) {
+        await supabase.from('search_history').insert({ user_id: user.id, query });
+      }
+      await supabase.from('search_analytics').insert({ 
+        query, 
+        user_id: user?.id || null, 
+        results_count: (sitesData?.length || 0) + (wikiData?.length || 0) 
+      });
+    } catch (err) {
+      console.error('Analytics error:', err);
     }
-    await supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: (sitesData?.length || 0) + (wikiData?.length || 0) }).catch(() => {});
     
     setLoading(false);
   };
@@ -46,7 +55,6 @@ export default function Search() {
     if (q.trim()) setSearchParams({ q: q.trim() });
   };
 
-  // Helper to find wiki text regardless of what the column is named
   const getWikiText = (page) => {
     return page.content || page.body || page.text || page.description || '';
   };
@@ -71,7 +79,6 @@ export default function Search() {
           <div className="text-center py-12 text-gray-500">Searching...</div>
         ) : (
           <div className="space-y-4">
-            {/* WIKI RESULTS */}
             {wikiResults.map((page) => {
               const wikiText = getWikiText(page);
               return (
@@ -86,7 +93,6 @@ export default function Search() {
               );
             })}
 
-            {/* SITE RESULTS */}
             {siteResults.map((site) => (
               <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-5 hover:shadow-md cursor-pointer">
                 <div className="flex justify-between items-start">
