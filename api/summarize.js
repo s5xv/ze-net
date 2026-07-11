@@ -12,15 +12,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.MISTRAL_API_KEY;
     
     if (!apiKey) {
       return res.status(200).json({ 
-        summary: "⚠️ AI is ready, but the GEMINI_API_KEY is missing! Go to Vercel Dashboard > Settings > Environment Variables and add it to see real summaries." 
+        summary: "⚠️ AI is ready, but the MISTRAL_API_KEY is missing! Go to Vercel Dashboard > Settings > Environment Variables and add it." 
       });
     }
 
-    // Format results for AI - be very explicit about what data is available
     const resultsText = results.slice(0, 10).map((r, i) => {
       const name = r.name || r.title || 'Unknown';
       const desc = r.description || r.content || 'No description';
@@ -28,7 +27,6 @@ export default async function handler(req, res) {
       return `${i+1}. [${type}] ${name}: ${desc.substring(0, 200)}`;
     }).join('\n');
 
-    // STRICT prompt: Only use provided data, filter irrelevant results
     const prompt = `You are a search result assistant for a Minecraft server directory called "Z&E Net" for the DemocracyCraft server.
 
 Search query: "${query}"
@@ -45,21 +43,26 @@ IMPORTANT RULES:
 
 Respond ONLY with the summary text, no extra formatting.`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
+    const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 200, temperature: 0.2 }
+        model: 'mistral-small-latest',
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 200,
+        temperature: 0.2
       })
     });
 
     const data = await response.json();
     if (data.error) throw new Error(data.error.message);
 
-    const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Unable to generate summary.';
-    
-    // Also return source names for the UI
+    const summary = data.choices?.[0]?.message?.content || 'Unable to generate summary.';
     const sources = results.slice(0, 5).map(r => r.name || r.title).filter(Boolean);
     
     res.status(200).json({ summary, sources });
