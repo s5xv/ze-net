@@ -14,18 +14,18 @@ export default function Account() {
   const [showWithdraw, setShowWithdraw] = useState(false);
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        navigate('/login');
-      } else {
-        fetchData();
-      }
-    };
-    checkUser();
-  }, [navigate]);
+    if (!user) {
+      const timer = setTimeout(() => {
+        if (!user) navigate('/login');
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else {
+      fetchData();
+    }
+  }, [user, navigate]);
 
   const fetchData = async () => {
+    if (!user) return;
     setLoading(true);
     const { data: b } = await supabase.from('balances').select('balance').eq('user_id', user.id).single();
     setBalance(b?.balance || 0);
@@ -36,6 +36,7 @@ export default function Account() {
     setMessage('Checking Treasury API for recent payments...');
     try {
       const res = await fetch('/api/auto-deposit', { method: 'POST' });
+      if (!res.ok) throw new Error('API returned ' + res.status);
       const data = await res.json();
       setMessage('Scan complete. Processed ' + (data.processed || 0) + ' new deposits.');
       fetchData();
@@ -44,8 +45,8 @@ export default function Account() {
     }
   };
 
+  if (!user) return <Layout><div className="p-8 text-center">Loading account...</div></Layout>;
   if (loading) return <Layout user={user}><div className="p-8 text-center">Loading...</div></Layout>;
-  if (!user) return null;
 
   return (
     <Layout user={user}>
