@@ -409,9 +409,11 @@ export default function Admin() {
               </div>
             </div>
 
-            {filteredSites.filter(s => s.status === 'pending').length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-lg font-bold text-yellow-400 mb-3">Pending Approval ({filteredSites.filter(s => s.status === 'pending').length})</h3>
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-yellow-400 mb-3">Pending Approval ({filteredSites.filter(s => s.status === 'pending').length})</h3>
+              {filteredSites.filter(s => s.status === 'pending').length === 0 ? (
+                <p className="text-gray-500 text-sm italic">No pending sites. Users can submit sites via /submit-site.</p>
+              ) : (
                 <div className="space-y-2">
                   {filteredSites.filter(s => s.status === 'pending').map(site => (
                     <div key={site.id} className="bg-[#303134] border border-yellow-700 rounded-xl p-3 flex justify-between items-center">
@@ -420,14 +422,14 @@ export default function Admin() {
                         <p className="text-sm text-gray-400">{site.url} &middot; {site.profiles?.username || site.owner_name || 'Unknown'}</p>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => approveSite(site.id)} className="px-3 py-1 bg-green-600 text-white text-xs rounded">Approve</button>
-                        <button onClick={() => rejectSite(site.id)} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Reject</button>
+                        <button onClick={async () => { const res = await fetch('/api/app?action=admin-approve-site', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ siteId: site.id }) }); const d = await res.json(); setMessage(d.message || d.error || 'Done'); fetchData(); }} className="px-3 py-1 bg-green-600 text-white text-xs rounded">Approve</button>
+                        <button onClick={async () => { const res = await fetch('/api/app?action=admin-reject-site', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ siteId: site.id }) }); const d = await res.json(); setMessage(d.message || d.error || 'Done'); fetchData(); }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Reject</button>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <input type="text" placeholder="Search sites..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 mb-4 bg-[#202124] border border-gray-700 rounded-lg text-white" />
             <div className="bg-[#303134] border border-gray-700 rounded-xl overflow-x-auto">
