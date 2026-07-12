@@ -14,13 +14,12 @@ export default function Admin() {
   const [sites, setSites] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [staff, setStaff] = useState([]);
-  const [settings, setSettings] = useState({});
   const [stats, setStats] = useState({});
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [newSiteModal, setNewSiteModal] = useState(false);
+  const [newStaffModal, setNewStaffModal] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -42,7 +41,6 @@ export default function Admin() {
       });
 
       if (activeTab === 'overview') {
-        // nothing
       } else if (activeTab === 'withdrawals') {
         const { data } = await supabase.from('withdrawal_requests').select('*, profiles(mc_username, username, id)').order('created_at', { ascending: false });
         setWithdrawals(data || []);
@@ -61,15 +59,9 @@ export default function Admin() {
       } else if (activeTab === 'transactions') {
         const { data } = await supabase.from('transactions').select('*, profiles(username)').order('created_at', { ascending: false }).limit(50);
         setTransactions(data || []);
-      } else if (activeTab === 'departments') {
-        const { data } = await supabase.from('departments').select('*').order('name');
-        setDepartments(data || []);
       } else if (activeTab === 'staff') {
         const { data } = await supabase.from('profiles').select('*').eq('is_staff', true);
         setStaff(data || []);
-      } else if (activeTab === 'settings') {
-        const { data } = await supabase.from('settings').select('*').single();
-        setSettings(data || {});
       }
     } catch (err) {
       setMessage('Error: ' + err.message);
@@ -96,10 +88,7 @@ export default function Admin() {
     try {
       await supabase.from('site_verification_requests').update({ status: 'approved' }).eq('id', req.id);
       if (req.site_id) {
-        await supabase.from('sites').update({
-          is_verified: true,
-          verification_paid_at: new Date().toISOString()
-        }).eq('id', req.site_id);
+        await supabase.from('sites').update({ is_verified: true, verification_paid_at: new Date().toISOString() }).eq('id', req.site_id);
       }
       setMessage('Verification approved');
       fetchData();
@@ -129,6 +118,26 @@ export default function Admin() {
     }
   };
 
+  const addStaff = async (userId) => {
+    try {
+      await supabase.from('profiles').update({ is_staff: true }).eq('id', userId);
+      setMessage('User promoted to staff');
+      fetchData();
+    } catch (err) {
+      setMessage('Error: ' + err.message);
+    }
+  };
+
+  const removeStaff = async (userId) => {
+    try {
+      await supabase.from('profiles').update({ is_staff: false }).eq('id', userId);
+      setMessage('Staff role removed');
+      fetchData();
+    } catch (err) {
+      setMessage('Error: ' + err.message);
+    }
+  };
+
   const filteredProfiles = profiles.filter(p =>
     !searchTerm ||
     (p.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -149,15 +158,11 @@ export default function Admin() {
     <button
       onClick={() => { setActiveTab(id); setSearchTerm(''); }}
       className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
-        activeTab === id
-          ? 'bg-blue-600 text-white'
-          : 'bg-[#303134] text-gray-400 hover:text-white hover:bg-gray-700'
+        activeTab === id ? 'bg-blue-600 text-white' : 'bg-[#303134] text-gray-400 hover:text-white hover:bg-gray-700'
       }`}
     >
       {label}
-      {badge > 0 && (
-        <span className="ml-2 px-2 py-0.5 bg-red-600 text-white text-xs rounded-full">{badge}</span>
-      )}
+      {badge > 0 && <span className="ml-2 px-2 py-0.5 bg-red-600 text-white text-xs rounded-full">{badge}</span>}
     </button>
   );
 
@@ -187,11 +192,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {message && (
-          <div className="mb-4 p-3 bg-blue-900/30 border border-blue-800 rounded-lg text-blue-300">
-            {message}
-          </div>
-        )}
+        {message && <div className="mb-4 p-3 bg-blue-900/30 border border-blue-800 rounded-lg text-blue-300">{message}</div>}
 
         <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-3 overflow-x-auto">
           <TabButton id="overview" label="Overview" />
@@ -201,18 +202,12 @@ export default function Admin() {
           <TabButton id="sites" label="Sites" />
           <TabButton id="users" label="Users" />
           <TabButton id="transactions" label="Transactions" />
-          <TabButton id="departments" label="Departments" />
           <TabButton id="staff" label="Staff" />
-          <TabButton id="settings" label="Settings" />
-          <TabButton id="analytics" label="Analytics" />
-          <TabButton id="logs" label="Logs" />
-          <TabButton id="backup" label="Backup" />
-          <TabButton id="tools" label="Tools" />
         </div>
 
         {loading && <p className="text-center text-gray-400 py-10">Loading...</p>}
 
-        {/* OVERVIEW TAB */}
+        {/* OVERVIEW */}
         {!loading && activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
@@ -231,7 +226,7 @@ export default function Admin() {
           </div>
         )}
 
-        {/* WITHDRAWALS TAB */}
+        {/* WITHDRAWALS */}
         {!loading && activeTab === 'withdrawals' && (
           <div>
             {filteredWithdrawals.length === 0 ? (
@@ -267,7 +262,7 @@ export default function Admin() {
           </div>
         )}
 
-        {/* VERIFICATIONS TAB */}
+        {/* VERIFICATIONS */}
         {!loading && activeTab === 'verifications' && (
           <div>
             {filteredVerifications.length === 0 ? (
@@ -299,7 +294,7 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ADS TAB */}
+        {/* ADS */}
         {!loading && activeTab === 'ads' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {ads.map(site => (
@@ -315,14 +310,14 @@ export default function Admin() {
                 </div>
               </div>
             ))}
-            {ads.length === 0 && <p className="col-span-full text-center text-gray-500 py-8">No ads</p>}
+            {ads.length === 0 && <p className="col-span-full text-center text-gray-500 py-8">No active ads</p>}
           </div>
         )}
 
-        {/* SITES TAB */}
+        {/* SITES */}
         {!loading && activeTab === 'sites' && (
           <div>
-            <div className="mb-4">
+            <div className="mb-4 flex justify-between items-center">
               <input type="text" placeholder="Search sites by name or owner..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
             </div>
             <div className="bg-[#303134] border border-gray-700 rounded-xl overflow-hidden">
@@ -332,6 +327,7 @@ export default function Admin() {
                     <th className="text-left p-3 text-gray-400">Site Name</th>
                     <th className="text-left p-3 text-gray-400">Owner</th>
                     <th className="text-left p-3 text-gray-400">Category</th>
+                    <th className="text-left p-3 text-gray-400">Ad Tier</th>
                     <th className="text-left p-3 text-gray-400">Status</th>
                     <th className="text-left p-3 text-gray-400">Actions</th>
                   </tr>
@@ -345,6 +341,9 @@ export default function Admin() {
                       </td>
                       <td className="p-3 text-gray-300">{site.owner_name || site.profiles?.username || '-'}</td>
                       <td className="p-3 capitalize text-gray-300">{site.category}</td>
+                      <td className="p-3">
+                        <span className="px-2 py-1 bg-purple-600/30 text-purple-300 rounded text-xs capitalize">{site.ad_tier || 'none'}</span>
+                      </td>
                       <td className="p-3">
                         <button onClick={() => toggleVerified(site.id, site.is_verified)} className={`px-2 py-1 text-xs rounded ${site.is_verified ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
                           {site.is_verified ? 'Verified' : 'Not Verified'}
@@ -361,7 +360,7 @@ export default function Admin() {
           </div>
         )}
 
-        {/* USERS TAB */}
+        {/* USERS */}
         {!loading && activeTab === 'users' && (
           <div>
             <div className="mb-4">
@@ -375,14 +374,21 @@ export default function Admin() {
                     <p className="text-xs text-gray-500 truncate font-mono">{p.id}</p>
                     {p.mc_username && <p className="text-xs text-gray-400 mt-1">MC: {p.mc_username} {p.mc_verified ? '✓' : ''}</p>}
                   </div>
-                  <button onClick={() => navigate(`/profile/${p.id}`)} className="text-xs px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">View Profile</button>
+                  <div className="flex gap-2">
+                    <button onClick={() => navigate(`/profile/${p.id}`)} className="text-xs px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">View Profile</button>
+                    {p.is_staff ? (
+                      <button onClick={() => removeStaff(p.id)} className="text-xs px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Remove Staff</button>
+                    ) : (
+                      <button onClick={() => addStaff(p.id)} className="text-xs px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Make Staff</button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* TRANSACTIONS TAB */}
+        {/* TRANSACTIONS */}
         {!loading && activeTab === 'transactions' && (
           <div className="bg-[#303134] border border-gray-700 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
@@ -408,68 +414,24 @@ export default function Admin() {
           </div>
         )}
 
-        {/* DEPARTMENTS TAB */}
-        {!loading && activeTab === 'departments' && (
-          <div className="space-y-3">
-            {departments.map(dept => (
-              <div key={dept.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
-                <p className="text-white font-bold">{dept.name}</p>
-                <p className="text-gray-400 text-sm">{dept.description}</p>
-              </div>
-            ))}
-            {departments.length === 0 && <p className="text-center text-gray-500 py-8">No departments</p>}
-          </div>
-        )}
-
-        {/* STAFF TAB */}
+        {/* STAFF */}
         {!loading && activeTab === 'staff' && (
-          <div className="space-y-2">
-            {staff.map(s => (
-              <div key={s.id} className="bg-[#303134] border border-gray-700 rounded-xl p-3">
-                <p className="text-white font-bold">{s.username}</p>
-                <p className="text-gray-400 text-xs">{s.id}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* SETTINGS TAB */}
-        {!loading && activeTab === 'settings' && (
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
-            <h3 className="text-lg font-bold text-white mb-4">Platform Settings</h3>
-            <p className="text-gray-400 text-sm">Configure platform-wide settings here.</p>
-          </div>
-        )}
-
-        {/* ANALYTICS TAB */}
-        {!loading && activeTab === 'analytics' && (
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
-            <h3 className="text-lg font-bold text-white mb-4">Analytics</h3>
-            <p className="text-gray-400 text-sm">View platform analytics and metrics.</p>
-          </div>
-        )}
-
-        {/* LOGS TAB */}
-        {!loading && activeTab === 'logs' && (
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
-            <h3 className="text-lg font-bold text-white mb-4">System Logs</h3>
-            <p className="text-gray-400 text-sm">View system logs and audit trails.</p>
-          </div>
-        )}
-
-        {/* BACKUP TAB */}
-        {!loading && activeTab === 'backup' && (
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
-            <h3 className="text-lg font-bold text-white mb-4">Backup & Restore</h3>
-            <p className="text-gray-400 text-sm">Manage database backups and restores.</p>
-          </div>
-        )}
-
-        {/* TOOLS TAB */}
-        {!loading && activeTab === 'tools' && (
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
-            <h3 className="text-lg font-bold text-white mb-4">Admin Tools</h3>
-            <p className="text-gray-400 text-sm">Additional administrative tools and utilities.</p>
+          <div>
+            <div className="mb-4">
+              <input type="text" placeholder="Search staff by username..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+            </div>
+            <div className="space-y-2">
+              {profiles.filter(p => p.is_staff).map(s => (
+                <div key={s.id} className="bg-[#303134] border border-gray-700 rounded-xl p-3 flex justify-between items-center">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold truncate">{s.username}</p>
+                    <p className="text-xs text-gray-500 truncate font-mono">{s.id}</p>
+                  </div>
+                  <button onClick={() => removeStaff(s.id)} className="text-xs px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Remove Staff</button>
+                </div>
+              ))}
+              {profiles.filter(p => p.is_staff).length === 0 && <p className="text-center text-gray-500 py-8">No staff members</p>}
+            </div>
           </div>
         )}
       </main>
