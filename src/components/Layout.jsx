@@ -19,7 +19,7 @@ export default function Layout({ children, user }) {
             const res = await fetch(`/api/app?action=mc-profile&uuid=${tokenData.account_id}`);
             if (res.ok) { const mcData = await res.json(); if (mcData.name) setMcName(mcData.name); }
           }
-        } catch (e) { console.error(e); }
+          } catch (e) { /* treasury_tokens may not exist */ }
       };
       fetchMCName();
 
