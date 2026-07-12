@@ -61,7 +61,12 @@ export default function Layout({ children }) {
   const avatarUrl = user?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=3b82f6&color=fff`;
 
   const goTo = (path) => {
-    navigate(path);
+    // Check if it's an external URL
+    if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
+      window.open(path, '_blank');
+    } else {
+      navigate(path);
+    }
     setDropdownOpen(false);
   };
 
@@ -69,7 +74,8 @@ export default function Layout({ children }) {
     <div className="min-h-screen flex flex-col bg-[#1a1b1e] text-white">
       <header className="bg-[#25262b] border-b border-gray-800 px-6 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => goTo('/')}>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+            <img src="/logo.png" alt="" className="w-8 h-8 object-contain" />
             <h1 className="text-lg font-bold">
               <span className="text-white">Z&E</span>
               <span className="text-blue-500 ml-2">NET</span>
@@ -79,7 +85,7 @@ export default function Layout({ children }) {
           {user ? (
             <div className="flex items-center gap-4">
               <button
-                onClick={() => goTo('/account')}
+                onClick={() => navigate('/account')}
                 className="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 border border-green-600/40 rounded-lg text-green-400 text-sm font-bold transition"
               >
                 ${balance.toFixed(2)}
@@ -100,19 +106,19 @@ export default function Layout({ children }) {
                   <div className="absolute right-0 mt-2 w-64 bg-[#303134] border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50">
                     <div className="px-4 py-3 bg-[#202124] border-b border-gray-700">
                       <p className="text-white text-sm font-bold truncate">{displayName}</p>
-                      <button onClick={() => goTo(`/profile/${user.id}`)} className="text-xs text-blue-400 hover:underline text-left mt-1">
+                      <button onClick={() => navigate(`/profile/${user.id}`)} className="text-xs text-blue-400 hover:underline text-left mt-1">
                         View Profile
                       </button>
                     </div>
 
                     <div className="py-1">
-                      <button onClick={() => goTo('/account')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+                      <button onClick={() => navigate('/account')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
                         Wallet
                       </button>
-                      <button onClick={() => goTo('/collections')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+                      <button onClick={() => navigate('/collections')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
                         Collections
                       </button>
-                      <button onClick={() => goTo(`/profile/${user.id}`)} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+                      <button onClick={() => navigate(`/profile/${user.id}`)} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
                         My Profile
                       </button>
                     </div>
@@ -156,11 +162,11 @@ export default function Layout({ children }) {
                     )}
 
                     <div className="border-t border-gray-700 py-1">
-                      <button onClick={() => goTo('/submit-ad')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Submit Ad</button>
-                      <button onClick={() => goTo('/verify-site')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Verify Site</button>
-                      <button onClick={() => goTo('/admin')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Admin Panel</button>
+                      <button onClick={() => navigate('/submit-ad')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Submit Ad</button>
+                      <button onClick={() => navigate('/verify-site')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Verify Site</button>
+                      <button onClick={() => navigate('/admin')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Admin Panel</button>
                       <button
-                        onClick={async () => { await supabase.auth.signOut(); goTo('/'); }}
+                        onClick={async () => { await supabase.auth.signOut(); navigate('/'); }}
                         className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 border-t border-gray-700"
                       >
                         Logout
@@ -171,7 +177,7 @@ export default function Layout({ children }) {
               </div>
             </div>
           ) : (
-            <button onClick={() => goTo('/login')} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold">
+            <button onClick={() => navigate('/login')} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold">
               Login with Discord
             </button>
           )}
