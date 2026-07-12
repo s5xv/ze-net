@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
@@ -7,29 +7,47 @@ import { supabase } from '../services/supabase';
 export default function VerifySite() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    siteName: '',
-    siteUrl: '',
-    description: '',
-    category: 'shop'
-  });
+  const [ownedSites, setOwnedSites] = useState([]);
+  const [selectedSiteId, setSelectedSiteId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
 
+  useEffect(() => {
+    if (user) fetchOwnedSites();
+  }, [user]);
+
+  const fetchOwnedSites = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sites')
+        .select('*')
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      setOwnedSites(data || []);
+    } catch (err) {
+      console.error('Error fetching sites:', err);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !selectedSiteId) return;
     
     setSubmitting(true);
     setMessage('');
 
     try {
+      const selectedSite = ownedSites.find(s => s.id === selectedSiteId);
+      if (!selectedSite) throw new Error('Site not found');
+
       const { error } = await supabase.from('site_verification_requests').insert({
         user_id: user.id,
-        site_name: formData.siteName,
-        site_url: formData.siteUrl,
-        description: formData.description,
-        category: formData.category,
+        site_id: selectedSiteId,
+        site_name: selectedSite.name,
+        site_url: selectedSite.url,
+        description: selectedSite.description,
+        category: selectedSite.category,
         status: 'pending'
       });
 
@@ -80,84 +98,56 @@ export default function VerifySite() {
             </ul>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Site Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.siteName}
-                onChange={(e) => setFormData({...formData, siteName: e.target.value})}
-                placeholder="My Awesome Shop"
-                className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Site URL *
-              </label>
-              <input
-                type="url"
-                required
-                value={formData.siteUrl}
-                onChange={(e) => setFormData({...formData, siteUrl: e.target.value})}
-                placeholder="https://myshop.com"
-                className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Category *
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({...formData, category: e.target.value})}
-                className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white"
+          {ownedSites.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400 mb-4">You don't own any sites yet.</p>
+              <button
+                onClick={() => navigate('/submit-ad')}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold"
               >
-                <option value="shop">Shop</option>
-                <option value="bank">Bank</option>
-                <option value="casino">Casino</option>
-                <option value="service">Service</option>
-                <option value="entertainment">Entertainment</option>
-              </select>
+                Submit Your First Site
+              </button>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Description *
-              </label>
-              <textarea
-                required
-                rows="4"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="Describe what your site offers..."
-                className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500"
-              />
-            </div>
-
-            {message && (
-              <div className={`p-4 rounded-lg ${message.includes('✅') ? 'bg-green-900/30 border border-green-800' : 'bg-red-900/30 border border-red-800'}`}>
-                <p className={message.includes('✅') ? 'text-green-400' : 'text-red-400'}>{message}</p>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  Select Site to Verify *
+                </label>
+                <select
+                  value={selectedSiteId}
+                  onChange={(e) => setSelectedSiteId(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white"
+                >
+                  <option value="">Choose a site...</option>
+                  {ownedSites.map(site => (
+                    <option key={site.id} value={site.id}>
+                      {site.name} ({site.category}) {site.is_verified ? '✓ Already Verified' : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-bold text-lg transition-colors"
-            >
-              {submitting ? 'Submitting...' : 'Submit Verification Request ($100)'}
-            </button>
+              {message && (
+                <div className={`p-4 rounded-lg ${message.includes('✅') ? 'bg-green-900/30 border border-green-800' : 'bg-red-900/30 border border-red-800'}`}>
+                  <p className={message.includes('✅') ? 'text-green-400' : 'text-red-400'}>{message}</p>
+                </div>
+              )}
 
-            <p className="text-xs text-gray-500 text-center">
-              After submission, you'll receive payment instructions via Discord DM.
-            </p>
-          </form>
+              <button
+                type="submit"
+                disabled={submitting || !selectedSiteId}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-bold text-lg transition-colors"
+              >
+                {submitting ? 'Submitting...' : 'Submit Verification Request ($100)'}
+              </button>
+
+              <p className="text-xs text-gray-500 text-center">
+                After submission, you'll receive payment instructions via Discord DM.
+              </p>
+            </form>
+          )}
         </div>
       </main>
     </Layout>
