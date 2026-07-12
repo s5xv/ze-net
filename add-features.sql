@@ -1,13 +1,15 @@
 -- Run this in Supabase Dashboard -> SQL Editor
 
--- Drop old forum tables if they exist (different schema)
-DROP TABLE IF EXISTS forum_posts CASCADE;
-DROP TABLE IF EXISTS forum_threads CASCADE;
-DROP TABLE IF EXISTS forum_categories CASCADE;
-DROP TABLE IF EXISTS notifications CASCADE;
+SET search_path TO public;
+
+-- Force drop existing tables with wrong schemas
+DROP TABLE IF EXISTS public.forum_posts CASCADE;
+DROP TABLE IF EXISTS public.forum_threads CASCADE;
+DROP TABLE IF EXISTS public.forum_categories CASCADE;
+DROP TABLE IF EXISTS public.notifications CASCADE;
 
 -- 1. Notifications table
-CREATE TABLE notifications (
+CREATE TABLE public.notifications (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   type text NOT NULL,
@@ -17,10 +19,10 @@ CREATE TABLE notifications (
   is_read boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id, created_at DESC);
 
 -- 2. Forum tables
-CREATE TABLE forum_categories (
+CREATE TABLE public.forum_categories (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name text NOT NULL,
   description text,
@@ -29,9 +31,9 @@ CREATE TABLE forum_categories (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE TABLE forum_threads (
+CREATE TABLE public.forum_threads (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  category_id bigint NOT NULL REFERENCES forum_categories(id) ON DELETE CASCADE,
+  category_id bigint NOT NULL REFERENCES public.forum_categories(id) ON DELETE CASCADE,
   title text NOT NULL,
   author_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   is_pinned boolean DEFAULT false,
@@ -41,20 +43,20 @@ CREATE TABLE forum_threads (
   last_post_at timestamptz DEFAULT now(),
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_forum_threads_cat ON forum_threads(category_id, last_post_at DESC);
+CREATE INDEX IF NOT EXISTS idx_forum_threads_cat ON public.forum_threads(category_id, last_post_at DESC);
 
-CREATE TABLE forum_posts (
+CREATE TABLE public.forum_posts (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  thread_id bigint NOT NULL REFERENCES forum_threads(id) ON DELETE CASCADE,
+  thread_id bigint NOT NULL REFERENCES public.forum_threads(id) ON DELETE CASCADE,
   author_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   content text NOT NULL,
   is_solution boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_forum_posts_thread ON forum_posts(thread_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_forum_posts_thread ON public.forum_posts(thread_id, created_at);
 
 -- 3. Seed forum categories
-INSERT INTO forum_categories (name, description, slug, sort_order) VALUES
+INSERT INTO public.forum_categories (name, description, slug, sort_order) VALUES
   ('General Discussion', 'Chat about anything related to DemocracyCraft', 'general', 1),
   ('Site Reviews', 'Share and request reviews of sites', 'site-reviews', 2),
   ('Support', 'Get help with the directory platform', 'support', 3),
