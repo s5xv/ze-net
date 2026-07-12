@@ -1,8 +1,8 @@
--- Run this in Supabase Dashboard -> SQL Editor
+-- Run this in Supabase Dashboard -> SQL Editor (the ENTIRE file)
 
 SET search_path TO public;
 
--- Force drop existing tables with wrong schemas
+-- Drop old forum tables if they exist (different schema)
 DROP TABLE IF EXISTS public.forum_posts CASCADE;
 DROP TABLE IF EXISTS public.forum_threads CASCADE;
 DROP TABLE IF EXISTS public.forum_categories CASCADE;
@@ -61,7 +61,20 @@ ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS submitted_by uuid REFERENCES a
 ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS reviewed_at timestamptz;
 ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS reviewed_by uuid REFERENCES auth.users(id);
 
--- 4. Seed forum categories
+-- 4. Achievements table
+CREATE TABLE IF NOT EXISTS public.user_achievements (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  achievement_id text NOT NULL,
+  unlocked_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, achievement_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON public.user_achievements(user_id);
+
+-- Add XP column to profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS xp integer DEFAULT 0;
+
+-- 5. Seed forum categories
 INSERT INTO public.forum_categories (name, description, slug, sort_order) VALUES
   ('General Discussion', 'Chat about anything related to DemocracyCraft', 'general', 1),
   ('Site Reviews', 'Share and request reviews of sites', 'site-reviews', 2),

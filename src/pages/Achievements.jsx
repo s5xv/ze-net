@@ -33,12 +33,10 @@ export default function Achievements() {
 
   const fetchUnlocked = async () => {
     try {
-      // Fetch unlocked achievements for the user
       const { data, error } = await supabase
         .from('user_achievements')
         .select('achievement_id')
         .eq('user_id', user.id);
-      
       if (!error && data) {
         setUnlockedIds(data.map(a => a.achievement_id));
       }
