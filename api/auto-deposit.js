@@ -21,7 +21,6 @@ async function getTransactions(limit = 50) {
 const genTxnId = () => "ZEC-" + Math.random().toString(36).substring(2, 12).toUpperCase();
 
 export default async function handler(req, res) {
-  // GUARANTEE JSON RESPONSE
   res.setHeader('Content-Type', 'application/json');
   
   try {
@@ -41,7 +40,6 @@ export default async function handler(req, res) {
         const memo = ((t.memo || t.message || "") + "").trim().toLowerCase();
         let payer = "";
         
-        // Bulletproof regex parsing
         const match1 = memo.match(/^business payment:\s*([a-zA-Z0-9_]+)\s*->/);
         if (match1) {
           payer = match1[1];
@@ -86,11 +84,21 @@ export default async function handler(req, res) {
 
         const new_txn_id = genTxnId();
         
-        await supabase.from('balances').upsert({ user_id: userId, balance: 0 }, { onConflict: 'user_id' });
+        // FIX: Only create balance row if it doesn't exist, don't reset to 0!
         const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', userId).single();
-        const newBal = (currentBal?.balance || 0) + amt;
         
-        await supabase.from('balances').update({ balance: newBal }).eq('user_id', userId);
+        if (!currentBal) {
+          // Row doesn't exist, create it with 0
+          await supabase.from('balances').insert({ user_id: userId, balance: 0 });
+        }
+        
+        // Now fetch the actual current balance
+        const { data: actualBal } = await supabase.from('balances').select('balance').eq('user_id', userId).single();
+        const newBal = (actualBal?.balance || 0) + amt;
+        
+        console.log(`[Auto-Deposit] Current balance: $${actualBal?.balance || 0}, adding $${amt}, new balance: $${newBal}`);
+        
+        await supabase.from('balances').update({ balance: newBal, updated_at: new Date().toISOString() }).eq('user_id', userId);
         await supabase.from('transactions').insert({ 
           txn_id: new_txn_id, user_id: userId, amount: amt, type: 'deposit', ref_id, note: `Auto-detected from ${payer}` 
         });
