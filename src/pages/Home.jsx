@@ -46,7 +46,7 @@ export default function Home() {
       return;
     }
     const fetchSuggestions = async () => {
-      const { data: siteData } = await supabase.from('sites').select('name, slug, shortcuts').or(`name.ilike.%${q}%,shortcuts.ilike.%${q}%`).limit(5);
+      const { data: siteData } = await supabase.from('sites').select('name, slug, shortcuts').eq('status', 'approved').or(`name.ilike.%${q}%,shortcuts.ilike.%${q}%`).limit(5);
       const { data: wikiData } = await supabase.from('wiki_pages').select('title').ilike('title', `%${q}%`).limit(3);
       const combined = [
         ...(siteData || []).map(s => ({ type: 'site', text: s.name, slug: s.slug })),
@@ -60,7 +60,7 @@ export default function Home() {
   }, [q, topSearches]);
 
   const fetchStats = async () => {
-    const { count } = await supabase.from('sites').select('*', { count: 'exact', head: true });
+    const { count } = await supabase.from('sites').select('*', { count: 'exact', head: true }).eq('status', 'approved');
     setStats({ totalSites: count || 0 });
   };
 
@@ -84,7 +84,7 @@ export default function Home() {
       }
     }
 
-    const { data: topSite } = await supabase.from('sites').select('name, slug, view_count').order('view_count', { ascending: false }).limit(1).single();
+    const { data: topSite } = await supabase.from('sites').select('name, slug, view_count').eq('status', 'approved').order('view_count', { ascending: false }).limit(1).maybeSingle();
     if (topSite && topSite.view_count > 0) {
       setFeaturedContent({
         type: 'site', leftLabel: 'Top Site', highlight: topSite.name,
@@ -103,9 +103,9 @@ export default function Home() {
   };
 
   const fetchNewAndTrending = async () => {
-    const { data: newSitesData } = await supabase.from('sites').select('*').order('created_at', { ascending: false }).limit(5);
+    const { data: newSitesData } = await supabase.from('sites').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(5);
     setNewSites(newSitesData || []);
-    const { data: trendingSitesData } = await supabase.from('sites').select('*').order('view_count', { ascending: false }).limit(5);
+    const { data: trendingSitesData } = await supabase.from('sites').select('*').eq('status', 'approved').order('view_count', { ascending: false }).limit(5);
     setTrendingSites(trendingSitesData || []);
   };
 
@@ -132,7 +132,7 @@ export default function Home() {
   };
 
   const handleFeelingLucky = async () => {
-    const { data } = await supabase.from('sites').select('slug').limit(1000);
+    const { data } = await supabase.from('sites').select('slug').eq('status', 'approved').limit(1000);
     if (data && data.length > 0) {
       navigate(`/site/${data[Math.floor(Math.random() * data.length)].slug}`);
     }

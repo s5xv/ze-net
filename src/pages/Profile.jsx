@@ -32,7 +32,7 @@ export default function Profile() {
       }
       if (profileData) {
         setProfileUser(profileData);
-        const { data: sitesData } = await supabase.from('sites').select('*').eq('owner_user_id', userId).order('created_at', { ascending: false });
+        const { data: sitesData } = await supabase.from('sites').select('*').eq('owner_user_id', userId).eq('status', 'approved').order('created_at', { ascending: false });
         setUserSites(sitesData || []);
       }
     } catch (e) { console.error('Profile fetch error:', e); }

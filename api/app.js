@@ -72,8 +72,10 @@ export default async function handler(req, res) {
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: recentView } = await supabase.from('site_views').select('id').eq('site_id', siteId).eq('viewer_id', viewerId).gte('created_at', twentyFourHoursAgo).maybeSingle();
       if (recentView) return res.status(409).json({ success: false, message: 'View already counted today' });
-      await supabase.from('site_views').insert({ site_id: siteId, viewer_id: viewerId });
-      await supabase.rpc('increment_balance', { target_user_id: ownerId, deposit_amount: 0.10 });
+      const { error: viewErr } = await supabase.from('site_views').insert({ site_id: siteId, viewer_id: viewerId });
+      if (viewErr) throw viewErr;
+      const { error: balErr } = await supabase.rpc('increment_balance', { target_user_id: ownerId, deposit_amount: 0.10 });
+      if (balErr) throw balErr;
       return res.status(200).json({ success: true, message: 'Owner paid $0.10' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -120,7 +122,8 @@ export default async function handler(req, res) {
     const { name, url, category, description, user_id } = req.body;
     if (!name || !url || !user_id) return res.status(400).json({ error: 'Name, URL, and User are required' });
     try {
-      const { data: owner } = await supabase.from('profiles').select('username').eq('id', user_id).maybeSingle();
+      const { data: owner, error: profileErr } = await supabase.from('profiles').select('username').eq('id', user_id).maybeSingle();
+      if (profileErr || !owner) return res.status(400).json({ error: 'User not found' });
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
       const { error } = await supabase.from('sites').insert({
         name, slug, url, category: category || 'Other', description: description || '',
@@ -229,10 +232,11 @@ export default async function handler(req, res) {
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
-      await supabase.from('sites').delete().eq('id', siteId);
+      const { error } = await supabase.from('sites').delete().eq('id', siteId);
+      if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site deleted' });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: 'Delete failed' });
     }
   }
 

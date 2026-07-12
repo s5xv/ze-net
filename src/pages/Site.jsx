@@ -125,12 +125,14 @@ export default function Site() {
       alert('Insufficient balance');
       return;
     }
-    const { data: ownerBal } = await supabase.from('balances').select('balance').eq('user_id', site.user_id).maybeSingle();
-    const newOwnerBal = (ownerBal?.balance || 0) + tipAmount;
-    await supabase.from('balances').upsert({ user_id: site.user_id, balance: newOwnerBal }, { onConflict: 'user_id' });
-    
-    const newMyBal = userBalance - tipAmount;
-    await supabase.from('balances').upsert({ user_id: user.id, balance: newMyBal }, { onConflict: 'user_id' });
+    const { error: deductErr } = await supabase.rpc('increment_balance', { target_user_id: user.id, deposit_amount: -tipAmount });
+    if (deductErr) { alert('Failed to process tip'); return; }
+    const { error: addErr } = await supabase.rpc('increment_balance', { target_user_id: site.user_id, deposit_amount: tipAmount });
+    if (addErr) {
+      await supabase.rpc('increment_balance', { target_user_id: user.id, deposit_amount: tipAmount });
+      alert('Failed to process tip');
+      return;
+    }
     
     await supabase.from('transactions').insert({
       txn_id: 'TIP-' + Date.now(),

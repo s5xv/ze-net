@@ -77,13 +77,19 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS xp integer DEFAULT 0;
 -- 5. Auto-create profile on user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+  fallback_name text;
 BEGIN
-  INSERT INTO public.profiles (id, username, avatar_url)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'name', NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'avatar')
+  fallback_name := COALESCE(
+    NEW.raw_user_meta_data->>'name',
+    NEW.raw_user_meta_data->>'full_name',
+    NEW.raw_user_meta_data->>'preferred_username',
+    NEW.raw_user_meta_data->>'login',
+    split_part(COALESCE(NEW.email, NEW.id::text), '@', 1)
   );
+  INSERT INTO public.profiles (id, username, avatar_url)
+  VALUES (NEW.id, fallback_name, COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'avatar'))
+  ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -122,3 +128,28 @@ CREATE TABLE IF NOT EXISTS public.contact_messages (
   is_read boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
+
+-- 8. RPC function to atomically increment balance (prevents race conditions)
+CREATE OR REPLACE FUNCTION public.increment_balance(target_user_id uuid DEFAULT NULL, deposit_amount numeric DEFAULT NULL, user_id uuid DEFAULT NULL, amount numeric DEFAULT NULL)
+RETURNS void AS $$
+DECLARE
+  uid uuid;
+  amt numeric;
+BEGIN
+  uid := COALESCE(target_user_id, user_id);
+  amt := COALESCE(deposit_amount, amount);
+  IF uid IS NULL OR amt IS NULL THEN RAISE EXCEPTION 'Missing user_id or amount'; END IF;
+  INSERT INTO public.balances (user_id, balance)
+  VALUES (uid, amt)
+  ON CONFLICT (user_id)
+  DO UPDATE SET balance = balances.balance + amt;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 9. Missing indexes for performance
+CREATE INDEX IF NOT EXISTS idx_sites_status ON public.sites(status);
+CREATE INDEX IF NOT EXISTS idx_sites_category ON public.sites(category);
+CREATE INDEX IF NOT EXISTS idx_sites_owner ON public.sites(owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_sites_ad ON public.sites(ad_tier, ad_expires_at, is_verified);
+CREATE INDEX IF NOT EXISTS idx_site_views_dedup ON public.site_views(site_id, viewer_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_balances_user ON public.balances(user_id);

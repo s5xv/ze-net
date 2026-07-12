@@ -40,7 +40,7 @@ export default function Search() {
     const rawQuery = query.toLowerCase().trim();
     const searchTerm = extractSearchTerms(rawQuery);
     
-    let sitesQuery = supabase.from('sites').select('*');
+    let sitesQuery = supabase.from('sites').select('*').eq('status', 'approved').eq('is_verified', true);
     if (searchTerm) {
       sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcuts.ilike.%${searchTerm}%`);
     }

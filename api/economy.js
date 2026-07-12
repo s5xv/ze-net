@@ -37,7 +37,19 @@ async function getBalance() {
   } catch (e) { return [null, e.message]; }
 }
 
+const requireAdmin = async (req) => {
+  const userId = req.headers['x-user-id'];
+  if (!userId) return false;
+  const { data } = await supabase.from('profiles').select('is_staff').eq('id', userId).maybeSingle();
+  return data?.is_staff === true;
+};
+
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-user-id');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   if (req.method === 'GET') {
     const [balance, err] = await getBalance();
     if (err) return res.status(500).json({ error: err });
@@ -134,6 +146,7 @@ export default async function handler(req, res) {
     }
 
     if (action === 'manual-deposit') {
+      if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
       if (!refId) return res.status(400).json({ error: 'Missing refId' });
       const { data: profile } = await supabase.from('profiles').select('mc_username, mc_verified').eq('id', userId).single();
       if (!profile?.mc_verified) return res.status(403).json({ error: 'MC account not verified' });
@@ -195,16 +208,23 @@ export default async function handler(req, res) {
       if (!userName) return res.status(400).json({ error: 'Missing mc_username for withdrawal' });
       const { data: bal } = await supabase.from('balances').select('balance').eq('user_id', userId).maybeSingle();
       if (!bal || bal.balance < parseFloat(amount)) return res.status(400).json({ error: 'Insufficient balance' });
-      await supabase.from('withdrawal_requests').insert({ user_id: userId, amount: parseFloat(amount), mc_username: userName, status: 'pending', balance_before: bal.balance, balance_after: bal.balance - parseFloat(amount) });
-      await supabase.from('balances').update({ balance: bal.balance - parseFloat(amount) }).eq('user_id', userId);
+      const newBal = bal.balance - parseFloat(amount);
+      const { error: deductErr } = await supabase.from('balances').update({ balance: newBal }).eq('user_id', userId).eq('balance', bal.balance);
+      if (deductErr || !deductErr) {
+        const { data: checkBal } = await supabase.from('balances').select('balance').eq('user_id', userId).maybeSingle();
+        if (!checkBal || checkBal.balance !== newBal) return res.status(409).json({ error: 'Balance changed, try again' });
+      }
+      await supabase.from('withdrawal_requests').insert({ user_id: userId, amount: parseFloat(amount), mc_username: userName, status: 'pending', balance_before: bal.balance, balance_after: newBal });
       return res.status(200).json({ success: true, message: `Withdrawal request for $${amount} submitted` });
     }
 
     if (action === 'approve-withdrawal') {
+      if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
       const { data: withdrawal } = await supabase.from('withdrawal_requests').select('*').eq('id', withdrawalId).maybeSingle();
       if (!withdrawal) return res.status(404).json({ error: 'Withdrawal not found' });
       if (req.body.actionType === 'approve') {
-        await supabase.from('withdrawal_requests').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', withdrawalId);
+        const { error } = await supabase.from('withdrawal_requests').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', withdrawalId);
+        if (error) throw error;
         return res.status(200).json({ success: true, message: 'Withdrawal approved' });
       } else {
         const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', withdrawal.user_id).maybeSingle();
