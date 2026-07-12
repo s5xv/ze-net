@@ -30,35 +30,57 @@ export default async function handler(req, res) {
       if (now - settled_dt > lookback) continue;
     }
 
-    // FIX: Extract username regardless of whether it's ZEN or ZEC
+    // Extract username
     let payer = "";
     try {
       const after_from = memo.split("payment from ", 1)[1];
       payer = after_from.split(" to business ", 1)[0].trim();
     } catch (e) { continue; }
 
-    const { data: urow } = await supabase.from('users').select('user_id').ilike('mc_username', payer).eq('mc_verified', true).single();
-    if (!urow) continue;
+    // FIX: Query 'profiles' table instead of 'users' table
+    const { data: urow } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('mc_username', payer)
+      .eq('mc_verified', true)
+      .single();
+      
+    if (!urow) {
+      console.log(`[Auto-Deposit] Skipped: No verified profile found for MC name "${payer}"`);
+      continue;
+    }
 
+    const userId = urow.id;
     const dc_txn_id = String(t.txnId || t.id || t.transactionId || "");
     if (!dc_txn_id) continue;
     const ref_id = "DC-" + dc_txn_id;
 
+    // Idempotency check
     const { data: existing } = await supabase.from('transactions').select('txn_id').eq('ref_id', ref_id).eq('type', 'deposit').single();
     if (existing) continue;
 
     const new_txn_id = genTxnId();
     
-    await supabase.from('balances').upsert({ user_id: urow.user_id, balance: 0 });
+    // Ensure balance row exists
+    await supabase.from('balances').upsert({ user_id: userId, balance: 0 });
     
-    // Increment balance safely
-    const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', urow.user_id).single();
+    // Increment balance
+    const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', userId).single();
     const newBal = (currentBal?.balance || 0) + amt;
-    await supabase.from('balances').update({ balance: newBal }).eq('user_id', urow.user_id);
+    await supabase.from('balances').update({ balance: newBal }).eq('user_id', userId);
 
-    await supabase.from('transactions').insert({ txn_id: new_txn_id, user_id: urow.user_id, amount: amt, type: 'deposit', ref_id, note: `Auto-detected DC deposit from ${payer}` });
+    // Log transaction
+    await supabase.from('transactions').insert({ 
+      txn_id: new_txn_id, 
+      user_id: userId, 
+      amount: amt, 
+      type: 'deposit', 
+      ref_id, 
+      note: `Auto-detected DC deposit from ${payer}` 
+    });
     
     processed++;
+    console.log(`[Auto-Deposit] Success: Credited $${amt} to ${userId} (${payer})`);
   }
 
   return res.status(200).json({ processed });

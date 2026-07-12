@@ -1,136 +1,135 @@
-import WithdrawModal from '../components/WithdrawModal';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
-import { useAuth } from '../hooks/useAuth';
+import WithdrawModal from '../components/WithdrawModal';
 
 export default function Profile() {
-  const { userId } = useParams();
-  const { user } = useAuth();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const { isDark } = useTheme();
-  const [profileUser, setProfileUser] = useState(null);
-  const [userSites, setUserSites] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
+  const [preferences, setPreferences] = useState(['shop', 'bank', 'casino', 'service', 'entertainment']);
+  const [showWithdraw, setShowWithdraw] = useState(false);
 
-  useEffect(() => { 
-    fetchProfile(); 
-  }, [userId]);
+  useEffect(() => {
+    fetchData();
+  }, [id]);
 
-  const fetchProfile = async () => {
+  const fetchData = async () => {
     setLoading(true);
+    // Fetch Profile
+    const { data: p } = await supabase.from('profiles').select('*').eq('id', id).single();
+    setProfile(p);
     
-    // Get profile data (Discord name and avatar)
-    const { data: profileData } = await supabase.from('profiles').select('username, avatar_url').eq('id', userId).single();
-    
-    // Get MC username from treasury_tokens
-    const { data: tokenData } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', userId).single();
-    const mcUsername = tokenData?.account_id && !tokenData.account_id.includes('-') ? tokenData.account_id : null;
-    
-    if (profileData || mcUsername) {
-      setProfileUser({
-        id: userId,
-        username: profileData?.username || 'User',
-        avatar_url: profileData?.avatar_url,
-        mc_username: mcUsername
-      });
-      
-      // Get user's sites
-      const { data: sitesData } = await supabase.from('sites').select('*').eq('owner_user_id', userId).order('created_at', { ascending: false });
-      setUserSites(sitesData || []);
+    // Fetch Balance
+    const { data: b } = await supabase.from('balances').select('balance').eq('user_id', id).single();
+    setBalance(b?.balance || 0);
+
+    // Fetch Prefs
+    if (p?.ad_preferences && Array.isArray(p.ad_preferences)) {
+      setPreferences(p.ad_preferences);
     }
     setLoading(false);
   };
 
-  if (loading) return <Layout user={user}><div className="p-8 text-center">Loading...</div></Layout>;
-  if (!profileUser) return <Layout user={user}><div className="p-8 text-center">User not found</div></Layout>;
-
-  // Show MC name if linked, otherwise show Discord name
-  const displayName = profileUser.mc_username || profileUser.username || 'User';
-  const avatarUrl = profileUser.avatar_url;
-
-  
-  // Ad Preferences State
-  const [preferences, setPreferences] = useState(['shop', 'bank', 'casino', 'service', 'entertainment']);
-  
-  useEffect(() => {
-    const fetchPrefs = async () => {
-      const { data } = await supabase.from('profiles').select('ad_preferences').eq('id', user.id).single();
-      if (data?.ad_preferences) setPreferences(data.ad_preferences);
-    };
-    fetchPrefs();
-  }, [user]);
+  const forceCheckDeposit = async () => {
+    setMessage('Checking Treasury API for recent payments...');
+    try {
+      // We try a few common amounts or just let the API check recent ones
+      // For now, let's just trigger the auto-deposit logic manually
+      const res = await fetch('/api/auto-deposit', { method: 'POST' });
+      const data = await res.json();
+      setMessage(`Scan complete. Processed ${data.processed || 0} new deposits.`);
+      fetchData(); // Refresh balance
+    } catch (e) {
+      setMessage('Error: ' + e.message);
+    }
+  };
 
   const togglePref = async (cat) => {
     const newPrefs = preferences.includes(cat) 
       ? preferences.filter(p => p !== cat) 
       : [...preferences, cat];
     setPreferences(newPrefs);
-    await supabase.from('profiles').update({ ad_preferences: newPrefs }).eq('id', user.id);
+    await supabase.from('profiles').update({ ad_preferences: newPrefs }).eq('id', id);
   };
 
+  if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
+  if (!profile) return <Layout><div className="p-8 text-center">Profile not found.</div></Layout>;
+
   return (
-    <Layout user={user}>
-      <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
-        <div className="bg-white dark:bg-[#303134] rounded-xl p-8 border border-gray-200 dark:border-gray-700 shadow-sm mb-8 flex items-center gap-6">
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={displayName} className="w-24 h-24 rounded-full object-cover border-4 border-blue-500" />
-          ) : (
-            <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-4xl">
-              {displayName[0]?.toUpperCase()}
+    <Layout user={profile}>
+      <main className="flex-grow max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{profile.username || 'User'}</h1>
+              {profile.mc_username && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  MC: {profile.mc_username} {profile.mc_verified && <span className="text-green-500">✓</span>}
+                </p>
+              )}
             </div>
-          )}
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{displayName}</h1>
-            <p className="text-gray-500 dark:text-gray-400">{userSites.length} sites owned</p>
-            {profileUser.mc_username ? (
-              <p className="text-sm text-green-600 dark:text-green-400 mt-1 font-mono">MC: {profileUser.mc_username}</p>
-            ) : (
-              <p className="text-sm text-gray-500 mt-1">Discord: {profileUser.username}</p>
-            )}
+            <div className="text-right">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Balance</p>
+              <p className="text-3xl font-bold text-green-500">${balance.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button 
+              onClick={forceCheckDeposit}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm"
+            >
+              Check for Deposits
+            </button>
+            <button 
+              onClick={() => setShowWithdraw(true)}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm"
+            >
+              Withdraw
+            </button>
+          </div>
+          
+          {message && <p className="mt-4 text-sm text-blue-600 dark:text-blue-400">{message}</p>}
+        </div>
+
+        {/* Ad Preferences */}
+        <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm mb-6">
+          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Ad Preferences</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Choose which types of ads you want to see.</p>
+          <div className="flex flex-wrap gap-3">
+            {['shop', 'bank', 'casino', 'service', 'entertainment'].map(cat => (
+              <button 
+                key={cat}
+                onClick={() => togglePref(cat)}
+                className={`px-4 py-2 rounded-lg font-medium capitalize text-sm transition-colors ${
+                  preferences.includes(cat) 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-          <h2 className="text-xl font-bold mb-4">Owned Sites ({userSites.length})</h2>
-          {userSites.length === 0 ? (
-            <p className="text-gray-500 italic">No sites owned yet</p>
-          ) : (
-            <div className="space-y-3">
-              {userSites.map((site) => (
-                <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500/30 cursor-pointer transition-colors">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold text-lg">{site.name} {site.is_verified && <span className="text-blue-500 text-sm">✓</span>}</h3>
-                      <p className="text-sm text-gray-500">{site.category}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">{site.view_count || 0} views</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        {/* Withdraw Modal */}
+        {showWithdraw && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-[#303134] p-6 rounded-xl w-full max-w-md">
+              <WithdrawModal 
+                balance={balance} 
+                onUpdate={() => { fetchData(); setShowWithdraw(false); }} 
+                onClose={() => setShowWithdraw(false)}
+              />
             </div>
-          )}
-        
-<div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 mt-6">
-  <h2 className="text-xl font-bold mb-4"> Ad Preferences</h2>
-  <p className="text-sm text-gray-500 mb-4">Choose which types of ads you want to see.</p>
-  <div className="flex flex-wrap gap-3">
-    {['shop', 'bank', 'casino', 'service', 'entertainment'].map(cat => (
-      <button 
-        key={cat}
-        onClick={() => togglePref(cat)}
-        className={`px-4 py-2 rounded-lg font-medium capitalize ${preferences.includes(cat) ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}
-      >
-        {cat}
-      </button>
-    ))}
-  </div>
-</div>
-</div>
+          </div>
+        )}
       </main>
     </Layout>
   );
