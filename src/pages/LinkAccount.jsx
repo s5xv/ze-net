@@ -104,7 +104,7 @@ export default function LinkAccount() {
                 <h3 className="font-bold text-blue-300 mb-3">Step 2: Complete Payment</h3>
                 <p className="text-gray-300 mb-4">In Minecraft, run this command:</p>
                 <code className="block bg-black text-green-400 p-4 rounded-lg text-lg font-mono mb-4">
-                  /pay-account business ZEC 1
+                  /pay-account business ZEN 1
                 </code>
                 <p className="text-sm text-gray-400">This costs <strong>$1.00</strong> in-game.</p>
               </div>
