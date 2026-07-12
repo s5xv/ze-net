@@ -14,7 +14,7 @@ export default function Layout({ children, user }) {
     if (user) {
       const fetchMCName = async () => {
         try {
-          const { data: tokenData } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', user.id).single();
+          const { data: tokenData } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', user.id).maybeSingle();
           if (tokenData?.account_id) {
             const res = await fetch(`/api/app?action=mc-profile&uuid=${tokenData.account_id}`);
             if (res.ok) { const mcData = await res.json(); if (mcData.name) setMcName(mcData.name); }

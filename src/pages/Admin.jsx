@@ -54,6 +54,9 @@ export default function Admin() {
       } else if (activeTab === 'ads') {
         const { data } = await supabase.from('ad_requests').select('*, profiles(username), sites(name)').order('created_at', { ascending: false });
         setAdRequests(data || []);
+      } else if (activeTab === 'pending') {
+        const { data } = await supabase.from('sites').select('*, profiles(username)').eq('status', 'pending').order('created_at', { ascending: false });
+        setSites(data || []);
       } else if (activeTab === 'sites') {
         const { data } = await supabase.from('sites').select('*, profiles(username)').order('created_at', { ascending: false });
         setSites(data || []);
@@ -267,7 +270,8 @@ export default function Admin() {
           <TabButton id="withdrawals" label="Withdrawals" badge={stats.pendingWithdrawals} />
           <TabButton id="verifications" label="Verifications" badge={stats.pendingVerifications} />
           <TabButton id="ads" label="Ad Requests" badge={stats.pendingAds} />
-          <TabButton id="sites" label="Sites" />
+          <TabButton id="pending" label="Pending" />
+          <TabButton id="sites" label="All Sites" />
           <TabButton id="users" label="Users" />
           <TabButton id="transactions" label="Transactions" />
           <TabButton id="staff" label="Staff" />
@@ -372,6 +376,28 @@ export default function Admin() {
                 </div>
               ))
             }
+          </div>
+        )}
+
+        {!loading && activeTab === 'pending' && (
+          <div>
+            {filteredSites.length === 0 ? <p className="text-center text-gray-500 py-8">No pending sites</p> : (
+              <div className="space-y-3">
+                {filteredSites.map(site => (
+                  <div key={site.id} className="bg-[#303134] border border-yellow-700 rounded-xl p-4 flex justify-between items-center">
+                    <div>
+                      <p className="text-white font-bold text-lg">{site.name}</p>
+                      <p className="text-sm text-gray-400">{site.url} &middot; {site.profiles?.username || site.owner_name || 'Unknown'}</p>
+                      {site.description && <p className="text-xs text-gray-500 mt-1">{site.description}</p>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { callAdmin('admin-approve-site', { siteId: site.id }); }} className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold text-sm">Approve</button>
+                      <button onClick={() => { callAdmin('admin-reject-site', { siteId: site.id }); }} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold text-sm">Reject</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
