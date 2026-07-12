@@ -1,31 +1,44 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Site() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [siteData, setSiteData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (id) fetchSite();
-  }, [id]);
+    if (slug) fetchSite();
+  }, [slug]);
 
   const fetchSite = async () => {
     try {
-      const { data, error } = await supabase
-        .from('sites')
-        .select('*')
-        .eq('id', id)
-        .single();
+      setLoading(true);
+      setError('');
       
-      if (error) throw error;
+      let query = supabase.from('sites').select('*');
+      
+      // Try to match by slug or id
+      if (slug.startsWith('http')) {
+        query = query.eq('url', slug);
+      } else {
+        query = query.ilike('slug', slug.replace(/-/g, ' '));
+      }
+      
+      const { data, error: fetchError } = await query.single();
+      
+      if (fetchError) throw fetchError;
+      if (!data) throw new Error('Site not found');
+      
       setSiteData(data);
     } catch (err) {
       console.error('Error fetching site:', err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -35,17 +48,22 @@ export default function Site() {
     return (
       <Layout user={user}>
         <div className="min-h-screen flex items-center justify-center">
-          <div className="text-white text-xl">Loading...</div>
+          <div className="text-white text-xl">Loading site...</div>
         </div>
       </Layout>
     );
   }
 
-  if (!siteData) {
+  if (error || !siteData) {
     return (
       <Layout user={user}>
         <div className="min-h-screen flex items-center justify-center">
-          <div className="text-white text-xl">Site not found</div>
+          <div className="text-center">
+            <div className="text-red-500 text-xl mb-4">Site not found</div>
+            <button onClick={() => navigate('/')} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+              Go Home
+            </button>
+          </div>
         </div>
       </Layout>
     );
@@ -55,7 +73,7 @@ export default function Site() {
     <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 py-12">
         <div className="bg-[#303134] border border-gray-700 rounded-xl p-8">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-6">
             <h1 className="text-3xl font-bold text-white">{siteData.name}</h1>
             {siteData.is_verified && (
               <span className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full">
@@ -64,43 +82,32 @@ export default function Site() {
             )}
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <p className="text-sm text-gray-400 mb-1">URL</p>
+              <p className="text-sm text-gray-400 mb-2">Description</p>
+              <p className="text-gray-300 text-lg">{siteData.description}</p>
+            </div>
+            
+            <div className="flex gap-4">
               <a 
                 href={siteData.url} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 break-all"
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold inline-block"
               >
-                {siteData.url}
+                Visit Site →
               </a>
             </div>
             
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Category</p>
-              <p className="text-white capitalize">{siteData.category}</p>
-            </div>
-            
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Description</p>
-              <p className="text-gray-300">{siteData.description}</p>
-            </div>
-            
-            {siteData.image_url && (
+            <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-700">
               <div>
-                <p className="text-sm text-gray-400 mb-1">Image</p>
-                <img 
-                  src={siteData.image_url} 
-                  alt={siteData.name}
-                  className="max-w-full h-auto rounded-lg"
-                />
+                <p className="text-sm text-gray-400">Category</p>
+                <p className="text-white capitalize">{siteData.category}</p>
               </div>
-            )}
-            
-            <div>
-              <p className="text-sm text-gray-400 mb-1">Ad Tier</p>
-              <p className="text-white capitalize">{siteData.ad_tier}</p>
+              <div>
+                <p className="text-sm text-gray-400">Views</p>
+                <p className="text-white">{siteData.view_count || 0}</p>
+              </div>
             </div>
           </div>
         </div>
