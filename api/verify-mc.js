@@ -61,21 +61,26 @@ export default async function handler(req, res) {
       for (const txn of txns) {
         const memo = (txn.memo || txn.message || '').toLowerCase().trim();
         
-        // FIX: Parse the actual format: "business payment: escudos -> zen"
-        if (!memo.startsWith('business payment:')) continue;
-        
         let payer = "";
-        let businessName = "";
-        try {
-          const afterColon = memo.split('business payment:', 1)[1].trim();
-          const parts = afterColon.split('->').map(p => p.trim());
-          payer = parts[0];
-          businessName = parts[1];
-        } catch (e) { continue; }
+        
+        // Format 1: "business payment: escudos -> zen"
+        if (memo.startsWith('business payment:')) {
+          try {
+            const afterColon = memo.split('business payment:', 1)[1].trim();
+            payer = afterColon.split('->')[0].trim();
+          } catch (e) { continue; }
+        }
+        // Format 2: "payment from escudos to account #123945 (zen corporate account): dep-849201"
+        else if (memo.startsWith('payment from')) {
+          try {
+            const afterFrom = memo.split('payment from', 1)[1].trim();
+            payer = afterFrom.split(' to ')[0].trim();
+          } catch (e) { continue; }
+        }
+        else continue;
 
-        // Verify it's from the right user and to our business
         if (payer !== mc_username.toLowerCase()) continue;
-        if (!businessName.includes('zen') && !businessName.includes('zec')) continue;
+        if (!memo.includes('zen') && !memo.includes('zec')) continue;
 
         const initiator = (txn.initiatorUuid || '').toLowerCase();
         if (initiator !== playerUuid.toLowerCase()) continue;

@@ -24,34 +24,39 @@ export default async function handler(req, res) {
   if (err || !txns) return res.status(200).json({ processed: 0, error: err });
 
   const now = new Date();
-  const lookback = 60 * 60 * 1000; // 1 hour
+  const lookback = 60 * 60 * 1000;
   let processed = 0;
 
   for (const t of txns) {
     const memo = ((t.memo || t.message || "") + "").trim().toLowerCase();
     
-    // FIX: Parse the actual format: "business payment: escudos -> zen"
-    if (!memo.startsWith('business payment:')) {
-      console.log('[Auto-Deposit] Skipping non-business payment:', memo);
+    // Parse username from BOTH formats
+    let payer = "";
+    
+    // Format 1: "business payment: escudos -> zen"
+    if (memo.startsWith('business payment:')) {
+      try {
+        const afterColon = memo.split('business payment:', 1)[1].trim();
+        payer = afterColon.split('->')[0].trim();
+      } catch (e) { continue; }
+    }
+    // Format 2: "payment from escudos to account #123945 (zen corporate account): dep-849201"
+    else if (memo.startsWith('payment from')) {
+      try {
+        const afterFrom = memo.split('payment from', 1)[1].trim();
+        payer = afterFrom.split(' to ')[0].trim();
+      } catch (e) { continue; }
+    }
+    else {
+      console.log('[Auto-Deposit] Skipping unknown format:', memo);
       continue;
     }
 
-    // Extract username and business name
-    let payer = "";
-    let businessName = "";
-    try {
-      const afterColon = memo.split('business payment:', 1)[1].trim();
-      const parts = afterColon.split('->').map(p => p.trim());
-      payer = parts[0];
-      businessName = parts[1];
-    } catch (e) { 
-      console.log('[Auto-Deposit] Failed to parse memo:', memo);
-      continue; 
-    }
+    if (!payer) continue;
 
-    // Verify it's to our business (ZEN or ZEC)
-    if (!businessName.includes('zen') && !businessName.includes('zec')) {
-      console.log('[Auto-Deposit] Skipping payment to different business:', businessName);
+    // Verify it's to our business
+    if (!memo.includes('zen') && !memo.includes('zec')) {
+      console.log('[Auto-Deposit] Skipping payment to different business');
       continue;
     }
 
@@ -65,7 +70,7 @@ export default async function handler(req, res) {
     const settled = t.settledAt;
     if (settled && now - new Date(settled) > lookback) continue;
 
-    console.log(`[Auto-Deposit] Found potential deposit: $${amt} from ${payer} to ${businessName}`);
+    console.log(`[Auto-Deposit] Found potential deposit: $${amt} from ${payer}`);
 
     // Check if user is verified
     const { data: urow, error: userErr } = await supabase
@@ -85,7 +90,6 @@ export default async function handler(req, res) {
     if (!dc_txn_id) continue;
     const ref_id = "DC-" + dc_txn_id;
 
-    // Idempotency check
     const { data: existing } = await supabase.from('transactions').select('txn_id').eq('ref_id', ref_id).eq('type', 'deposit').single();
     if (existing) {
       console.log(`[Auto-Deposit] SKIPPED: Already deposited ref_id ${ref_id}`);
@@ -94,7 +98,6 @@ export default async function handler(req, res) {
 
     const new_txn_id = genTxnId();
     
-    // Save to database
     const { error: balErr } = await supabase.from('balances').upsert({ user_id: userId, balance: 0 }, { onConflict: 'user_id' });
     if (balErr) console.error('[Auto-Deposit] Balance upsert error:', balErr);
 
