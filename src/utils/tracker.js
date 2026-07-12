@@ -41,30 +41,28 @@ export const checkAndUnlockAchievements = async (userId) => {
 };
 
 const unlockAchievement = async (userId, achievement) => {
-  // Check if already unlocked
-  const { data: existing } = await supabase.from('user_achievements').select('id').eq('user_id', userId).eq('achievement_id', achievement.id).single();
-  
-  if (!existing) {
-    await supabase.from('user_achievements').insert({
-      user_id: userId,
-      achievement_id: achievement.id
-    });
-    console.log(`Unlocked: ${achievement.title}`);
-    // Optional: Show a toast notification here later
-  }
+  try {
+    const { data: existing } = await supabase.from('user_achievements').select('id').eq('user_id', userId).eq('achievement_id', achievement.id).maybeSingle();
+    
+    if (!existing) {
+      await supabase.from('user_achievements').insert({
+        user_id: userId,
+        achievement_id: achievement.id
+      });
+      console.log(`Unlocked: ${achievement.title}`);
+    }
+  } catch (e) { console.error('Failed to unlock achievement:', e); }
 };
 
 export const updateChallengeProgress = async (userId, siteId) => {
   if (!userId || !siteId) return;
   
   try {
-    // Get today's challenge
     const today = new Date().toISOString().split('T')[0];
-    const { data: challenge } = await supabase.from('daily_challenges').select('*').eq('date', today).single();
+    const { data: challenge } = await supabase.from('daily_challenges').select('*').eq('date', today).maybeSingle();
     
     if (challenge) {
-      // Check if already progressed for this site
-      const { data: existing } = await supabase.from('challenge_progress').select('id').eq('user_id', userId).eq('challenge_id', challenge.id).eq('site_id', siteId).single();
+      const { data: existing } = await supabase.from('challenge_progress').select('id').eq('user_id', userId).eq('challenge_id', challenge.id).eq('site_id', siteId).maybeSingle();
       
       if (!existing) {
         await supabase.from('challenge_progress').insert({

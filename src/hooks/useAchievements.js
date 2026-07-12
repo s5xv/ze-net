@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 
 export const ACHIEVEMENTS = {
@@ -27,28 +27,36 @@ export function useAchievements(user) {
     if (user) fetchUnlocked();
   }, [user]);
 
+  const timerRef = useRef();
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
   const fetchUnlocked = async () => {
-    const { data } = await supabase
-      .from('user_achievements')
-      .select('achievement_key')
-      .eq('user_id', user.id);
-    setUnlocked(data?.map(d => d.achievement_key) || []);
+    try {
+      const { data } = await supabase
+        .from('user_achievements')
+        .select('achievement_key')
+        .eq('user_id', user.id);
+      setUnlocked(data?.map(d => d.achievement_key) || []);
+    } catch (e) { console.error('Failed to fetch achievements:', e); }
   };
 
   const unlock = async (key) => {
     if (!user || unlocked.includes(key)) return false;
     
-    const { error } = await supabase.from('user_achievements').insert({
-      user_id: user.id,
-      achievement_key: key
-    });
-    
-    if (!error) {
-      setUnlocked(prev => [...prev, key]);
-      setNewlyUnlocked(ACHIEVEMENTS[key]);
-      setTimeout(() => setNewlyUnlocked(null), 4000);
-      return true;
-    }
+    try {
+      const { error } = await supabase.from('user_achievements').insert({
+        user_id: user.id,
+        achievement_key: key
+      });
+      
+      if (!error) {
+        setUnlocked(prev => [...prev, key]);
+        setNewlyUnlocked(ACHIEVEMENTS[key]);
+        clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => setNewlyUnlocked(null), 4000);
+        return true;
+      }
+    } catch (e) { console.error('Failed to unlock achievement:', e); }
     return false;
   };
 

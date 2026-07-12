@@ -4,16 +4,18 @@ export function useRecentlyViewed() {
   const [recentlyViewed, setRecentlyViewed] = useState([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem('recentlyViewed');
-    if (stored) {
-      setRecentlyViewed(JSON.parse(stored));
-    }
+    try {
+      const stored = localStorage.getItem('recentlyViewed');
+      if (stored) setRecentlyViewed(JSON.parse(stored));
+    } catch { localStorage.removeItem('recentlyViewed'); }
   }, []);
 
   const addToRecentlyViewed = (site) => {
-    const updated = [site, ...recentlyViewed.filter((s) => s.id !== site.id)].slice(0, 10);
-    setRecentlyViewed(updated);
-    localStorage.setItem('recentlyViewed', JSON.stringify(updated));
+    setRecentlyViewed(prev => {
+      const updated = [site, ...prev.filter((s) => s.id !== site.id)].slice(0, 10);
+      localStorage.setItem('recentlyViewed', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const clearRecentlyViewed = () => {

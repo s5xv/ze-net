@@ -38,7 +38,7 @@ export default function Challenge() {
                 <span className="text-blue-500">{progress.length} / {challenge.target_count}</span>
               </div>
               <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 transition-all" style={{ width: `${Math.min(100, (progress.length / challenge.target_count) * 100)}%` }}></div>
+                <div className="h-full bg-blue-500 transition-all" style={{ width: `${challenge.target_count ? Math.min(100, (progress.length / challenge.target_count) * 100) : 0}%` }}></div>
               </div>
             </div>
             {completed && <div className="mt-4 text-green-500 font-bold">✓ COMPLETED</div>}

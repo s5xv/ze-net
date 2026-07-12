@@ -10,11 +10,13 @@ export function useNotifications(userId) {
   const fetch = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
-    const { data } = await supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50);
-    if (data) {
-      setNotifications(data);
-      setUnreadCount(data.filter(n => !n.is_read).length);
-    }
+    try {
+      const { data } = await supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50);
+      if (data) {
+        setNotifications(data);
+        setUnreadCount(data.filter(n => !n.is_read).length);
+      }
+    } catch (e) { console.error('Failed to fetch notifications:', e); }
     setLoading(false);
   }, [userId]);
 
@@ -25,13 +27,17 @@ export function useNotifications(userId) {
   }, [fetch]);
 
   const markRead = async (id) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    try {
+      await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    } catch (e) { console.error('Failed to mark read:', e); }
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
   const markAllRead = async () => {
-    await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).is('is_read', false);
+    try {
+      await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).is('is_read', false);
+    } catch (e) { console.error('Failed to mark all read:', e); }
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     setUnreadCount(0);
   };

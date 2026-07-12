@@ -63,9 +63,9 @@ export default function SubmitAd() {
       if (error) throw error;
 
       const { data: admins } = await supabase.from('profiles').select('id').eq('is_staff', true);
-      if (admins) {
+      if (admins && admins.length > 0) {
         const notif = { type: 'ad_request', title: 'New Ad Request', body: `${selectedSite.name} - ${tiers[tier].name} ($${tiers[tier].price})`, link: '/admin' };
-        await supabase.from('notifications').insert(admins.map(a => ({ ...notif, user_id: a.id }))).catch(() => {});
+        await supabase.from('notifications').insert(admins.map(a => ({ ...notif, user_id: a.id })));
       }
 
       setMessage('Ad request submitted! Admin will review within 24 hours.');
