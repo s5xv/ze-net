@@ -14,7 +14,7 @@ export default function RedirectHandler() {
         .from('listings')
         .select('target_url')
         .eq('slug', slug)
-        .single();
+        .maybeSingle();
 
       // If there's an error (e.g., no rows found) or no target_url, show 404
       if (error || !data || !data.target_url) {

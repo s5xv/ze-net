@@ -88,7 +88,7 @@ export default function VerifySite() {
           ) : ownedSites.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-400 mb-4">You don't own any sites yet.</p>
-              <button onClick={() => navigate('/submit-ad')} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold">Submit Your First Site</button>
+              <button onClick={() => navigate('/submit-site')} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold">Submit Your First Site</button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">

@@ -21,10 +21,13 @@ export default function Settings() {
   }, [user]);
 
   const save = async () => {
+    if (!user) { setMessage('You must be logged in'); return; }
     setSaving(true);
     setMessage('');
-    const { error } = await supabase.from('profiles').upsert({ id: user.id, bio, avatar_url: avatarUrl, ad_preferences: adPrefs }, { onConflict: 'id' });
-    setMessage(error ? 'Error: ' + error.message : 'Settings saved!');
+    try {
+      const { error } = await supabase.from('profiles').upsert({ id: user.id, bio, avatar_url: avatarUrl, ad_preferences: adPrefs }, { onConflict: 'id' });
+      setMessage(error ? 'Error: ' + error.message : 'Settings saved!');
+    } catch (e) { setMessage('Error: ' + e.message); }
     setSaving(false);
   };
 

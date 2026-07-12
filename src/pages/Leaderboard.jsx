@@ -38,7 +38,7 @@ export default function Leaderboard() {
                     <span className="text-2xl font-bold w-12 text-center">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</span>
                     <span className="font-semibold">{entry.name}</span>
                   </div>
-                  <span className="text-xl font-bold text-blue-600">{activeTab === 'balance' ? `$${Number(entry.value).toFixed(2)}` : entry.value.toLocaleString()}</span>
+                  <span className="text-xl font-bold text-blue-600">{activeTab === 'balance' ? `$${Number(entry.value || 0).toFixed(2)}` : (entry.value || 0).toLocaleString()}</span>
                 </div>
               ))}
             </div>
