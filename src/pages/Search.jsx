@@ -49,16 +49,20 @@ export default function Search() {
     setWikiResults(wikiData || []);
 
     let deptData = [];
-    if (searchTerm) {
-      try {
-        const { data, error } = await supabase.from('departments').select('*').or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`).eq('is_active', true).limit(20);
-        if (!error && data) deptData = data;
-      } catch (e) { console.error('Dept search error', e); }
-    }
+    try {
+      if (searchTerm.toLowerCase().includes('department') || searchTerm.toLowerCase().includes('dept')) {
+        const { data } = await supabase.from('departments').select('*').eq('is_active', true).order('display_order', { ascending: true }).limit(50);
+        deptData = data || [];
+      } else if (searchTerm) {
+        const { data } = await supabase.from('departments').select('*').or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`).eq('is_active', true).limit(20);
+        deptData = data || [];
+      }
+    } catch (e) { console.error('Dept search error', e); }
     setDeptResults(deptData);
 
     const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
-    if (allResults.length > 0 || rawQuery !== searchTerm) {
+    const isQuestion = ['who is ', 'what is ', 'what are ', 'where is ', 'how to ', 'how do i ', 'tell me about ', 'find ', 'i need '].some(p => rawQuery.startsWith(p));
+    if (allResults.length > 0 || isQuestion) {
       generateAISummary(allResults);
     } else {
       setSummarizing(false);

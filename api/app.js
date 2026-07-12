@@ -76,17 +76,20 @@ export default async function handler(req, res) {
   if (action === 'summarize') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     const { query, results } = req.body;
-    if (!query || !results || results.length === 0) return res.status(400).json({ error: 'Missing data' });
+    if (!query) return res.status(400).json({ error: 'Missing query' });
     try {
       const apiKey = process.env.MISTRAL_API_KEY;
       if (!apiKey) return res.status(200).json({ summary: "⚠️ AI is ready, but the MISTRAL_API_KEY is missing! Go to Vercel Dashboard > Settings > Environment Variables and add it." });
-      const resultsText = results.slice(0, 30).map((r, i) => {
-        const name = r.name || r.title || 'Unknown';
-        const desc = r.description || r.content || 'No description';
-        const type = r.category ? 'Site' : (r.content ? 'Wiki' : 'Department');
-        return `${i+1}. [${type}] **${name}**: ${desc.substring(0, 200)}`;
-      }).join('\n');
-      const prompt = `You are the 'Z&E Net AI Search Assistant', an expert navigation tool for the DemocracyCraft Minecraft server directory.\n\nUser Query: "${query}"\n\nDatabase Results:\n${resultsText}\n\nInstructions:\n1. STRICT RELEVANCE: Analyze the query. Discard results where the query word only appears as a substring in an unrelated word.\n2. COMPREHENSIVE LISTING: If the user is searching for a category (like "departments", "shops", "banks"), you MUST list ALL relevant items found in the database results. Do not just pick two.\n3. SYNTHESIS: Write a highly engaging summary. Start directly with the answer. Mention the specific names of the best matching sites, wiki pages, or departments.\n4. FORMATTING: Use bold text (markdown) for the names of the sites/departments to make them pop.\n5. ZERO HALLUCINATION: ONLY use the provided database results. Never invent information.\n6. NO RESULTS: If absolutely nothing matches, reply exactly with: "I couldn't find anything specifically about '${query}' in the Z&E Net directory."\n\nOutput ONLY the final summary text. Do not include any introductory phrases.`;
+      const resultsText = (results || []).length > 0
+        ? (results || []).slice(0, 30).map((r, i) => {
+            const name = r.name || r.title || 'Unknown';
+            const desc = r.description || r.content || 'No description';
+            const type = r.category ? 'Site' : (r.content ? 'Wiki' : 'Department');
+            return `${i+1}. [${type}] **${name}**: ${desc.substring(0, 200)}`;
+          }).join('\n')
+        : 'No results found in the directory for your query.';
+
+      const prompt = `You are the 'Z&E Net AI Search Assistant', an expert navigation tool for the DemocracyCraft Minecraft server directory.\n\nUser Query: "${query}"\n\nDatabase Results:\n${resultsText}\n\nInstructions:\n1. STRICT RELEVANCE: Analyze the query. Discard results where the query word only appears as a substring in an unrelated word.\n2. COMPREHENSIVE LISTING: If the user is searching for a category (like "departments", "shops", "banks"), you MUST list ALL relevant items found in the database results. Do not just pick two.\n3. SYNTHESIS: Write a highly engaging summary. Start directly with the answer. Mention the specific names of the best matching sites, wiki pages, or departments.\n4. FORMATTING: Use bold text (markdown) for the names of the sites/departments to make them pop.\n5. ZERO HALLUCINATION: ONLY use the provided database results. Never invent information.\n6. NO RESULTS: If the database has no matching results but the user is asking a question, try to answer based on what you know about DemocracyCraft, or suggest they refine their search.\n\nOutput ONLY the final summary text. Do not include any introductory phrases.`;
       const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
@@ -95,7 +98,7 @@ export default async function handler(req, res) {
       const data = await response.json();
       if (data.error) throw new Error(data.error.message);
       const summary = data.choices?.[0]?.message?.content || 'Unable to generate summary.';
-      const sources = results.slice(0, 5).map(r => r.name || r.title).filter(Boolean);
+      const sources = (results || []).slice(0, 5).map(r => r.name || r.title).filter(Boolean);
       return res.status(200).json({ summary, sources });
     } catch (error) {
       console.error('AI Error:', error);
@@ -184,6 +187,14 @@ export default async function handler(req, res) {
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
+  }
+
+  // --- admin-get-sites ---
+  if (action === 'admin-get-sites') {
+    try {
+      const { data } = await supabase.from('sites').select('*, profiles(username)').order('created_at', { ascending: false });
+      return res.status(200).json({ sites: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
   // --- admin-delete-site ---

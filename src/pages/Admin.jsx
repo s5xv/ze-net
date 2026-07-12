@@ -56,8 +56,9 @@ export default function Admin() {
         const { data } = await supabase.from('ad_requests').select('*, profiles(username), sites(name)').order('created_at', { ascending: false });
         setAdRequests(data || []);
       } else if (activeTab === 'sites') {
-        const { data } = await supabase.from('sites').select('*, profiles(username)').order('created_at', { ascending: false });
-        setSites(data || []);
+        const res = await fetch('/api/app?action=admin-get-sites');
+        const d = await res.json();
+        setSites(d.sites || []);
       } else if (activeTab === 'users') {
         const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
         setProfiles(data || []);
