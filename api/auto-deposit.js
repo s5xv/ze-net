@@ -1,34 +1,53 @@
 import { createClient } from '@supabase/supabase-js';
-import { getTransactions } from './treasury.js';
 
+const BASE_URL = "https://api.democracycraft.net/economy/api/v1";
+const DC_API_TOKEN = process.env.DC_TREASURY_TOKEN;
+const ZEC_ACCOUNT_ID = process.env.ZEC_ACCOUNT_ID;
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+async function getTransactions(limit = 50) {
+  try {
+    const r = await fetch(`${BASE_URL}/accounts/${ZEC_ACCOUNT_ID}/transactions?limit=${limit}&page=1`, {
+      headers: { "Authorization": "Bearer " + DC_API_TOKEN }
+    });
+    if (!r.ok) return [null, "API error: " + r.status];
+    const data = await r.json();
+    return [data.items || [], null];
+  } catch (e) { return [null, e.message]; }
+}
+
 const genTxnId = () => "ZEC-" + Math.random().toString(36).substring(2, 12).toUpperCase();
 
 export default async function handler(req, res) {
-  if (req.method !== 'GET' && req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
+  res.setHeader('Content-Type', 'application/json');
   const [txns, err] = await getTransactions(50);
   if (err || !txns) return res.status(200).json({ processed: 0, error: err });
 
   const now = new Date();
-  const lookback = 60 * 60 * 1000; // 1 hour lookback
+  const lookback = 60 * 60 * 1000; // 1 hour
   let processed = 0;
 
   for (const t of txns) {
-    if (t.pluginSystem !== null && t.pluginSystem !== undefined) continue;
+    if (t.pluginSystem !== null && t.pluginSystem !== undefined) {
+      console.log('[Auto-Deposit] Skipping plugin system txn:', t.txnId);
+      continue;
+    }
     
     const memo = ((t.memo || t.message || "") + "").trim().toLowerCase();
-    if (!memo.includes("payment from") || !memo.includes("corporate account")) continue;
+    if (!memo.includes("payment from") || !memo.includes("corporate account")) {
+      console.log('[Auto-Deposit] Skipping bad memo:', memo);
+      continue;
+    }
 
     let amt = 0;
     try { amt = parseFloat(t.amount || 0); } catch (e) { continue; }
-    if (amt <= 1.0) continue; // Skip $1 verify payments
+    if (amt <= 1.0) {
+      console.log('[Auto-Deposit] Skipping $1 verify payment:', amt);
+      continue; 
+    }
 
     const settled = t.settledAt;
-    if (settled) {
-      const settled_dt = new Date(settled);
-      if (now - settled_dt > lookback) continue;
-    }
+    if (settled && now - new Date(settled) > lookback) continue;
 
     // Extract username
     let payer = "";
@@ -37,16 +56,18 @@ export default async function handler(req, res) {
       payer = after_from.split(" to business ", 1)[0].trim();
     } catch (e) { continue; }
 
-    // FIX: Query 'profiles' table instead of 'users' table
-    const { data: urow } = await supabase
+    console.log(`[Auto-Deposit] Found potential deposit: $${amt} from ${payer}`);
+
+    // Check if user is verified
+    const { data: urow, error: userErr } = await supabase
       .from('profiles')
       .select('id')
       .ilike('mc_username', payer)
       .eq('mc_verified', true)
       .single();
       
-    if (!urow) {
-      console.log(`[Auto-Deposit] Skipped: No verified profile found for MC name "${payer}"`);
+    if (userErr || !urow) {
+      console.log(`[Auto-Deposit] SKIPPED: No verified profile found for "${payer}". Error:`, userErr?.message);
       continue;
     }
 
@@ -57,30 +78,30 @@ export default async function handler(req, res) {
 
     // Idempotency check
     const { data: existing } = await supabase.from('transactions').select('txn_id').eq('ref_id', ref_id).eq('type', 'deposit').single();
-    if (existing) continue;
+    if (existing) {
+      console.log(`[Auto-Deposit] SKIPPED: Already deposited ref_id ${ref_id}`);
+      continue;
+    }
 
     const new_txn_id = genTxnId();
     
-    // Ensure balance row exists
-    await supabase.from('balances').upsert({ user_id: userId, balance: 0 });
-    
-    // Increment balance
+    // Save to database
+    const { error: balErr } = await supabase.from('balances').upsert({ user_id: userId, balance: 0 }, { onConflict: 'user_id' });
+    if (balErr) console.error('[Auto-Deposit] Balance upsert error:', balErr);
+
     const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', userId).single();
     const newBal = (currentBal?.balance || 0) + amt;
-    await supabase.from('balances').update({ balance: newBal }).eq('user_id', userId);
+    
+    const { error: updateErr } = await supabase.from('balances').update({ balance: newBal }).eq('user_id', userId);
+    if (updateErr) console.error('[Auto-Deposit] Balance update error:', updateErr);
 
-    // Log transaction
-    await supabase.from('transactions').insert({ 
-      txn_id: new_txn_id, 
-      user_id: userId, 
-      amount: amt, 
-      type: 'deposit', 
-      ref_id, 
-      note: `Auto-detected DC deposit from ${payer}` 
+    const { error: txnErr } = await supabase.from('transactions').insert({ 
+      txn_id: new_txn_id, user_id: userId, amount: amt, type: 'deposit', ref_id, note: `Auto-detected DC deposit from ${payer}` 
     });
+    if (txnErr) console.error('[Auto-Deposit] Transaction insert error:', txnErr);
     
     processed++;
-    console.log(`[Auto-Deposit] Success: Credited $${amt} to ${userId} (${payer})`);
+    console.log(`[Auto-Deposit] SUCCESS: Credited $${amt} to ${userId} (${payer})`);
   }
 
   return res.status(200).json({ processed });
