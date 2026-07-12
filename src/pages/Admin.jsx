@@ -25,6 +25,7 @@ export default function Admin() {
   const [depositAmount, setDepositAmount] = useState('');
   const [depositNote, setDepositNote] = useState('');
   const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
+  const [lookupResults, setLookupResults] = useState([]);
 
   useEffect(() => { fetchData(); }, [activeTab]);
 
@@ -152,6 +153,15 @@ export default function Admin() {
     if (!depositUserId || !depositAmount || Number(depositAmount) <= 0) { setMessage('Enter valid user and amount'); return; }
     await callAdmin('admin-deposit', { userId: depositUserId, amount: Number(depositAmount), note: depositNote });
     setDepositUserId(''); setDepositAmount(''); setDepositNote('');
+  };
+
+  const lookupOwner = async (username) => {
+    if (!username.trim()) return;
+    try {
+      const res = await fetch(`/api/app?action=lookup-user&username=${encodeURIComponent(username)}`);
+      const data = await res.json();
+      setLookupResults(data.users || []);
+    } catch (e) { setLookupResults([]); }
   };
 
   const addSite = () => {
@@ -383,7 +393,10 @@ export default function Admin() {
                 <input type="text" placeholder="Site Name *" value={newSite.name} onChange={(e) => setNewSite({...newSite, name: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <input type="url" placeholder="Website URL *" value={newSite.url} onChange={(e) => setNewSite({...newSite, url: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <input type="text" placeholder="Owner User ID *" value={newSite.owner_id} onChange={(e) => setNewSite({...newSite, owner_id: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
-                <input type="text" placeholder="Owner Discord Username" value={newSite.owner_discord} onChange={(e) => setNewSite({...newSite, owner_discord: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <div className="relative">
+                  <input type="text" placeholder="Owner Discord Username" value={newSite.owner_discord} onChange={(e) => { setNewSite({...newSite, owner_discord: e.target.value}); if (e.target.value.length > 2) lookupOwner(e.target.value); }} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white w-full" />
+                  {lookupResults.length > 0 && <div className="absolute z-10 top-full left-0 right-0 bg-[#202124] border border-gray-700 rounded mt-1 max-h-32 overflow-y-auto">{lookupResults.map(u => <button key={u.id} type="button" onClick={() => { setNewSite({...newSite, owner_id: u.id, owner_discord: u.username}); setLookupResults([]); }} className="w-full text-left px-3 py-2 text-white text-sm hover:bg-gray-700 border-b border-gray-700 last:border-0">{u.username} {u.mc_username && `(MC: ${u.mc_username})`}</button>)}</div>}
+                </div>
                 <select value={newSite.category} onChange={(e) => setNewSite({...newSite, category: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white">
                   {['Government','Corporate','Service','Charity','Community','Business','Shop','Entertainment','Social','Other'].map(c => <option key={c} value={c}>{c}</option>)}
                 </select>

@@ -199,5 +199,63 @@ export default async function handler(req, res) {
     }
   }
 
+  // --- submit-review ---
+  if (action === 'submit-review') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    const { siteId, userId, rating, comment } = req.body;
+    if (!siteId || !userId) return res.status(400).json({ error: 'Missing data' });
+    try {
+      await supabase.from('site_reviews').insert({ site_id: siteId, user_id: userId, rating: rating || 5, comment: comment || '' });
+      return res.status(200).json({ success: true });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- submit-comment ---
+  if (action === 'submit-comment') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    const { siteId, userId, comment } = req.body;
+    if (!siteId || !userId || !comment) return res.status(400).json({ error: 'Missing data' });
+    try {
+      await supabase.from('site_comments').insert({ site_id: siteId, user_id: userId, comment });
+      return res.status(200).json({ success: true });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- toggle-upvote ---
+  if (action === 'toggle-upvote') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    const { siteId, userId, remove } = req.body;
+    if (!siteId || !userId) return res.status(400).json({ error: 'Missing data' });
+    try {
+      if (remove) {
+        await supabase.from('site_upvotes').delete().eq('user_id', userId).eq('site_id', siteId);
+      } else {
+        await supabase.from('site_upvotes').insert({ user_id: userId, site_id: siteId });
+      }
+      return res.status(200).json({ success: true });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- submit-report ---
+  if (action === 'submit-report') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    const { siteId, userId, reason } = req.body;
+    if (!siteId || !userId || !reason) return res.status(400).json({ error: 'Missing data' });
+    try {
+      await supabase.from('site_reports').insert({ site_id: siteId, user_id: userId, reason });
+      return res.status(200).json({ success: true });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- lookup-user ---
+  if (action === 'lookup-user') {
+    const username = req.query.username || req.body?.username;
+    if (!username) return res.status(400).json({ error: 'Missing username' });
+    try {
+      const { data } = await supabase.from('profiles').select('id, username, mc_username').ilike('username', username).limit(5);
+      return res.status(200).json({ users: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   return res.status(400).json({ error: 'Invalid action' });
 }

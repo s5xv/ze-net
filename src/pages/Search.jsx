@@ -22,11 +22,21 @@ export default function Search() {
     if (query) fetchResults();
   }, [query]);
 
+  const extractSearchTerms = (q) => {
+    const questionWords = ['who is ', 'what is ', 'what are ', 'where is ', 'how to ', 'how do i ', 'tell me about ', 'find ', 'search for ', 'i need ', 'looking for ', 'show me '];
+    let term = q;
+    for (const prefix of questionWords) {
+      if (term.startsWith(prefix)) { term = term.slice(prefix.length); break; }
+    }
+    return term.trim() || q;
+  };
+
   const fetchResults = async () => {
     setLoading(true);
     setAiSummary(null);
     setAiSources([]);
-    const searchTerm = query.toLowerCase().trim();
+    const rawQuery = query.toLowerCase().trim();
+    const searchTerm = extractSearchTerms(rawQuery);
     
     let sitesQuery = supabase.from('sites').select('*');
     if (searchTerm) {
@@ -48,7 +58,7 @@ export default function Search() {
     setDeptResults(deptData);
 
     const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
-    if (allResults.length > 0) {
+    if (allResults.length > 0 || rawQuery !== searchTerm) {
       generateAISummary(allResults);
     } else {
       setSummarizing(false);

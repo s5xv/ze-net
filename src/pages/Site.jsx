@@ -87,49 +87,32 @@ export default function Site() {
     }
   };
 
+  const apiAction = (action, body) => fetch('/api/app?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
   const handleUpvote = async () => {
     if (!user || !site?.id) return;
-    if (hasUpvoted) {
-      await supabase.from('site_upvotes').delete().eq('user_id', user.id).eq('site_id', site.id);
-      setHasUpvoted(false);
-      setUpvotes(u => u - 1);
-    } else {
-      await supabase.from('site_upvotes').insert({ user_id: user.id, site_id: site.id });
-      setHasUpvoted(true);
-      setUpvotes(u => u + 1);
-    }
+    await apiAction('toggle-upvote', { siteId: site.id, userId: user.id, remove: hasUpvoted });
+    setHasUpvoted(!hasUpvoted);
+    setUpvotes(u => hasUpvoted ? u - 1 : u + 1);
   };
 
   const submitReview = async () => {
     if (!user || !site?.id || !newReview.comment.trim()) return;
-    await supabase.from('site_reviews').insert({
-      site_id: site.id,
-      user_id: user.id,
-      rating: newReview.rating,
-      comment: newReview.comment
-    });
+    await apiAction('submit-review', { siteId: site.id, userId: user.id, rating: newReview.rating, comment: newReview.comment });
     setNewReview({ rating: 5, comment: '' });
     fetchSite();
   };
 
   const submitComment = async () => {
     if (!user || !site?.id || !newComment.trim()) return;
-    await supabase.from('site_comments').insert({
-      site_id: site.id,
-      user_id: user.id,
-      comment: newComment
-    });
+    await apiAction('submit-comment', { siteId: site.id, userId: user.id, comment: newComment });
     setNewComment('');
     fetchSite();
   };
 
   const submitReport = async () => {
     if (!user || !site?.id || !reportReason.trim()) return;
-    await supabase.from('site_reports').insert({
-      site_id: site.id,
-      user_id: user.id,
-      reason: reportReason
-    });
+    await apiAction('submit-report', { siteId: site.id, userId: user.id, reason: reportReason });
     setShowReportModal(false);
     setReportReason('');
     alert('Report submitted');
