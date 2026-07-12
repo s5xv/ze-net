@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../services/supabase';
 
 const CATEGORIES = ['Government','Corporate','Service','Charity','Community','Business','Shop','Entertainment','Social','Other'];
 
@@ -20,13 +19,12 @@ export default function SubmitSite() {
     setMessage('');
 
     try {
-      const slug = form.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
-      const { error } = await supabase.from('sites').insert({
-        name: form.name, slug, url: form.url, category: form.category,
-        description: form.description, user_id: user.id, owner_user_id: user.id,
-        is_verified: false, is_active: true, status: 'pending', submitted_by: user.id
+      const res = await fetch('/api/app?action=submit-site', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, user_id: user.id })
       });
-      if (error) throw error;
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
       setMessage('Site submitted for review! An admin will review it shortly.');
       setTimeout(() => navigate('/profile'), 3000);
     } catch (err) {

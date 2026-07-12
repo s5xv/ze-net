@@ -103,18 +103,39 @@ export default async function handler(req, res) {
     }
   }
 
+  // --- submit-site (public) ---
+  if (action === 'submit-site') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    const { name, url, category, description, user_id } = req.body;
+    if (!name || !url || !user_id) return res.status(400).json({ error: 'Name, URL, and User are required' });
+    try {
+      const { data: owner } = await supabase.from('profiles').select('username').eq('id', user_id).maybeSingle();
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
+      const { error } = await supabase.from('sites').insert({
+        name, slug, url, category: category || 'Other', description: description || '',
+        owner_user_id: user_id, user_id, owner_name: owner?.username || 'Unknown',
+        is_verified: false, is_active: true, status: 'pending', submitted_by: user_id
+      });
+      if (error) throw error;
+      return res.status(200).json({ success: true, message: 'Site submitted for review!' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // --- admin-add-site ---
   if (action === 'admin-add-site') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-    const { name, url, category, description, owner_id } = req.body;
+    const { name, url, category, description, owner_id, owner_discord, plot_number, shortcut, discord_invite, keywords } = req.body;
     if (!name || !url || !owner_id) return res.status(400).json({ error: 'Name, URL, and Owner are required' });
     try {
-      const { data: owner } = await supabase.from('profiles').select('username').eq('id', owner_id).single();
+      const { data: owner } = await supabase.from('profiles').select('username').eq('id', owner_id).maybeSingle();
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
       const { error } = await supabase.from('sites').insert({
         name, slug, url, category: category || 'Other', description: description || '',
         owner_user_id: owner_id, user_id: owner_id, owner_name: owner?.username || 'Unknown',
-        is_verified: true, is_active: true, status: 'approved'
+        is_verified: true, is_active: true, status: 'approved',
+        shortcuts: shortcut || null, keywords: keywords ? keywords.split(',').map(k => k.trim()).filter(Boolean) : null
       });
       if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site created' });

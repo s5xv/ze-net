@@ -24,7 +24,7 @@ export default function Admin() {
   const [depositUserId, setDepositUserId] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositNote, setDepositNote] = useState('');
-  const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '' });
+  const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
 
   useEffect(() => { fetchData(); }, [activeTab]);
 
@@ -156,8 +156,8 @@ export default function Admin() {
 
   const addSite = () => {
     if (!newSite.name || !newSite.url || !newSite.owner_id) { setMessage('Name, URL, and Owner are required'); return; }
-    callAdmin('admin-add-site', { name: newSite.name, url: newSite.url, category: newSite.category, description: newSite.description, owner_id: newSite.owner_id, owner_discord: newSite.owner_discord, plot_number: newSite.plot_number, shortcut: newSite.shortcut, discord_invite: newSite.discord_invite });
-    setNewSite({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '' });
+    callAdmin('admin-add-site', { name: newSite.name, url: newSite.url, category: newSite.category, description: newSite.description, owner_id: newSite.owner_id, owner_discord: newSite.owner_discord, plot_number: newSite.plot_number, shortcut: newSite.shortcut, discord_invite: newSite.discord_invite, keywords: newSite.keywords });
+    setNewSite({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
   };
 
   const deleteSite = (siteId) => {
@@ -390,6 +390,7 @@ export default function Admin() {
                 <input type="text" placeholder="Plot Number" value={newSite.plot_number} onChange={(e) => setNewSite({...newSite, plot_number: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <input type="text" placeholder="Search Shortcut" value={newSite.shortcut} onChange={(e) => setNewSite({...newSite, shortcut: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <input type="url" placeholder="Discord Invite Link" value={newSite.discord_invite} onChange={(e) => setNewSite({...newSite, discord_invite: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="text" placeholder="Keywords (comma separated)" value={newSite.keywords} onChange={(e) => setNewSite({...newSite, keywords: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <textarea placeholder="Description" value={newSite.description} onChange={(e) => setNewSite({...newSite, description: e.target.value})} className="md:col-span-2 px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" rows={2} />
                 <button onClick={addSite} className="md:col-span-2 px-4 py-2 bg-green-600 text-white rounded-lg font-bold">Create Site</button>
               </div>
