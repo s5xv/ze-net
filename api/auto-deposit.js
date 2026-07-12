@@ -28,10 +28,7 @@ export default async function handler(req, res) {
   let processed = 0;
 
   for (const t of txns) {
-    if (t.pluginSystem !== null && t.pluginSystem !== undefined) {
-      console.log('[Auto-Deposit] Skipping plugin system txn:', t.txnId);
-      continue;
-    }
+    // FIX: Remove the pluginSystem filter - in-game payments ARE plugin system transactions!
     
     const memo = ((t.memo || t.message || "") + "").trim().toLowerCase();
     if (!memo.includes("payment from") || !memo.includes("corporate account")) {
