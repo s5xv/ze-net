@@ -41,13 +41,8 @@ export default function Search() {
     let deptData = [];
     if (searchTerm) {
       try {
-        if (searchTerm.includes('department') || searchTerm.includes('dept')) {
-          const { data, error } = await supabase.from('wiki_pages').select('*').ilike('title', '%Department%').limit(30);
-          if (!error && data) deptData = data;
-        } else {
-          const { data, error } = await supabase.from('wiki_pages').select('*').ilike('title', `%${searchTerm}%`).limit(10);
-          if (!error && data) deptData = data;
-        }
+        const { data, error } = await supabase.from('departments').select('*').or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`).eq('is_active', true).limit(20);
+        if (!error && data) deptData = data;
       } catch (e) { console.error('Dept search error', e); }
     }
     setDeptResults(deptData);
@@ -190,9 +185,9 @@ export default function Search() {
                 <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Departments ({deptResults.length})</h2>
                 <div className="space-y-3">
                   {deptResults.map((dept) => (
-                    <div key={dept.id} onClick={() => navigate(`/wiki/${dept.title}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md cursor-pointer transition-all hover:border-purple-500/30">
-                      <h3 className="text-lg font-semibold text-purple-600 dark:text-purple-400">{dept.title}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{getWikiText(dept) || 'Government Department'}</p>
+                    <div key={dept.id} onClick={() => navigate(`/departments/${dept.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md cursor-pointer transition-all hover:border-purple-500/30">
+                      <h3 className="text-lg font-semibold text-purple-600 dark:text-purple-400">{dept.name}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{dept.description || 'Government Department'}</p>
                     </div>
                   ))}
                 </div>
