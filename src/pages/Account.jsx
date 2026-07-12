@@ -13,19 +13,22 @@ export default function Account() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [showWithdraw, setShowWithdraw] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // Forces re-fetch
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) { navigate('/login'); return; }
     fetchData();
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, refreshKey]); // Re-runs when refreshKey changes
 
   const fetchData = async () => {
     if (!user) return;
     setLoading(true);
     try {
+      // Fetch fresh profile data
       const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       setProfile(p);
+      
       const { data: b } = await supabase.from('balances').select('balance').eq('user_id', user.id).single();
       setBalance(b?.balance || 0);
     } catch (err) { console.error(err); }
@@ -47,10 +50,21 @@ export default function Account() {
   }
   if (!user) return null;
 
+  // Fallback name logic
+  const displayName = profile?.username || user.user_metadata?.user_name || user.user_metadata?.full_name || user.email || 'User';
+
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-5xl mx-auto px-4 py-12">
-        <h1 className="text-3xl font-bold text-white mb-8">Account Settings</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-white">Account Settings</h1>
+          <button 
+            onClick={() => setRefreshKey(k => k + 1)}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm"
+          >
+            ↻ Refresh Data
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Profile Info Card */}
@@ -60,16 +74,12 @@ export default function Account() {
             </h2>
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-gray-400 mb-1">Discord Username</p>
-                <p className="text-white font-medium bg-[#202124] px-3 py-2 rounded-lg">
-                  {user.user_metadata?.user_name || user.user_metadata?.full_name || 'User'}
-                </p>
+                <p className="text-sm text-gray-400 mb-1">Display Name</p>
+                <p className="text-white font-medium bg-[#202124] px-3 py-2 rounded-lg">{displayName}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-400 mb-1">Account ID</p>
-                <p className="text-gray-500 text-xs font-mono bg-[#202124] px-3 py-2 rounded-lg break-all">
-                  {user.id}
-                </p>
+                <p className="text-gray-500 text-xs font-mono bg-[#202124] px-3 py-2 rounded-lg break-all">{user.id}</p>
               </div>
             </div>
           </div>
@@ -96,7 +106,7 @@ export default function Account() {
               <span className="text-purple-400">⛏️</span> Minecraft Account
             </h2>
             
-            {profile?.mc_username ? (
+            {profile?.mc_username && profile?.mc_verified ? (
               <div className="flex items-center justify-between bg-[#202124] p-4 rounded-lg border border-green-500/30">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center text-2xl">✓</div>
@@ -109,7 +119,7 @@ export default function Account() {
               </div>
             ) : (
               <div className="text-center py-8 bg-[#202124] rounded-lg border border-dashed border-gray-600">
-                <div className="text-4xl mb-3">🔗</div>
+                <div className="text-4xl mb-3"></div>
                 <h3 className="text-white font-bold text-lg mb-2">No Minecraft Account Linked</h3>
                 <p className="text-gray-400 mb-6 max-w-md mx-auto">Link your Minecraft account to deposit funds and verify your sites.</p>
                 <button onClick={() => navigate('/link-account')} className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold">Link Minecraft Account</button>

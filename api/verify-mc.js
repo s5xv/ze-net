@@ -30,7 +30,6 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   
   const { userId, mc_username, step } = req.body;
@@ -38,25 +37,16 @@ export default async function handler(req, res) {
 
   try {
     if (step === 'init') {
+      // Use upsert to ensure the row exists
       await supabase.from('profiles').upsert({
         id: userId,
         mc_username: mc_username,
         mc_verified: false
       }, { onConflict: 'id' });
-      
-      return res.status(200).json({ 
-        success: true, 
-        message: 'Username registered. Run the command in-game, then click Verify.' 
-      });
+      return res.status(200).json({ success: true, message: 'Username registered.' });
     } 
     
     if (step === 'confirm') {
-      const { data: profile } = await supabase.from('profiles').select('mc_username, mc_verified').eq('id', userId).single();
-      
-      if (profile?.mc_verified) {
-        return res.status(200).json({ success: true, message: `Already verified as ${profile.mc_username}` });
-      }
-
       const [txns, err] = await getTransactions(100);
       if (err) return res.status(500).json({ error: 'Treasury API error: ' + err });
 
@@ -64,60 +54,35 @@ export default async function handler(req, res) {
       if (!playerUuid) return res.status(404).json({ error: `Could not find player ${mc_username}` });
 
       const now = new Date();
-      const maxAge = 60 * 60 * 1000; // 1 hour window
-
+      const maxAge = 60 * 60 * 1000; 
       let found = false;
-      let debugInfo = [];
 
       for (const txn of txns) {
         if (txn.pluginSystem !== null && txn.pluginSystem !== undefined) continue;
-        
         const memo = (txn.memo || txn.message || '').toLowerCase().trim();
         
-        // FIX: Accept BOTH "zen" and "zec" in the memo
-        const expectedStart = `payment from ${mc_username.toLowerCase()} to business `;
-        const expectedEnd = ` corporate account`;
-        
-        if (!memo.startsWith(expectedStart) || !memo.endsWith(expectedEnd)) {
-          continue;
-        }
-
-        const initiator = (txn.initiatorUuid || '').toLowerCase();
-        if (initiator !== playerUuid.toLowerCase()) continue;
-
-        const settledAt = new Date(txn.settledAt);
-        if (now - settledAt > maxAge) continue;
-
-        const amount = parseFloat(txn.amount || 0);
-        if (Math.abs(amount - 1.0) > 0.001) continue;
+        // Accept both ZEN and ZEC
+        if (!memo.includes(`payment from ${mc_username.toLowerCase()} to business `) || !memo.includes(' corporate account')) continue;
+        if ((txn.initiatorUuid || '').toLowerCase() !== playerUuid.toLowerCase()) continue;
+        if (now - new Date(txn.settledAt) > maxAge) continue;
+        if (Math.abs(parseFloat(txn.amount || 0) - 1.0) > 0.001) continue;
 
         found = true;
-        debugInfo.push(`Found matching payment: $${amount} from ${mc_username}`);
         break;
       }
 
       if (!found) {
-        // Add debug info to help troubleshoot
-        const recentMemos = txns.slice(0, 5).map(t => ({
-          memo: (t.memo || t.message || '').substring(0, 100),
-          amount: t.amount,
-          from: t.initiatorUuid?.substring(0, 8)
-        }));
-        
-        return res.status(404).json({ 
-          error: `No $1 payment from ${mc_username} found.\n\nMake sure you:\n1. Ran /pay-account business ZEN 1 in-game (not ZEC)\n2. Used the exact username: ${mc_username}\n3. Waited a few seconds after paying\n\nDebug: Player UUID: ${playerUuid}\nRecent transactions: ${JSON.stringify(recentMemos, null, 2)}` 
-        });
+        return res.status(404).json({ error: `No $1 payment from ${mc_username} found. Did you run /pay-account business ZEN 1?` });
       }
 
-      await supabase.from('profiles').update({ 
+      // FIX: Use upsert here too so it definitely saves the username
+      await supabase.from('profiles').upsert({ 
+        id: userId,
         mc_verified: true,
         mc_username: mc_username
-      }).eq('id', userId);
+      }, { onConflict: 'id' });
 
-      return res.status(200).json({ 
-        success: true, 
-        message: `${mc_username} is now linked and verified!` 
-      });
+      return res.status(200).json({ success: true, message: `${mc_username} is now linked and verified!` });
     }
   } catch (e) {
     return res.status(500).json({ error: e.message });
