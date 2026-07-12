@@ -145,7 +145,7 @@ export default function Site() {
   
   // STRICT Pay-Per-View Logic (10-Second Dwell Time)
   useEffect(() => {
-    if (!user || !site?.id || !site?.user_id || user.id === site.user_id) return;
+    if (!user || !currentSite?.id || !currentSite?.user_id || user.id === currentSite.user_id) return;
 
     let timeout;
     let hasTracked = false;
@@ -158,8 +158,8 @@ export default function Site() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          siteId: site.id, 
-          ownerId: site.user_id, 
+          siteId: currentSite.id, 
+          ownerId: currentSite.user_id, 
           viewerId: user.id 
         })
       }).catch(err => console.error('PPV Error:', err));
@@ -169,7 +169,7 @@ export default function Site() {
     timeout = setTimeout(trackView, 10000);
 
     return () => clearTimeout(timeout);
-  }, [site?.id, user]);
+  }, [currentSite?.id, user]);
 
   return (
     <Layout user={user}>
