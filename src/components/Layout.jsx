@@ -1,196 +1,118 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { useState, useEffect } from 'react';
 
-export default function Layout({ children }) {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+export default function Layout({ children, user }) {
+  const { isDark, toggleTheme } = useTheme();
+  const [showMenu, setShowMenu] = useState(false);
+  const [mcName, setMcName] = useState(null);
   const [balance, setBalance] = useState(0);
-  const [bookmarks, setBookmarks] = useState([]);
-  const [mySites, setMySites] = useState([]);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+  const [serverStatus, setServerStatus] = useState({ online: false, players: 0 });
 
   useEffect(() => {
-    if (!user?.id) {
-      setBalance(0);
-      setBookmarks([]);
-      setMySites([]);
-      return;
+    if (user) {
+      const fetchMCName = async () => {
+        try {
+          const { data: tokenData } = await supabase.from('treasury_tokens').select('account_id').eq('user_id', user.id).single();
+          if (tokenData?.account_id) {
+            const res = await fetch(`/api?endpoint=mc-profile&uuid=${tokenData.account_id}`);
+            if (res.ok) { const mcData = await res.json(); if (mcData.name) setMcName(mcData.name); }
+          }
+        } catch (e) { console.error(e); }
+      };
+      fetchMCName();
+
+      // FIXED: Use maybeSingle so it doesn't crash if no balance row exists
+      const fetchBalance = async () => {
+        const { data, error } = await supabase.from('site_balances').select('balance').eq('user_id', user.id).maybeSingle();
+        if (data) setBalance(data.balance || 0);
+      };
+      fetchBalance();
     }
 
-    supabase
-      .from('balances')
-      .select('balance')
-      .eq('user_id', user.id)
-      .single()
-      .then(({ data }) => {
-        setBalance(data?.balance || 0);
-      });
-
-    supabase
-      .from('bookmarks')
-      .select('*, sites(id, name, url)')
-      .eq('user_id', user.id)
-      .then(({ data }) => {
-        setBookmarks(data || []);
-      });
-
-    supabase
-      .from('sites')
-      .select('id, name, url, slug, is_verified')
-      .eq('user_id', user.id)
-      .then(({ data }) => {
-        setMySites(data || []);
-      });
-  }, [user?.id, location.pathname]);
-
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
+    // NEW: Fetch live server status
+    const fetchServerStatus = async () => {
+      try {
+        const res = await fetch('https://api.mcsrvstat.us/3/play.democracycraft.net').catch(() => ({ ok: false }));
+        const data = await res.json();
+        if (res.ok && data.online) {
+          setServerStatus({ online: true, players: data.players?.online || 0 });
+        }
+      } catch (e) { console.error('Server status error:', e); }
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+    fetchServerStatus();
+    const interval = setInterval(fetchServerStatus, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
 
-  const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || 'User';
-  const avatarUrl = user?.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=3b82f6&color=fff`;
-
-  const goTo = (path) => {
-    // Check if it's an external URL
-    if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
-      window.open(path, '_blank');
-    } else {
-      navigate(path);
-    }
-    setDropdownOpen(false);
-  };
+  const displayName = mcName || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+  const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.avatar;
+  const fullAvatarUrl = userAvatar ? (userAvatar.startsWith('http') ? userAvatar : `https://cdn.discordapp.com/avatars/${user.id}/${userAvatar}.png?size=128`) : null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#1a1b1e] text-white">
-      <header className="bg-[#25262b] border-b border-gray-800 px-6 py-3 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-            <img src="/logo.png" alt="" className="w-8 h-8 object-contain" />
-            <h1 className="text-lg font-bold">
-              <span className="text-white">Z&E</span>
-              <span className="text-blue-500 ml-2">NET</span>
-            </h1>
+    <div className="min-h-screen bg-white dark:bg-[#202124] text-gray-900 dark:text-gray-100 flex flex-col font-sans">
+      <header className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#303134]">
+        <div className="flex items-center gap-3">
+          <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <img src="/assets/logo.png" alt="Z&E Net" className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain" style={{ imageRendering: 'pixelated', filter: 'contrast(1.2) brightness(1.1)' }} />
+            <span className="text-xl sm:text-2xl font-bold hidden sm:inline">Z&E <span className="text-blue-600 dark:text-blue-400">NET</span></span>
+          </a>
+          
+          <div className="hidden md:flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+            <span className={`w-2 h-2 rounded-full ${serverStatus.online ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            <span>{serverStatus.online ? `${serverStatus.players} online` : 'Offline'}</span>
+          </div>
+
+          {user && (
+            <div className="hidden lg:flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+              <span className="font-medium">Wallet</span>
+              <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded text-xs font-bold">${balance.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button onClick={toggleTheme} className="text-xs text-gray-600 dark:text-gray-400 hover:text-blue-600 px-2 py-1">{isDark ? '☀️' : '🌙'}</button>
+          
+          <div className="relative">
+            <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 py-2">
+                <a href="/account" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Account Settings</a>
+                {user && <a href={`/profile/${user.id}`} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">My Profile</a>}
+                <a href="/link-account" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Link MC Account</a>
+                <a href="/admin" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Admin Dashboard</a>
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                <a href="/wiki" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Wiki</a>
+                <a href="/contact" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Contact Us</a>
+                <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                {user && (
+                  <button onClick={async () => { await supabase.auth.signOut(); localStorage.clear(); window.location.href = '/'; }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Sign Out</button>
+                )}
+              </div>
+            )}
           </div>
 
           {user ? (
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/account')}
-                className="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 border border-green-600/40 rounded-lg text-green-400 text-sm font-bold transition"
-              >
-                ${balance.toFixed(2)}
-              </button>
-
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-700 rounded-lg transition"
-                >
-                  <img src={avatarUrl} alt="avatar" className="w-7 h-7 rounded-full" />
-                  <svg className={`w-4 h-4 transition ${dropdownOpen ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-
-                {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-[#303134] border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50">
-                    <div className="px-4 py-3 bg-[#202124] border-b border-gray-700">
-                      <p className="text-white text-sm font-bold truncate">{displayName}</p>
-                      <button onClick={() => navigate(`/profile/${user.id}`)} className="text-xs text-blue-400 hover:underline text-left mt-1">
-                        View Profile
-                      </button>
-                    </div>
-
-                    <div className="py-1">
-                      <button onClick={() => navigate('/account')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
-                        Wallet
-                      </button>
-                      <button onClick={() => navigate('/collections')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
-                        Collections
-                      </button>
-                      <button onClick={() => navigate(`/profile/${user.id}`)} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
-                        My Profile
-                      </button>
-                    </div>
-
-                    {bookmarks.length > 0 && (
-                      <>
-                        <div className="border-t border-gray-700 px-4 py-2 bg-gray-800">
-                          <p className="text-xs text-gray-500 font-semibold uppercase">Bookmarks</p>
-                        </div>
-                        <div className="max-h-32 overflow-y-auto py-1">
-                          {bookmarks.map((bm, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => goTo(bm.sites?.url || '/')}
-                              className="w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 truncate"
-                            >
-                              {bm.sites?.name || 'Site'}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-
-                    {mySites.length > 0 && (
-                      <>
-                        <div className="border-t border-gray-700 px-4 py-2 bg-gray-800">
-                          <p className="text-xs text-gray-500 font-semibold uppercase">My Sites</p>
-                        </div>
-                        <div className="max-h-32 overflow-y-auto py-1">
-                          {mySites.map(site => (
-                            <button
-                              key={site.id}
-                              onClick={() => goTo(site.url || `/site/${site.slug}`)}
-                              className="w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 truncate"
-                            >
-                              {site.is_verified ? '✓ ' : ''}{site.name}
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-
-                    <div className="border-t border-gray-700 py-1">
-                      <button onClick={() => navigate('/submit-ad')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Submit Ad</button>
-                      <button onClick={() => navigate('/verify-site')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Verify Site</button>
-                      <button onClick={() => navigate('/admin')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Admin Panel</button>
-                      <button
-                        onClick={async () => { await supabase.auth.signOut(); navigate('/'); }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 border-t border-gray-700"
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <a href={`/profile/${user.id}`} className="flex items-center gap-2 hover:opacity-80">
+              {fullAvatarUrl ? (
+                <img src={fullAvatarUrl} alt={displayName} className="w-7 h-7 rounded-full object-cover border border-gray-300 dark:border-gray-600" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xs">{displayName[0]?.toUpperCase()}</div>
+              )}
+              <span className="text-xs font-medium hidden md:inline text-gray-700 dark:text-gray-300">{displayName}</span>
+            </a>
           ) : (
-            <button onClick={() => navigate('/login')} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold">
-              Login with Discord
-            </button>
+            <a href="/login" className="text-xs text-blue-600 hover:underline">Sign in</a>
           )}
         </div>
       </header>
-
-      <div className="flex-grow">
-        {children}
-      </div>
-
-      <footer className="bg-[#25262b] border-t border-gray-800 py-6 text-center text-gray-500 text-sm">
+      {children}
+      <footer className="bg-gray-100 dark:bg-[#171717] border-t border-gray-200 dark:border-gray-800 py-3 text-center text-xs text-gray-500 mt-auto">
         <p>Z&E Net is an independent search directory not affiliated with DemocracyCraft.</p>
-        <p className="mt-1">© 2026 Z&E Net</p>
+        <p className="mt-1">© {new Date().getFullYear()} Z&E Net</p>
       </footer>
     </div>
   );
