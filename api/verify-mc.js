@@ -37,12 +37,13 @@ export default async function handler(req, res) {
 
   try {
     if (step === 'init') {
-      // Use upsert to ensure the row exists
-      await supabase.from('profiles').upsert({
+      const { error } = await supabase.from('profiles').upsert({
         id: userId,
         mc_username: mc_username,
         mc_verified: false
       }, { onConflict: 'id' });
+      
+      if (error) throw error;
       return res.status(200).json({ success: true, message: 'Username registered.' });
     } 
     
@@ -60,13 +61,10 @@ export default async function handler(req, res) {
       for (const txn of txns) {
         if (txn.pluginSystem !== null && txn.pluginSystem !== undefined) continue;
         const memo = (txn.memo || txn.message || '').toLowerCase().trim();
-        
-        // Accept both ZEN and ZEC
         if (!memo.includes(`payment from ${mc_username.toLowerCase()} to business `) || !memo.includes(' corporate account')) continue;
         if ((txn.initiatorUuid || '').toLowerCase() !== playerUuid.toLowerCase()) continue;
         if (now - new Date(txn.settledAt) > maxAge) continue;
         if (Math.abs(parseFloat(txn.amount || 0) - 1.0) > 0.001) continue;
-
         found = true;
         break;
       }
@@ -75,16 +73,22 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: `No $1 payment from ${mc_username} found. Did you run /pay-account business ZEN 1?` });
       }
 
-      // FIX: Use upsert here too so it definitely saves the username
-      await supabase.from('profiles').upsert({ 
+      // FIX: Actually check if the update succeeded
+      const { error } = await supabase.from('profiles').upsert({ 
         id: userId,
         mc_verified: true,
         mc_username: mc_username
       }, { onConflict: 'id' });
 
+      if (error) {
+        console.error('Database update failed:', error);
+        return res.status(500).json({ error: 'Failed to save verification: ' + error.message });
+      }
+
       return res.status(200).json({ success: true, message: `${mc_username} is now linked and verified!` });
     }
   } catch (e) {
+    console.error('Verification error:', e);
     return res.status(500).json({ error: e.message });
   }
 }
