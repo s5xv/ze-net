@@ -1,9 +1,38 @@
 import { createClient } from '@supabase/supabase-js';
-import { resolvePlayerUuid, getTransactions } from './treasury.js';
+
+// Inlined Treasury logic to prevent import crashes
+const BASE_URL = "https://api.democracycraft.net/economy/api/v1";
+const DC_API_TOKEN = process.env.DC_TREASURY_TOKEN;
+const ZEC_ACCOUNT_ID = process.env.ZEC_ACCOUNT_ID;
+
+async function getTransactions(limit = 50) {
+  try {
+    const r = await fetch(`${BASE_URL}/accounts/${ZEC_ACCOUNT_ID}/transactions?limit=${limit}&page=1`, {
+      headers: { "Authorization": "Bearer " + DC_API_TOKEN }
+    });
+    if (!r.ok) return [null, "API error: " + r.status];
+    const data = await r.json();
+    return [data.items || [], null];
+  } catch (e) { return [null, e.message]; }
+}
+
+async function resolvePlayerUuid(mc_username) {
+  try {
+    const r = await fetch(`${BASE_URL}/accounts/by-player?name=${mc_username}`, {
+      headers: { "Authorization": "Bearer " + DC_API_TOKEN }
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data.playerUuid || null;
+  } catch (e) { return null; }
+}
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 export default async function handler(req, res) {
+  // Force JSON response so the frontend never gets HTML
+  res.setHeader('Content-Type', 'application/json');
+  
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   
   const { userId, mc_username, step } = req.body;
@@ -11,7 +40,6 @@ export default async function handler(req, res) {
 
   try {
     if (step === 'init') {
-      // Step 1: Register the MC username
       await supabase.from('profiles').upsert({
         id: userId,
         mc_username: mc_username,
@@ -20,31 +48,27 @@ export default async function handler(req, res) {
       
       return res.status(200).json({ 
         success: true, 
-        message: 'Step 1 complete. Run `/pay-account business ZEC 1` in-game, then click "Verify Payment" below.' 
+        message: 'Username registered. Run the command in-game, then click Verify.' 
       });
     } 
     
     if (step === 'confirm') {
-      // Step 2: Check for the $1 payment
       const { data: profile } = await supabase.from('profiles').select('mc_username, mc_verified').eq('id', userId).single();
       
       if (profile?.mc_verified) {
         return res.status(200).json({ success: true, message: `Already verified as ${profile.mc_username}` });
       }
 
-      // Fetch transactions from Treasury API
       const [txns, err] = await getTransactions(100);
       if (err) return res.status(500).json({ error: 'Treasury API error: ' + err });
 
-      // Resolve player UUID
       const playerUuid = await resolvePlayerUuid(mc_username);
       if (!playerUuid) return res.status(404).json({ error: `Could not find player ${mc_username}` });
 
       const expectedMemo = `payment from ${mc_username.toLowerCase()} to business zec corporate account`;
       const now = new Date();
-      const maxAge = 30 * 60 * 1000; // 30 minutes
+      const maxAge = 60 * 60 * 1000; // 1 hour window
 
-      // Find the $1 payment
       let found = false;
       for (const txn of txns) {
         if (txn.pluginSystem !== null && txn.pluginSystem !== undefined) continue;
@@ -59,7 +83,7 @@ export default async function handler(req, res) {
         if (now - settledAt > maxAge) continue;
 
         const amount = parseFloat(txn.amount || 0);
-        if (Math.abs(amount - 1.0) > 0.001) continue; // MUST be exactly $1
+        if (Math.abs(amount - 1.0) > 0.001) continue;
 
         found = true;
         break;
@@ -71,7 +95,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Mark as verified
       await supabase.from('profiles').update({ 
         mc_verified: true,
         mc_username: mc_username
@@ -79,7 +102,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ 
         success: true, 
-        message: `${mc_username} is now linked and verified! You can now deposit funds.` 
+        message: `${mc_username} is now linked and verified!` 
       });
     }
   } catch (e) {

@@ -16,10 +16,7 @@ export default function Account() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
-      navigate('/login');
-      return;
-    }
+    if (!user) { navigate('/login'); return; }
     fetchData();
   }, [user, authLoading, navigate]);
 
@@ -29,14 +26,10 @@ export default function Account() {
     try {
       const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
       setProfile(p);
-      
       const { data: b } = await supabase.from('balances').select('balance').eq('user_id', user.id).single();
       setBalance(b?.balance || 0);
-    } catch (err) {
-      console.error('Fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    setLoading(false);
   };
 
   const checkDeposits = async () => {
@@ -46,21 +39,12 @@ export default function Account() {
       const data = await res.json();
       setMessage(`Scan complete. Processed ${data.processed || 0} deposits.`);
       fetchData();
-    } catch (err) {
-      setMessage('Error: ' + err.message);
-    }
+    } catch (err) { setMessage('Error: ' + err.message); }
   };
 
   if (authLoading || loading) {
-    return (
-      <Layout>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-white text-xl">Loading account...</div>
-        </div>
-      </Layout>
-    );
+    return <Layout><div className="min-h-screen flex items-center justify-center text-white">Loading...</div></Layout>;
   }
-
   if (!user) return null;
 
   return (
@@ -69,7 +53,6 @@ export default function Account() {
         <h1 className="text-3xl font-bold text-white mb-8">Account Settings</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
           {/* Profile Info Card */}
           <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
@@ -80,12 +63,6 @@ export default function Account() {
                 <p className="text-sm text-gray-400 mb-1">Discord Username</p>
                 <p className="text-white font-medium bg-[#202124] px-3 py-2 rounded-lg">
                   {user.user_metadata?.user_name || user.user_metadata?.full_name || 'User'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400 mb-1">Email Address</p>
-                <p className="text-white font-medium bg-[#202124] px-3 py-2 rounded-lg break-all">
-                  {user.email}
                 </p>
               </div>
               <div>
@@ -107,18 +84,8 @@ export default function Account() {
               <p className="text-4xl font-bold text-green-500">${balance.toFixed(2)}</p>
             </div>
             <div className="flex flex-col gap-3">
-              <button 
-                onClick={checkDeposits}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-              >
-                Check for Deposits
-              </button>
-              <button 
-                onClick={() => setShowWithdraw(true)}
-                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
-              >
-                Withdraw Funds
-              </button>
+              <button onClick={checkDeposits} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">Check for Deposits</button>
+              <button onClick={() => setShowWithdraw(true)} className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium">Withdraw Funds</button>
             </div>
             {message && <p className="mt-4 text-sm text-blue-400 text-center">{message}</p>}
           </div>
@@ -132,45 +99,29 @@ export default function Account() {
             {profile?.mc_username ? (
               <div className="flex items-center justify-between bg-[#202124] p-4 rounded-lg border border-green-500/30">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center text-2xl">
-                    ✓
-                  </div>
+                  <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center text-2xl">✓</div>
                   <div>
                     <p className="text-gray-400 text-sm">Linked Account</p>
                     <p className="text-white font-mono text-lg">{profile.mc_username}</p>
                   </div>
                 </div>
-                <span className="px-4 py-2 bg-green-500/20 text-green-400 rounded-full text-sm font-medium border border-green-500/30">
-                  Verified
-                </span>
+                <span className="px-4 py-2 bg-green-500/20 text-green-400 rounded-full text-sm font-medium border border-green-500/30">Verified</span>
               </div>
             ) : (
               <div className="text-center py-8 bg-[#202124] rounded-lg border border-dashed border-gray-600">
                 <div className="text-4xl mb-3">🔗</div>
                 <h3 className="text-white font-bold text-lg mb-2">No Minecraft Account Linked</h3>
-                <p className="text-gray-400 mb-6 max-w-md mx-auto">
-                  Link your Minecraft account to deposit funds, earn Pay-Per-View revenue, and verify your sites.
-                </p>
-                <button 
-                  onClick={() => navigate('/link-account')}
-                  className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition-colors"
-                >
-                  Link Minecraft Account
-                </button>
+                <p className="text-gray-400 mb-6 max-w-md mx-auto">Link your Minecraft account to deposit funds and verify your sites.</p>
+                <button onClick={() => navigate('/link-account')} className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold">Link Minecraft Account</button>
               </div>
             )}
           </div>
-
         </div>
 
         {showWithdraw && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div className="bg-[#303134] border border-gray-700 p-6 rounded-xl w-full max-w-md shadow-2xl">
-              <WithdrawModal
-                balance={balance}
-                onUpdate={() => { fetchData(); setShowWithdraw(false); }}
-                onClose={() => setShowWithdraw(false)}
-              />
+              <WithdrawModal balance={balance} onUpdate={() => { fetchData(); setShowWithdraw(false); }} onClose={() => setShowWithdraw(false)} />
             </div>
           </div>
         )}
