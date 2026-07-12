@@ -200,7 +200,8 @@ export default async function handler(req, res) {
   // --- admin-get-pending-sites ---
   if (action === 'admin-get-pending-sites') {
     try {
-      const { data } = await supabase.from('sites').select('*, profiles(username)').eq('status', 'pending').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('sites').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+      if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ sites: data || [] });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }

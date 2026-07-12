@@ -59,6 +59,7 @@ export default function Admin() {
       } else if (activeTab === 'pending') {
         const res = await fetch('/api/app?action=admin-get-pending-sites');
         const d = await res.json();
+        if (d.error) setMessage('API Error: ' + d.error);
         setPendingSites(d.sites || []);
       } else if (activeTab === 'sites') {
         const res = await fetch('/api/app?action=admin-get-sites');
