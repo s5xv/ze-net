@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Inlined Treasury logic to prevent import crashes
 const BASE_URL = "https://api.democracycraft.net/economy/api/v1";
 const DC_API_TOKEN = process.env.DC_TREASURY_TOKEN;
 const ZEC_ACCOUNT_ID = process.env.ZEC_ACCOUNT_ID;
@@ -30,7 +29,6 @@ async function resolvePlayerUuid(mc_username) {
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 export default async function handler(req, res) {
-  // Force JSON response so the frontend never gets HTML
   res.setHeader('Content-Type', 'application/json');
   
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -65,16 +63,24 @@ export default async function handler(req, res) {
       const playerUuid = await resolvePlayerUuid(mc_username);
       if (!playerUuid) return res.status(404).json({ error: `Could not find player ${mc_username}` });
 
-      const expectedMemo = `payment from ${mc_username.toLowerCase()} to business zec corporate account`;
       const now = new Date();
       const maxAge = 60 * 60 * 1000; // 1 hour window
 
       let found = false;
+      let debugInfo = [];
+
       for (const txn of txns) {
         if (txn.pluginSystem !== null && txn.pluginSystem !== undefined) continue;
         
         const memo = (txn.memo || txn.message || '').toLowerCase().trim();
-        if (memo !== expectedMemo) continue;
+        
+        // FIX: Accept BOTH "zen" and "zec" in the memo
+        const expectedStart = `payment from ${mc_username.toLowerCase()} to business `;
+        const expectedEnd = ` corporate account`;
+        
+        if (!memo.startsWith(expectedStart) || !memo.endsWith(expectedEnd)) {
+          continue;
+        }
 
         const initiator = (txn.initiatorUuid || '').toLowerCase();
         if (initiator !== playerUuid.toLowerCase()) continue;
@@ -86,12 +92,20 @@ export default async function handler(req, res) {
         if (Math.abs(amount - 1.0) > 0.001) continue;
 
         found = true;
+        debugInfo.push(`Found matching payment: $${amount} from ${mc_username}`);
         break;
       }
 
       if (!found) {
+        // Add debug info to help troubleshoot
+        const recentMemos = txns.slice(0, 5).map(t => ({
+          memo: (t.memo || t.message || '').substring(0, 100),
+          amount: t.amount,
+          from: t.initiatorUuid?.substring(0, 8)
+        }));
+        
         return res.status(404).json({ 
-          error: `No $1 payment from ${mc_username} found.\n\nMake sure you:\n1. Ran /pay-account business ZEC 1 in-game\n2. Used the exact username: ${mc_username}\n3. Waited a few seconds after paying` 
+          error: `No $1 payment from ${mc_username} found.\n\nMake sure you:\n1. Ran /pay-account business ZEN 1 in-game (not ZEC)\n2. Used the exact username: ${mc_username}\n3. Waited a few seconds after paying\n\nDebug: Player UUID: ${playerUuid}\nRecent transactions: ${JSON.stringify(recentMemos, null, 2)}` 
         });
       }
 
