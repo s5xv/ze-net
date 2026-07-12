@@ -197,6 +197,14 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // --- admin-get-pending-sites ---
+  if (action === 'admin-get-pending-sites') {
+    try {
+      const { data } = await supabase.from('sites').select('*, profiles(username)').eq('status', 'pending').order('created_at', { ascending: false });
+      return res.status(200).json({ sites: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // --- admin-delete-site ---
   if (action === 'admin-delete-site') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
