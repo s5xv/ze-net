@@ -59,12 +59,33 @@ export default async function handler(req, res) {
       let found = false;
 
       for (const txn of txns) {
-        if (txn.pluginSystem !== null && txn.pluginSystem !== undefined) continue;
         const memo = (txn.memo || txn.message || '').toLowerCase().trim();
-        if (!memo.includes(`payment from ${mc_username.toLowerCase()} to business `) || !memo.includes(' corporate account')) continue;
-        if ((txn.initiatorUuid || '').toLowerCase() !== playerUuid.toLowerCase()) continue;
-        if (now - new Date(txn.settledAt) > maxAge) continue;
-        if (Math.abs(parseFloat(txn.amount || 0) - 1.0) > 0.001) continue;
+        
+        // FIX: Parse the actual format: "business payment: escudos -> zen"
+        if (!memo.startsWith('business payment:')) continue;
+        
+        let payer = "";
+        let businessName = "";
+        try {
+          const afterColon = memo.split('business payment:', 1)[1].trim();
+          const parts = afterColon.split('->').map(p => p.trim());
+          payer = parts[0];
+          businessName = parts[1];
+        } catch (e) { continue; }
+
+        // Verify it's from the right user and to our business
+        if (payer !== mc_username.toLowerCase()) continue;
+        if (!businessName.includes('zen') && !businessName.includes('zec')) continue;
+
+        const initiator = (txn.initiatorUuid || '').toLowerCase();
+        if (initiator !== playerUuid.toLowerCase()) continue;
+
+        const settledAt = new Date(txn.settledAt);
+        if (now - settledAt > maxAge) continue;
+
+        const amount = parseFloat(txn.amount || 0);
+        if (Math.abs(amount - 1.0) > 0.001) continue;
+
         found = true;
         break;
       }
@@ -73,7 +94,6 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: `No $1 payment from ${mc_username} found. Did you run /pay-account business ZEN 1?` });
       }
 
-      // FIX: Actually check if the update succeeded
       const { error } = await supabase.from('profiles').upsert({ 
         id: userId,
         mc_verified: true,

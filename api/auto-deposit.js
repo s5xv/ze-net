@@ -28,11 +28,30 @@ export default async function handler(req, res) {
   let processed = 0;
 
   for (const t of txns) {
-    // FIX: Remove the pluginSystem filter - in-game payments ARE plugin system transactions!
-    
     const memo = ((t.memo || t.message || "") + "").trim().toLowerCase();
-    if (!memo.includes("payment from") || !memo.includes("corporate account")) {
-      console.log('[Auto-Deposit] Skipping bad memo:', memo);
+    
+    // FIX: Parse the actual format: "business payment: escudos -> zen"
+    if (!memo.startsWith('business payment:')) {
+      console.log('[Auto-Deposit] Skipping non-business payment:', memo);
+      continue;
+    }
+
+    // Extract username and business name
+    let payer = "";
+    let businessName = "";
+    try {
+      const afterColon = memo.split('business payment:', 1)[1].trim();
+      const parts = afterColon.split('->').map(p => p.trim());
+      payer = parts[0];
+      businessName = parts[1];
+    } catch (e) { 
+      console.log('[Auto-Deposit] Failed to parse memo:', memo);
+      continue; 
+    }
+
+    // Verify it's to our business (ZEN or ZEC)
+    if (!businessName.includes('zen') && !businessName.includes('zec')) {
+      console.log('[Auto-Deposit] Skipping payment to different business:', businessName);
       continue;
     }
 
@@ -46,14 +65,7 @@ export default async function handler(req, res) {
     const settled = t.settledAt;
     if (settled && now - new Date(settled) > lookback) continue;
 
-    // Extract username
-    let payer = "";
-    try {
-      const after_from = memo.split("payment from ", 1)[1];
-      payer = after_from.split(" to business ", 1)[0].trim();
-    } catch (e) { continue; }
-
-    console.log(`[Auto-Deposit] Found potential deposit: $${amt} from ${payer}`);
+    console.log(`[Auto-Deposit] Found potential deposit: $${amt} from ${payer} to ${businessName}`);
 
     // Check if user is verified
     const { data: urow, error: userErr } = await supabase
