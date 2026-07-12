@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../services/supabase';
+import { useAuth } from '../hooks/useAuth'; // <-- FIXED: Added the missing import
 
 export default function WithdrawModal({ balance, onUpdate, onClose }) {
   const { user } = useAuth();
@@ -10,25 +11,23 @@ export default function WithdrawModal({ balance, onUpdate, onClose }) {
   const handleWithdraw = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage('');
-
+    
     try {
-      const res = await fetch('/api/request-withdrawal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, amount: parseFloat(amount) })
+      const { error } = await supabase.from('withdrawal_requests').insert({
+        user_id: user.id,
+        amount: parseFloat(amount),
+        status: 'pending'
       });
-      const data = await res.json();
       
-      if (data.success) {
-        setMessage('✅ Withdrawal requested! Admin will process it soon.');
-        setAmount('');
-        setTimeout(() => onUpdate(), 2000);
-      } else {
-        setMessage('❌ ' + data.error);
-      }
+      if (error) throw error;
+      
+      setMessage('Withdrawal requested! Admin will process it.');
+      setTimeout(() => {
+        onUpdate();
+        onClose();
+      }, 2000);
     } catch (err) {
-      setMessage('❌ Error: ' + err.message);
+      setMessage('Error: ' + err.message);
     }
     setLoading(false);
   };
@@ -36,34 +35,33 @@ export default function WithdrawModal({ balance, onUpdate, onClose }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">💰 Withdraw Funds</h2>
-        <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        <h2 className="text-xl font-bold text-white">Withdraw Funds</h2>
+        <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
       </div>
       
-      <p className="text-sm text-gray-500 mb-4">
-        Available: <span className="font-bold text-green-500">${balance?.toFixed(2) || '0.00'}</span>
-      </p>
+      <p className="text-gray-400 mb-4">Available: <span className="text-green-500 font-bold">${balance.toFixed(2)}</span></p>
       
-      <form onSubmit={handleWithdraw} className="space-y-4">
-        <input 
-          type="number" 
+      <form onSubmit={handleWithdraw}>
+        <input
+          type="number"
           step="0.01"
           min="1"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          placeholder="Amount to withdraw"
-          className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg"
+          placeholder="Amount"
+          className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white mb-4"
           required
         />
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={loading || !amount}
-          className="w-full px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-500 text-white rounded-lg font-bold"
+          className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white rounded-lg font-bold"
         >
           {loading ? 'Processing...' : 'Request Withdraw'}
         </button>
       </form>
-      {message && <p className="text-sm mt-4 text-center">{message}</p>}
+      
+      {message && <p className="mt-4 text-sm text-center text-blue-400">{message}</p>}
     </div>
   );
 }

@@ -32,29 +32,6 @@ export default function Profile() {
 
   const displayName = profileUser.username || profileUser.id.slice(0, 8);
 
-  
-  const [preferences, setPreferences] = useState(['shop', 'bank', 'casino', 'service', 'entertainment']);
-
-  useEffect(() => {
-    const fetchPrefs = async () => {
-      if (user) {
-        const { data } = await supabase.from('profiles').select('ad_preferences').eq('id', user.id).single();
-        if (data?.ad_preferences && Array.isArray(data.ad_preferences)) {
-          setPreferences(data.ad_preferences);
-        }
-      }
-    };
-    fetchPrefs();
-  }, [user]);
-
-  const togglePref = async (cat) => {
-    const newPrefs = preferences.includes(cat) 
-      ? preferences.filter(p => p !== cat) 
-      : [...preferences, cat];
-    setPreferences(newPrefs);
-    await supabase.from('profiles').update({ ad_preferences: newPrefs }).eq('id', user.id);
-  };
-  
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
@@ -75,29 +52,7 @@ export default function Profile() {
             </div>
           )}
         </div>
-      
-        {/* Ad Preferences Section */}
-        <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm mt-6">
-          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Ad Preferences</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Choose which types of ads you want to see on the homepage.</p>
-          <div className="flex flex-wrap gap-3">
-            {['shop', 'bank', 'casino', 'service', 'entertainment'].map(cat => (
-              <button 
-                key={cat}
-                onClick={() => togglePref(cat)}
-                className={`px-4 py-2 rounded-lg font-medium capitalize text-sm transition-colors ${
-                  preferences.includes(cat) 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-  
-    </main>
+      </main>
     </Layout>
   );
 }
