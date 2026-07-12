@@ -28,3 +28,11 @@ dist-ssr
 .env
 .env
 .env*
+
+# Scraping scripts
+cookies.txt
+crawl-*.js
+scrape-*.js
+get-cookie.py
+ingest-server.js
+fix-*.sql

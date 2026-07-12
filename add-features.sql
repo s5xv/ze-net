@@ -55,7 +55,13 @@ CREATE TABLE public.forum_posts (
 );
 CREATE INDEX IF NOT EXISTS idx_forum_posts_thread ON public.forum_posts(thread_id, created_at);
 
--- 3. Seed forum categories
+-- 3. Add status column to sites for approval workflow
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS status text DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected'));
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS submitted_by uuid REFERENCES auth.users(id);
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS reviewed_at timestamptz;
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS reviewed_by uuid REFERENCES auth.users(id);
+
+-- 4. Seed forum categories
 INSERT INTO public.forum_categories (name, description, slug, sort_order) VALUES
   ('General Discussion', 'Chat about anything related to DemocracyCraft', 'general', 1),
   ('Site Reviews', 'Share and request reviews of sites', 'site-reviews', 2),

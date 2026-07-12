@@ -37,6 +37,7 @@ import VerifySite from './pages/VerifySite';
 import Settings from './pages/Settings';
 import NotificationsPage from './pages/Notifications';
 import SiteAnalytics from './pages/SiteAnalytics';
+import SubmitSite from './pages/SubmitSite';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -96,6 +97,7 @@ function App() {
           <Route path="/register-business" element={<RegisterBusiness user={user} />} />
           <Route path="/submit-ad" element={<SubmitAd user={user} />} />
           <Route path="/verify-site" element={<VerifySite user={user} />} />
+          <Route path="/submit-site" element={<SubmitSite />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/site/:slug/analytics" element={<SiteAnalytics />} />

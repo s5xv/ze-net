@@ -21,6 +21,10 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingStaff, setEditingStaff] = useState(null);
   const [reports, setReports] = useState([]);
+  const [depositUserId, setDepositUserId] = useState('');
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositNote, setDepositNote] = useState('');
+  const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '' });
 
   useEffect(() => { fetchData(); }, [activeTab]);
 
@@ -130,6 +134,50 @@ export default function Admin() {
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
+  };
+
+  const approveSite = async (siteId) => {
+    try {
+      await supabase.from('sites').update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', siteId);
+      setMessage('Site approved');
+      fetchData();
+    } catch (err) { setMessage('Error: ' + err.message); }
+  };
+
+  const rejectSite = async (siteId) => {
+    try {
+      await supabase.from('sites').update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', siteId);
+      setMessage('Site rejected');
+      fetchData();
+    } catch (err) { setMessage('Error: ' + err.message); }
+  };
+
+  const manualDeposit = async () => {
+    if (!depositUserId || !depositAmount || Number(depositAmount) <= 0) { setMessage('Enter valid user and amount'); return; }
+    try {
+      const amount = Number(depositAmount);
+      const { data: bal } = await supabase.from('balances').select('balance').eq('user_id', depositUserId).maybeSingle();
+      const newBal = (bal?.balance || 0) + amount;
+      await supabase.from('balances').upsert({ user_id: depositUserId, balance: newBal }, { onConflict: 'user_id' });
+      await supabase.from('transactions').insert({ user_id: depositUserId, type: 'admin_deposit', amount, note: depositNote || 'Manual deposit by admin' });
+      setMessage(`Deposited $${amount} successfully`);
+      setDepositUserId(''); setDepositAmount(''); setDepositNote('');
+    } catch (err) { setMessage('Error: ' + err.message); }
+  };
+
+  const addSite = async () => {
+    if (!newSite.name || !newSite.url || !newSite.owner_id) { setMessage('Name, URL, and Owner are required'); return; }
+    try {
+      const slug = newSite.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
+      await supabase.from('sites').insert({
+        name: newSite.name, slug, url: newSite.url, category: newSite.category,
+        description: newSite.description, owner_user_id: newSite.owner_id, user_id: newSite.owner_id,
+        is_verified: true, is_active: true, status: 'approved'
+      });
+      setMessage('Site created');
+      setNewSite({ name: '', url: '', category: 'Other', description: '', owner_id: '' });
+      fetchData();
+    } catch (err) { setMessage('Error: ' + err.message); }
   };
 
   const deleteSite = async (siteId) => {
@@ -355,6 +403,40 @@ export default function Admin() {
 
         {!loading && activeTab === 'sites' && (
           <div>
+            <details className="mb-4 bg-[#303134] border border-gray-700 rounded-xl p-4">
+              <summary className="text-white font-bold cursor-pointer">Add New Site</summary>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" placeholder="Site Name" value={newSite.name} onChange={(e) => setNewSite({...newSite, name: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="url" placeholder="Site URL" value={newSite.url} onChange={(e) => setNewSite({...newSite, url: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <select value={newSite.category} onChange={(e) => setNewSite({...newSite, category: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white">
+                  {['Government','Corporate','Service','Charity','Community','Business','Shop','Entertainment','Social','Other'].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <input type="text" placeholder="Owner User ID" value={newSite.owner_id} onChange={(e) => setNewSite({...newSite, owner_id: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <textarea placeholder="Description" value={newSite.description} onChange={(e) => setNewSite({...newSite, description: e.target.value})} className="md:col-span-2 px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" rows={2} />
+                <button onClick={addSite} className="md:col-span-2 px-4 py-2 bg-green-600 text-white rounded-lg font-bold">Create Site</button>
+              </div>
+            </details>
+
+            {filteredSites.filter(s => s.status === 'pending').length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-lg font-bold text-yellow-400 mb-3">Pending Approval ({filteredSites.filter(s => s.status === 'pending').length})</h3>
+                <div className="space-y-2">
+                  {filteredSites.filter(s => s.status === 'pending').map(site => (
+                    <div key={site.id} className="bg-[#303134] border border-yellow-700 rounded-xl p-3 flex justify-between items-center">
+                      <div>
+                        <p className="text-white font-bold">{site.name}</p>
+                        <p className="text-sm text-gray-400">{site.url} &middot; {site.profiles?.username || site.owner_name || 'Unknown'}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => approveSite(site.id)} className="px-3 py-1 bg-green-600 text-white text-xs rounded">Approve</button>
+                        <button onClick={() => rejectSite(site.id)} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Reject</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <input type="text" placeholder="Search sites..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 mb-4 bg-[#202124] border border-gray-700 rounded-lg text-white" />
             <div className="bg-[#303134] border border-gray-700 rounded-xl overflow-x-auto">
               <table className="w-full text-sm">
@@ -374,9 +456,10 @@ export default function Admin() {
                       <td className="p-3 text-gray-300">{site.owner_name || site.profiles?.username || '-'}</td>
                       <td className="p-3 capitalize text-gray-300">{site.category}</td>
                       <td className="p-3">
-                        <button onClick={() => toggleVerified(site.id, site.is_verified)} className={`px-2 py-1 text-xs rounded ${site.is_verified ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
-                          {site.is_verified ? 'Verified' : 'Not Verified'}
-                        </button>
+                        <span className={`px-2 py-1 text-xs rounded ${site.status === 'pending' ? 'bg-yellow-600 text-white' : site.status === 'rejected' ? 'bg-red-600 text-white' : site.is_verified ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                          {site.status === 'pending' ? 'Pending' : site.status === 'rejected' ? 'Rejected' : site.is_verified ? 'Verified' : 'Active'}
+                        </span>
+                        <button onClick={() => toggleVerified(site.id, site.is_verified)} className="ml-2 px-2 py-1 text-xs rounded bg-gray-700 text-gray-300">Toggle V</button>
                       </td>
                       <td className="p-3">
                         <button onClick={() => deleteSite(site.id)} className="px-2 py-1 bg-red-600 text-white text-xs rounded">Delete</button>
@@ -391,6 +474,16 @@ export default function Admin() {
 
         {!loading && activeTab === 'users' && (
           <div>
+            <details className="mb-4 bg-[#303134] border border-gray-700 rounded-xl p-4">
+              <summary className="text-white font-bold cursor-pointer">Manual Deposit</summary>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+                <input type="text" placeholder="User ID" value={depositUserId} onChange={(e) => setDepositUserId(e.target.value)} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="number" placeholder="Amount" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="text" placeholder="Note (optional)" value={depositNote} onChange={(e) => setDepositNote(e.target.value)} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <button onClick={manualDeposit} className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold">Deposit</button>
+              </div>
+            </details>
+
             <input type="text" placeholder="Search users..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 mb-4 bg-[#202124] border border-gray-700 rounded-lg text-white" />
             <div className="space-y-2">
               {filteredProfiles.map(p => (
@@ -401,7 +494,8 @@ export default function Admin() {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => navigate(`/profile/${p.id}`)} className="text-xs px-3 py-2 bg-blue-600 text-white rounded-lg">View</button>
-                    {!p.is_staff && <button onClick={() => addStaff(p.id)} className="text-xs px-3 py-2 bg-green-600 text-white rounded-lg">Make Staff</button>}
+                    <button onClick={() => { setDepositUserId(p.id); setDepositAmount(''); setDepositNote(''); window.scrollTo(0, 0); }} className="text-xs px-3 py-2 bg-green-600 text-white rounded-lg">Deposit</button>
+                    {!p.is_staff && <button onClick={() => addStaff(p.id)} className="text-xs px-3 py-2 bg-yellow-600 text-white rounded-lg">Make Staff</button>}
                   </div>
                 </div>
               ))}
