@@ -6,7 +6,7 @@ import Layout from '../components/Layout';
 import WithdrawModal from '../components/WithdrawModal';
 
 export default function Account() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -14,14 +14,21 @@ export default function Account() {
   const [showWithdraw, setShowWithdraw] = useState(false);
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) return;
+    
+    // If not logged in after auth loads, redirect
     if (!user) {
       navigate('/login');
       return;
     }
+    
     fetchBalance();
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const fetchBalance = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('balances')
@@ -53,6 +60,19 @@ export default function Account() {
       setMessage('Error: ' + err.message);
     }
   };
+
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-white">Loading...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!user) return null;
 
   if (loading) {
     return (
