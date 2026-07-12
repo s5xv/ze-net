@@ -9,6 +9,20 @@ import { useAuth } from '../hooks/useAuth';
 const ADMIN_PASSWORD = 'Khalid124_';
 
 const generateSlug = (name) => {
+  
+const [activeTab, setActiveTab] = useState('roles');
+const [logs, setLogs] = useState([]);
+const [payroll, setPayroll] = useState([]);
+
+useEffect(() => {
+  if (activeTab === 'logs') {
+    supabase.from('staff_logs').select('*, profiles(mc_username)').order('created_at', { ascending: false }).limit(50).then(({ data }) => setLogs(data || []));
+  }
+  if (activeTab === 'payroll') {
+    supabase.from('staff_payroll').select('*, profiles(mc_username)').order('total_due', { ascending: false }).then(({ data }) => setPayroll(data || []));
+  }
+}, [activeTab]);
+
   return (name || 'site').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 };
 

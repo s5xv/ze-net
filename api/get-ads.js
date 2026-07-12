@@ -2,7 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-// Helper to shuffle an array
 const shuffleArray = (array) => {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -17,47 +16,35 @@ export default async function handler(req, res) {
 
   try {
     const now = new Date().toISOString();
+    const viewerId = req.query.viewerId; // Get the user viewing the page
+    let allowedCategories = ['shop', 'bank', 'casino', 'service', 'entertainment']; // Default
 
-    // 1. Fetch ELITE ads (Diamond border, Homepage Top Row)
-    const { data: eliteAds } = await supabase
-      .from('sites')
-      .select('*')
-      .eq('ad_tier', 'elite')
-      .gt('ad_expires_at', now)
-      .eq('is_verified', true);
-    
-    // Shuffle Elite ads if there are more than 3
-    const shuffledElite = shuffleArray(eliteAds || []).slice(0, 3);
+    // 1. If viewer is logged in, get their ad preferences
+    if (viewerId) {
+      const { data: profile } = await supabase.from('profiles').select('ad_preferences').eq('id', viewerId).single();
+      if (profile?.ad_preferences && Array.isArray(profile.ad_preferences) && profile.ad_preferences.length > 0) {
+        allowedCategories = profile.ad_preferences;
+      }
+    }
 
-    // 2. Fetch PREMIUM ads (Purple border, Homepage Carousel)
-    const { data: premiumAds } = await supabase
-      .from('sites')
-      .select('*')
-      .eq('ad_tier', 'premium')
-      .gt('ad_expires_at', now)
-      .eq('is_verified', true);
-      
-    const shuffledPremium = shuffleArray(premiumAds || []).slice(0, 5);
+    // Helper to build the query with category filtering
+    const buildQuery = (tier) => {
+      let q = supabase.from('sites').select('*').eq('ad_tier', tier).gt('ad_expires_at', now).eq('is_verified', true);
+      if (allowedCategories.length > 0) {
+        q = q.in('category', allowedCategories);
+      }
+      return q;
+    };
 
-    // 3. Fetch FEATURED ads (Gold border, Top of Directory)
-    const { data: featuredAds } = await supabase
-      .from('sites')
-      .select('*')
-      .eq('ad_tier', 'featured')
-      .gt('ad_expires_at', now)
-      .eq('is_verified', true);
-
-    // 4. Fetch STANDARD ads (Basic badge, Sponsored Row)
-    const { data: standardAds } = await supabase
-      .from('sites')
-      .select('*')
-      .eq('ad_tier', 'standard')
-      .gt('ad_expires_at', now)
-      .eq('is_verified', true);
+    // 2. Fetch and shuffle ads
+    const { data: eliteAds } = await buildQuery('elite');
+    const { data: premiumAds } = await buildQuery('premium');
+    const { data: featuredAds } = await buildQuery('featured');
+    const { data: standardAds } = await buildQuery('standard');
 
     res.status(200).json({
-      elite: shuffledElite,
-      premium: shuffledPremium,
+      elite: shuffleArray(eliteAds || []).slice(0, 3),
+      premium: shuffleArray(premiumAds || []).slice(0, 5),
       featured: featuredAds || [],
       standard: standardAds || []
     });
