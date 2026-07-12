@@ -103,5 +103,80 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(400).json({ error: 'Invalid action. Use ?action=get-ads, track-view, or summarize' });
+  // --- admin-add-site ---
+  if (action === 'admin-add-site') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    const { name, url, category, description, owner_id } = req.body;
+    if (!name || !url || !owner_id) return res.status(400).json({ error: 'Name, URL, and Owner are required' });
+    try {
+      const { data: owner } = await supabase.from('profiles').select('username').eq('id', owner_id).single();
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
+      const { error } = await supabase.from('sites').insert({
+        name, slug, url, category: category || 'Other', description: description || '',
+        owner_user_id: owner_id, user_id: owner_id, owner_name: owner?.username || 'Unknown',
+        is_verified: true, is_active: true, status: 'approved'
+      });
+      if (error) throw error;
+      return res.status(200).json({ success: true, message: 'Site created' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- admin-approve-site ---
+  if (action === 'admin-approve-site') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    const { siteId } = req.body;
+    if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
+    try {
+      await supabase.from('sites').update({ status: 'approved', reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      return res.status(200).json({ success: true, message: 'Site approved' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- admin-reject-site ---
+  if (action === 'admin-reject-site') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    const { siteId } = req.body;
+    if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
+    try {
+      await supabase.from('sites').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      return res.status(200).json({ success: true, message: 'Site rejected' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- admin-deposit ---
+  if (action === 'admin-deposit') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    const { userId, amount, note } = req.body;
+    if (!userId || !amount || amount <= 0) return res.status(400).json({ error: 'Invalid userId or amount' });
+    try {
+      const { data: bal } = await supabase.from('balances').select('balance').eq('user_id', userId).maybeSingle();
+      const newBal = (bal?.balance || 0) + Number(amount);
+      await supabase.from('balances').upsert({ user_id: userId, balance: newBal }, { onConflict: 'user_id' });
+      await supabase.from('transactions').insert({ user_id: userId, type: 'admin_deposit', amount: Number(amount), note: note || 'Manual deposit by admin' });
+      return res.status(200).json({ success: true, message: `Deposited $${amount}` });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // --- admin-delete-site ---
+  if (action === 'admin-delete-site') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    const { siteId } = req.body;
+    if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
+    try {
+      await supabase.from('sites').delete().eq('id', siteId);
+      return res.status(200).json({ success: true, message: 'Site deleted' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  return res.status(400).json({ error: 'Invalid action' });
 }

@@ -136,59 +136,33 @@ export default function Admin() {
     }
   };
 
-  const approveSite = async (siteId) => {
+  const callAdmin = async (action, body) => {
     try {
-      await supabase.from('sites').update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', siteId);
-      setMessage('Site approved');
+      const res = await fetch('/api/app?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      setMessage(data.message || data.error || 'Done');
       fetchData();
     } catch (err) { setMessage('Error: ' + err.message); }
   };
 
-  const rejectSite = async (siteId) => {
-    try {
-      await supabase.from('sites').update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', siteId);
-      setMessage('Site rejected');
-      fetchData();
-    } catch (err) { setMessage('Error: ' + err.message); }
-  };
+  const approveSite = (siteId) => callAdmin('admin-approve-site', { siteId });
+  const rejectSite = (siteId) => callAdmin('admin-reject-site', { siteId });
 
   const manualDeposit = async () => {
     if (!depositUserId || !depositAmount || Number(depositAmount) <= 0) { setMessage('Enter valid user and amount'); return; }
-    try {
-      const amount = Number(depositAmount);
-      const { data: bal } = await supabase.from('balances').select('balance').eq('user_id', depositUserId).maybeSingle();
-      const newBal = (bal?.balance || 0) + amount;
-      await supabase.from('balances').upsert({ user_id: depositUserId, balance: newBal }, { onConflict: 'user_id' });
-      await supabase.from('transactions').insert({ user_id: depositUserId, type: 'admin_deposit', amount, note: depositNote || 'Manual deposit by admin' });
-      setMessage(`Deposited $${amount} successfully`);
-      setDepositUserId(''); setDepositAmount(''); setDepositNote('');
-    } catch (err) { setMessage('Error: ' + err.message); }
+    await callAdmin('admin-deposit', { userId: depositUserId, amount: Number(depositAmount), note: depositNote });
+    setDepositUserId(''); setDepositAmount(''); setDepositNote('');
   };
 
-  const addSite = async () => {
+  const addSite = () => {
     if (!newSite.name || !newSite.url || !newSite.owner_id) { setMessage('Name, URL, and Owner are required'); return; }
-    try {
-      const slug = newSite.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
-      await supabase.from('sites').insert({
-        name: newSite.name, slug, url: newSite.url, category: newSite.category,
-        description: newSite.description, owner_user_id: newSite.owner_id, user_id: newSite.owner_id,
-        is_verified: true, is_active: true, status: 'approved'
-      });
-      setMessage('Site created');
-      setNewSite({ name: '', url: '', category: 'Other', description: '', owner_id: '' });
-      fetchData();
-    } catch (err) { setMessage('Error: ' + err.message); }
+    callAdmin('admin-add-site', { name: newSite.name, url: newSite.url, category: newSite.category, description: newSite.description, owner_id: newSite.owner_id });
+    setNewSite({ name: '', url: '', category: 'Other', description: '', owner_id: '' });
   };
 
-  const deleteSite = async (siteId) => {
+  const deleteSite = (siteId) => {
     if (!confirm('Delete this site permanently?')) return;
-    try {
-      await supabase.from('sites').delete().eq('id', siteId);
-      setMessage('Site deleted');
-      fetchData();
-    } catch (err) {
-      setMessage('Error: ' + err.message);
-    }
+    callAdmin('admin-delete-site', { siteId });
   };
 
   const updateStaffPermissions = async (userId, permissions) => {
