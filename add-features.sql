@@ -111,3 +111,14 @@ INSERT INTO public.forum_categories (name, description, slug, sort_order) VALUES
   ('Suggestions', 'Ideas for improving the directory', 'suggestions', 4),
   ('Showcase', 'Show off your site listing', 'showcase', 5)
 ON CONFLICT (slug) DO NOTHING;
+
+-- 7. Contact messages table
+CREATE TABLE IF NOT EXISTS public.contact_messages (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id),
+  name text NOT NULL,
+  subject text NOT NULL,
+  message text NOT NULL,
+  is_read boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);

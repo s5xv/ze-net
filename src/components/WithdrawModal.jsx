@@ -10,12 +10,16 @@ export default function WithdrawModal({ balance, onUpdate, onClose }) {
 
   const handleWithdraw = async (e) => {
     e.preventDefault();
+    if (!user) { setMessage('You must be logged in'); return; }
+    const amt = parseFloat(amount);
+    if (isNaN(amt) || amt <= 0) { setMessage('Enter a valid amount'); return; }
+    if (amt > (balance || 0)) { setMessage('Insufficient balance'); return; }
     setLoading(true);
     
     try {
       const { error } = await supabase.from('withdrawal_requests').insert({
         user_id: user.id,
-        amount: parseFloat(amount),
+        amount: amt,
         status: 'pending'
       });
       
@@ -23,8 +27,8 @@ export default function WithdrawModal({ balance, onUpdate, onClose }) {
       
       setMessage('Withdrawal requested! Admin will process it.');
       setTimeout(() => {
-        onUpdate();
-        onClose();
+        if (onUpdate) onUpdate();
+        if (onClose) onClose();
       }, 2000);
     } catch (err) {
       setMessage('Error: ' + err.message);
@@ -39,7 +43,7 @@ export default function WithdrawModal({ balance, onUpdate, onClose }) {
         <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
       </div>
       
-      <p className="text-gray-400 mb-4">Available: <span className="text-green-500 font-bold">${balance.toFixed(2)}</span></p>
+      <p className="text-gray-400 mb-4">Available: <span className="text-green-500 font-bold">${(balance || 0).toFixed(2)}</span></p>
       
       <form onSubmit={handleWithdraw}>
         <input

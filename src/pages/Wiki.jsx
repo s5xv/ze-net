@@ -1,33 +1,26 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
-
 export default function Wiki() {
   const { user, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
-  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
-  const [password, setPassword] = useState('');
   const [activePage, setActivePage] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [syncResults, setSyncResults] = useState(null);
 
   useEffect(() => {
-    const auth = localStorage.getItem('admin_auth');
-    setIsAdmin(auth === 'true');
+    if (user) supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => setIsAdmin(data?.is_staff || false));
     fetchWikiData();
-  }, []);
+  }, [user]);
 
   const fetchWikiData = async () => {
     setLoading(true);
@@ -36,23 +29,12 @@ export default function Wiki() {
     setLoading(false);
   };
 
-  const handleAdminLogin = (e) => {
-    e.preventDefault();
-    if (password === ADMIN_PASSWORD) { 
-      localStorage.setItem('admin_auth', 'true'); 
-      setIsAdmin(true); 
-      setShowPasswordPrompt(false); 
-    } else { 
-      alert('Incorrect password'); 
-    }
-  };
-
   const syncWiki = async (type = 'all') => {
-    if (!isAdmin) { setShowPasswordPrompt(true); return; }
+    if (!isAdmin) return;
     setSyncing(true);
     setSyncResults(null);
     try {
-      const res = await fetch('/api/content?action=wiki');
+      const res = await fetch('/api/content?action=wiki&type=' + type);
       const data = await res.json();
       setSyncResults(data);
       alert(data.message || 'Wiki synced!');
@@ -152,12 +134,6 @@ export default function Wiki() {
             </div>
           )}
 
-          {!isAdmin && (
-            <button onClick={syncWiki} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg">
-              Sync Wiki (Admin)
-            </button>
-          )}
-
           {syncResults && (
             <div className="mt-4 p-4 bg-gray-100 dark:bg-[#202124] rounded-lg max-w-md mx-auto text-left">
               <p className="font-bold mb-2">Last Sync Results:</p>
@@ -169,28 +145,6 @@ export default function Wiki() {
             </div>
           )}
         </div>
-
-        {showPasswordPrompt && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-[#303134] rounded-xl p-6 max-w-sm w-full mx-4">
-              <h3 className="text-lg font-bold mb-4">Admin Access Required</h3>
-              <form onSubmit={handleAdminLogin}>
-                <input 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  placeholder="Admin password" 
-                  className="w-full px-3 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg mb-4 focus:outline-none focus:border-blue-500" 
-                  autoFocus 
-                />
-                <div className="flex gap-2">
-                  <button type="submit" className="flex-grow px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Login</button>
-                  <button type="button" onClick={() => setShowPasswordPrompt(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg">Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
         {activePage && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

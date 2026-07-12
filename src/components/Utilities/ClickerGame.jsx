@@ -1,10 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../UI';
 
 export default function ClickerGame() {
   const [count, setCount] = useState(0);
   const [clickPower, setClickPower] = useState(1);
   const [autoClickers, setAutoClickers] = useState(0);
+
+  useEffect(() => {
+    if (autoClickers === 0) return;
+    const interval = setInterval(() => setCount(c => c + autoClickers), 1000);
+    return () => clearInterval(interval);
+  }, [autoClickers]);
 
   return (
     <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">

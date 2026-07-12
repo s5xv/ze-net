@@ -2,6 +2,13 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY);
 
+const requireAdmin = async (req) => {
+  const userId = req.headers['x-user-id'];
+  if (!userId) return false;
+  const { data } = await supabase.from('profiles').select('is_staff').eq('id', userId).maybeSingle();
+  return data?.is_staff === true;
+};
+
 const shuffleArray = (array) => {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -27,20 +34,21 @@ export default async function handler(req, res) {
       const viewerId = req.query.viewerId;
       let allowedCategories = ['shop', 'bank', 'casino', 'service', 'entertainment'];
       if (viewerId) {
-        const { data: profile } = await supabase.from('profiles').select('ad_preferences').eq('id', viewerId).single();
-        if (profile?.ad_preferences && Array.isArray(profile.ad_preferences) && profile.ad_preferences.length > 0) {
+        const { data: profile, error: profileErr } = await supabase.from('profiles').select('ad_preferences').eq('id', viewerId).maybeSingle();
+        if (!profileErr && profile?.ad_preferences && Array.isArray(profile.ad_preferences) && profile.ad_preferences.length > 0) {
           allowedCategories = profile.ad_preferences;
         }
       }
-      const buildQuery = (tier) => {
+      const buildQuery = async (tier) => {
         let q = supabase.from('sites').select('*').eq('ad_tier', tier).gt('ad_expires_at', now).eq('is_verified', true);
         if (allowedCategories.length > 0) q = q.in('category', allowedCategories);
-        return q;
+        const { data, error } = await q;
+        if (error) return [];
+        return data || [];
       };
-      const { data: eliteAds } = await buildQuery('elite');
-      const { data: premiumAds } = await buildQuery('premium');
-      const { data: featuredAds } = await buildQuery('featured');
-      const { data: standardAds } = await buildQuery('standard');
+      const [eliteAds, premiumAds, featuredAds, standardAds] = await Promise.all([
+        buildQuery('elite'), buildQuery('premium'), buildQuery('featured'), buildQuery('standard')
+      ]);
       return res.status(200).json({
         elite: shuffleArray(eliteAds || []).slice(0, 3),
         premium: shuffleArray(premiumAds || []).slice(0, 5),
@@ -59,11 +67,11 @@ export default async function handler(req, res) {
     if (!siteId || !ownerId || !viewerId) return res.status(400).json({ error: 'Missing data' });
     if (ownerId === viewerId) return res.status(400).json({ error: 'Cannot pay yourself' });
     try {
-      const { data: profile } = await supabase.from('profiles').select('mc_verified').eq('id', viewerId).single();
-      if (!profile?.mc_verified) return res.status(200).json({ success: false, message: 'Viewer not verified' });
+      const { data: profile } = await supabase.from('profiles').select('mc_verified').eq('id', viewerId).maybeSingle();
+      if (!profile?.mc_verified) return res.status(403).json({ success: false, message: 'Viewer not verified' });
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: recentView } = await supabase.from('site_views').select('id').eq('site_id', siteId).eq('viewer_id', viewerId).gte('created_at', twentyFourHoursAgo).single();
-      if (recentView) return res.status(200).json({ success: false, message: 'View already counted today' });
+      const { data: recentView } = await supabase.from('site_views').select('id').eq('site_id', siteId).eq('viewer_id', viewerId).gte('created_at', twentyFourHoursAgo).maybeSingle();
+      if (recentView) return res.status(409).json({ success: false, message: 'View already counted today' });
       await supabase.from('site_views').insert({ site_id: siteId, viewer_id: viewerId });
       await supabase.rpc('increment_balance', { target_user_id: ownerId, deposit_amount: 0.10 });
       return res.status(200).json({ success: true, message: 'Owner paid $0.10' });
@@ -80,11 +88,11 @@ export default async function handler(req, res) {
     try {
       const apiKey = process.env.MISTRAL_API_KEY;
       if (!apiKey) return res.status(200).json({ summary: "⚠️ AI is ready, but the MISTRAL_API_KEY is missing! Go to Vercel Dashboard > Settings > Environment Variables and add it." });
-      const resultsText = (results || []).length > 0
-        ? (results || []).slice(0, 30).map((r, i) => {
-            const name = r.name || r.title || 'Unknown';
-            const desc = r.description || r.content || 'No description';
-            const type = r.category ? 'Site' : (r.content ? 'Wiki' : 'Department');
+      const resultsText = Array.isArray(results) && results.length > 0
+        ? results.slice(0, 30).filter(Boolean).map((r, i) => {
+            const name = r?.name || r?.title || 'Unknown';
+            const desc = r?.description || r?.content || 'No description';
+            const type = r?.category ? 'Site' : (r?.content ? 'Wiki' : 'Department');
             return `${i+1}. [${type}] **${name}**: ${desc.substring(0, 200)}`;
           }).join('\n')
         : 'No results found in the directory for your query.';
@@ -96,7 +104,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({ model: 'mistral-small-latest', messages: [{ role: 'user', content: prompt }], max_tokens: 400, temperature: 0.2 })
       });
       const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
+      if (data.error) throw new Error(typeof data.error === 'string' ? data.error : (data.error?.message || 'AI API error'));
       const summary = data.choices?.[0]?.message?.content || 'Unable to generate summary.';
       const sources = (results || []).slice(0, 5).map(r => r.name || r.title).filter(Boolean);
       return res.status(200).json({ summary, sources });
@@ -126,6 +134,12 @@ export default async function handler(req, res) {
     }
   }
 
+  // --- admin-auth guard ---
+  if (action.startsWith('admin-')) {
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
+    if (req.method === 'GET' && ['admin-get-sites', 'admin-get-pending-sites'].includes(action)) {} else if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  }
+
   // --- admin-add-site ---
   if (action === 'admin-add-site') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
@@ -149,11 +163,11 @@ export default async function handler(req, res) {
 
   // --- admin-approve-site ---
   if (action === 'admin-approve-site') {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
-      await supabase.from('sites').update({ status: 'approved', reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      const { error } = await supabase.from('sites').update({ status: 'approved', reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site approved' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -162,11 +176,11 @@ export default async function handler(req, res) {
 
   // --- admin-reject-site ---
   if (action === 'admin-reject-site') {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
-      await supabase.from('sites').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      const { error } = await supabase.from('sites').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site rejected' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -175,14 +189,17 @@ export default async function handler(req, res) {
 
   // --- admin-deposit ---
   if (action === 'admin-deposit') {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     const { userId, amount, note } = req.body;
-    if (!userId || !amount || amount <= 0) return res.status(400).json({ error: 'Invalid userId or amount' });
+    const depositAmount = Number(amount);
+    if (!userId || !amount || isNaN(depositAmount) || depositAmount <= 0) return res.status(400).json({ error: 'Invalid userId or amount' });
     try {
-      const { data: bal } = await supabase.from('balances').select('balance').eq('user_id', userId).maybeSingle();
-      const newBal = (bal?.balance || 0) + Number(amount);
-      await supabase.from('balances').upsert({ user_id: userId, balance: newBal }, { onConflict: 'user_id' });
-      await supabase.from('transactions').insert({ user_id: userId, type: 'admin_deposit', amount: Number(amount), note: note || 'Manual deposit by admin' });
+      const { data: bal, error: balErr } = await supabase.from('balances').select('balance').eq('user_id', userId).maybeSingle();
+      if (balErr) throw balErr;
+      const currentBal = bal?.balance || 0;
+      const { error: upsertErr } = await supabase.from('balances').upsert({ user_id: userId, balance: currentBal + depositAmount }, { onConflict: 'user_id' });
+      if (upsertErr) throw upsertErr;
+      const { error: txnErr } = await supabase.from('transactions').insert({ user_id: userId, type: 'admin_deposit', amount: depositAmount, note: note || 'Manual deposit by admin' });
+      if (txnErr) throw txnErr;
       return res.status(200).json({ success: true, message: `Deposited $${amount}` });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -269,10 +286,11 @@ export default async function handler(req, res) {
 
   // --- lookup-user ---
   if (action === 'lookup-user') {
-    const username = req.query.username || req.body?.username;
-    if (!username) return res.status(400).json({ error: 'Missing username' });
+    const raw = req.query.username || req.body?.username;
+    if (!raw) return res.status(400).json({ error: 'Missing username' });
+    const safe = raw.replace(/[%_]/g, '\\$&');
     try {
-      const { data } = await supabase.from('profiles').select('id, username, mc_username').ilike('username', username).limit(5);
+      const { data } = await supabase.from('profiles').select('id, username, mc_username').ilike('username', `%${safe}%`).limit(5);
       return res.status(200).json({ users: data || [] });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }

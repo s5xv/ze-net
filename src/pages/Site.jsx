@@ -36,18 +36,19 @@ export default function Site() {
 
   const fetchSite = async () => {
     setLoading(true);
-    const { data } = await supabase.from('sites').select('*').eq('slug', slug).single();
+    const { data, error } = await supabase.from('sites').select('*').eq('slug', slug).maybeSingle();
+    if (error || !data) { setLoading(false); return; }
     
     if (data) {
       setSite(data);
       await supabase.from('sites').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
       
       if (user) {
-        const { data: bookmark } = await supabase.from('bookmarks').select('id').eq('user_id', user.id).eq('site_id', data.id).single();
+        const { data: bookmark } = await supabase.from('bookmarks').select('id').eq('user_id', user.id).eq('site_id', data.id).maybeSingle();
         setIsBookmarked(!!bookmark);
-        const { data: follow } = await supabase.from('site_followers').select('id').eq('user_id', user.id).eq('site_id', data.id).single();
+        const { data: follow } = await supabase.from('site_followers').select('id').eq('user_id', user.id).eq('site_id', data.id).maybeSingle();
         setIsFollowing(!!follow);
-        const { data: upvote } = await supabase.from('site_upvotes').select('id').eq('user_id', user.id).eq('site_id', data.id).single();
+        const { data: upvote } = await supabase.from('site_upvotes').select('id').eq('user_id', user.id).eq('site_id', data.id).maybeSingle();
         setHasUpvoted(!!upvote);
         const { data: balData } = await supabase.from('balances').select('balance').eq('user_id', user.id).maybeSingle();
         setUserBalance(balData?.balance || 0);

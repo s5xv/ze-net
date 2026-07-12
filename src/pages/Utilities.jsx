@@ -10,10 +10,26 @@ export default function Utilities() {
 
   // --- Calculator State ---
   const [calcDisplay, setCalcDisplay] = useState('0');
+  const calcResult = (expr) => {
+    const tokens = expr.match(/\d+(\.\d+)?|[+\-*/()]/g);
+    if (!tokens || tokens.join('') !== expr.replace(/\s/g, '')) throw new Error('Invalid');
+    const output = [], ops = [];
+    const prec = { '+': 1, '-': 1, '*': 2, '/': 2 };
+    const apply = () => { const o = ops.pop(), b = output.pop(), a = output.pop(); if (o === '+') output.push(a + b); else if (o === '-') output.push(a - b); else if (o === '*') output.push(a * b); else if (o === '/') output.push(a / b); };
+    for (const t of tokens) {
+      if (/\d/.test(t)) { output.push(parseFloat(t)); }
+      else if (t === '(') { ops.push(t); }
+      else if (t === ')') { while (ops.length && ops[ops.length - 1] !== '(') apply(); ops.pop(); }
+      else { while (ops.length && ops[ops.length - 1] !== '(' && prec[ops[ops.length - 1]] >= prec[t]) apply(); ops.push(t); }
+    }
+    while (ops.length) apply();
+    return output[0];
+  };
+
   const handleCalc = (val) => {
     if (val === 'C') setCalcDisplay('0');
     else if (val === '=') {
-      try { setCalcDisplay(eval(calcDisplay).toString()); } catch { setCalcDisplay('Error'); }
+      try { const r = calcResult(calcDisplay); setCalcDisplay(Number.isFinite(r) ? r.toString() : 'Error'); } catch { setCalcDisplay('Error'); }
     } else {
       setCalcDisplay(calcDisplay === '0' ? val : calcDisplay + val);
     }
@@ -107,7 +123,7 @@ export default function Utilities() {
 
           {activeTool === 'Dice Roller' && (
             <div className="text-center">
-              <div className="text-9xl mb-8 animate-bounce">{diceResult ? ['⚀','','⚂','⚃','','⚅'][diceResult-1] : '🎲'}</div>
+              <div className="text-9xl mb-8 animate-bounce">{diceResult ? ['⚀','⚁','⚂','⚃','⚄','⚅'][diceResult-1] : '🎲'}</div>
               {diceResult && <div className="text-2xl font-bold mb-8">You rolled a {diceResult}!</div>}
               <button onClick={rollDice} className="px-8 py-3 rounded-lg font-bold text-lg bg-purple-600 hover:bg-purple-700 text-white">Roll Dice</button>
             </div>

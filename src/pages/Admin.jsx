@@ -22,6 +22,7 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingStaff, setEditingStaff] = useState(null);
   const [reports, setReports] = useState([]);
+  const [pendingSites, setPendingSites] = useState([]);
   const [depositUserId, setDepositUserId] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositNote, setDepositNote] = useState('');

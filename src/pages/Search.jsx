@@ -19,7 +19,9 @@ export default function Search() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    setQ(query);
     if (query) fetchResults();
+    else { setSiteResults([]); setWikiResults([]); setDeptResults([]); setAiSummary(null); setLoading(false); }
   }, [query]);
 
   const extractSearchTerms = (q) => {
@@ -69,8 +71,10 @@ export default function Search() {
     }
 
     try {
-      if (user) await supabase.from('search_history').insert({ user_id: user.id, query });
-      await supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: allResults.length });
+      await Promise.all([
+        user ? supabase.from('search_history').insert({ user_id: user.id, query }) : Promise.resolve(),
+        supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: allResults.length })
+      ]);
     } catch (err) { console.error('Analytics error:', err); }
     
     setLoading(false);

@@ -15,8 +15,14 @@ export default function Contact() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!name.trim() || !subject.trim() || !message.trim()) return;
     setSending(true);
     try {
+      const { error } = await supabase.from('contact_messages').insert({
+        name: name.trim(), subject: subject.trim(), message: message.trim(),
+        user_id: user?.id || null
+      });
+      if (error) throw error;
       setSent(true);
       setName(''); setSubject(''); setMessage('');
     } catch (err) {
