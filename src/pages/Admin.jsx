@@ -7,6 +7,7 @@ import { supabase } from '../services/supabase';
 export default function Admin() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [authorized, setAuthorized] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [withdrawals, setWithdrawals] = useState([]);
   const [verifications, setVerifications] = useState([]);
@@ -21,14 +22,20 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingStaff, setEditingStaff] = useState(null);
   const [reports, setReports] = useState([]);
-  const [pendingSites, setPendingSites] = useState([]);
   const [depositUserId, setDepositUserId] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositNote, setDepositNote] = useState('');
   const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
   const [lookupResults, setLookupResults] = useState([]);
 
-  useEffect(() => { fetchData(); }, [activeTab]);
+  useEffect(() => {
+    if (!user) { navigate('/login'); return; }
+    supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => {
+      if (data?.is_staff) { setAuthorized(true); fetchData(); } else { navigate('/'); }
+    });
+  }, [user]);
+
+  useEffect(() => { if (authorized) fetchData(); }, [activeTab, authorized]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -248,6 +255,8 @@ export default function Admin() {
     { id: 'manage_users', label: 'Manage Users' },
     { id: 'manage_staff', label: 'Manage Staff' }
   ];
+
+  if (!authorized) return <div className="min-h-screen flex items-center justify-center text-gray-400">Checking permissions...</div>;
 
   return (
     <Layout>
