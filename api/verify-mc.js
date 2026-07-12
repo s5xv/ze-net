@@ -60,24 +60,18 @@ export default async function handler(req, res) {
 
       for (const txn of txns) {
         const memo = (txn.memo || txn.message || '').toLowerCase().trim();
-        
         let payer = "";
         
-        // Format 1: "business payment: escudos -> zen"
-        if (memo.startsWith('business payment:')) {
-          try {
-            const afterColon = memo.split('business payment:', 1)[1].trim();
-            payer = afterColon.split('->')[0].trim();
-          } catch (e) { continue; }
+        // BULLETPROOF REGEX (Same as auto-deposit)
+        const match1 = memo.match(/^business payment:\s*([a-zA-Z0-9_]+)\s*->/);
+        if (match1) {
+          payer = match1[1];
+        } else {
+          const match2 = memo.match(/^payment from\s+([a-zA-Z0-9_]+)\s+to business/);
+          if (match2) {
+            payer = match2[1];
+          }
         }
-        // Format 2: "payment from escudos to account #123945 (zen corporate account): dep-849201"
-        else if (memo.startsWith('payment from')) {
-          try {
-            const afterFrom = memo.split('payment from', 1)[1].trim();
-            payer = afterFrom.split(' to ')[0].trim();
-          } catch (e) { continue; }
-        }
-        else continue;
 
         if (payer !== mc_username.toLowerCase()) continue;
         if (!memo.includes('zen') && !memo.includes('zec')) continue;

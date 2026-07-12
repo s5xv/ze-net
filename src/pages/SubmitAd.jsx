@@ -1,226 +1,144 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../hooks/useTheme';
-import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../services/supabase';
 
 export default function SubmitAd() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isDark } = useTheme();
-  const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [balance, setBalance] = useState(0);
+  const [tier, setTier] = useState('standard');
   const [formData, setFormData] = useState({
-    company_name: '',
-    contact_discord: '',
-    redirect_url: '',
-    banner_image: '',
-    tier: 'bronze'
+    siteName: '',
+    siteUrl: '',
+    description: '',
+    category: 'shop',
+    imageUrl: ''
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const tiers = {
-    bronze: { 
-      name: 'Bronze - Standard Ad', 
-      price: 600, 
-      duration: '1 week', 
-      features: 'Regular sidebar placement',
-      type: 'normal'
-    },
-    silver: { 
-      name: 'Silver - Premium Ad', 
-      price: 1200, 
-      duration: '2 weeks', 
-      features: 'Highlighted placement + custom shortlink',
-      type: 'normal'
-    },
-    gold: { 
-      name: 'Gold - Featured Banner', 
-      price: 2600, 
-      duration: '1 month', 
-      features: 'Top banner + homepage featured spot',
-      type: 'sponsored'
-    },
-    platinum: { 
-      name: 'Platinum - Sponsored', 
-      price: 6000, 
-      duration: '1 month', 
-      features: 'Top search results + priority placement everywhere',
-      type: 'sponsored'
-    }
+    standard: { name: 'Standard', price: 110, color: 'blue', description: 'Basic listing in directory' },
+    featured: { name: 'Featured', price: 160, color: 'yellow', description: 'Pinned to top of category' },
+    premium: { name: 'Premium', price: 400, color: 'purple', description: 'Homepage carousel rotation' },
+    elite: { name: 'Elite', price: 600, color: 'cyan', description: 'Top row + diamond border' }
   };
-
-  useEffect(() => {
-    if (user) fetchBalance();
-  }, [user]);
-
-  const fetchBalance = async () => {
-    const { data } = await supabase.from('site_balances').select('balance').eq('user_id', user.id).single();
-    setBalance(data?.balance || 0);
-  };
-
-  const canAfford = balance >= tiers[formData.tier].price;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user) {
-      alert('Please sign in to submit an ad');
-      navigate('/login');
-      return;
-    }
+    if (!user) return;
+    
+    setSubmitting(true);
 
-    if (!canAfford) {
-      alert('Insufficient balance for selected tier');
-      return;
-    }
-
-    setLoading(true);
     try {
-      const { error } = await supabase.from('ad_submissions').insert({
-        ...formData,
+      const { error } = await supabase.from('sites').insert({
         user_id: user.id,
-        status: 'pending'
+        name: formData.siteName,
+        url: formData.siteUrl,
+        description: formData.description,
+        category: formData.category,
+        image_url: formData.imageUrl,
+        ad_tier: tier,
+        ad_price: tiers[tier].price,
+        is_verified: false,
+        created_at: new Date().toISOString()
       });
 
       if (error) throw error;
-      setSubmitted(true);
+      navigate('/profile');
     } catch (err) {
       alert('Error: ' + err.message);
-    } finally {
-      setLoading(false);
     }
+    setSubmitting(false);
   };
 
-  if (submitted) {
-    return (
-      <Layout user={user}>
-        <main className="flex-grow max-w-2xl mx-auto px-4 py-12">
-          <div className="bg-green-600/10 border border-green-600/30 rounded-xl p-8 text-center">
-            <div className="text-6xl mb-4">✅</div>
-            <h1 className="text-3xl font-bold mb-4">Ad Submitted!</h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Your ad submission is pending admin review. Once approved, ${tiers[formData.tier].price} will be deducted from your balance.
-            </p>
-            <button onClick={() => navigate('/')} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
-              Back to Home
-            </button>
-          </div>
-        </main>
-      </Layout>
-    );
-  }
+  if (!user) return <Layout><div className="p-8 text-center text-white">Please sign in</div></Layout>;
 
   return (
     <Layout user={user}>
-      <main className="flex-grow max-w-2xl mx-auto px-4 py-12">
-        <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-8 shadow-sm">
-          <h1 className="text-3xl font-bold mb-2">Submit an Ad</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Promote your business on Z&E Net</p>
+      <main className="flex-grow max-w-4xl mx-auto px-4 py-12">
+        <h1 className="text-3xl font-bold text-white mb-8">Submit Advertisement</h1>
 
-          {/* Balance Display */}
-          <div className="mb-6 p-4 bg-gray-110 dark:bg-[#202124] rounded-lg">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Your Balance</p>
-            <p className="text-2xl font-bold text-green-600">${balance.toFixed(2)}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {Object.entries(tiers).map(([key, t]) => (
+            <button
+              key={key}
+              onClick={() => setTier(key)}
+              className={`p-6 rounded-xl border-2 text-left transition-all ${
+                tier === key 
+                  ? `border-${t.color}-500 bg-${t.color}-500/10` 
+                  : 'border-gray-700 bg-[#303134]'
+              }`}
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-xl font-bold text-white">{t.name}</h3>
+                <span className="text-2xl font-bold text-green-500">${t.price}</span>
+              </div>
+              <p className="text-gray-400 text-sm">{t.description}</p>
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-[#303134] border border-gray-700 rounded-xl p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Site Name *</label>
+            <input
+              type="text"
+              required
+              value={formData.siteName}
+              onChange={(e) => setFormData({...formData, siteName: e.target.value})}
+              className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white"
+              placeholder="My Awesome Shop"
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Company Name *</label>
-              <input
-                type="text"
-                required
-                value={formData.company_name}
-                onChange={(e) => setFormData({...formData, company_name: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-110 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-600"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Site URL *</label>
+            <input
+              type="url"
+              required
+              value={formData.siteUrl}
+              onChange={(e) => setFormData({...formData, siteUrl: e.target.value})}
+              className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white"
+              placeholder="https://example.com"
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Contact Discord Username *</label>
-              <input
-                type="text"
-                required
-                value={formData.contact_discord}
-                onChange={(e) => setFormData({...formData, contact_discord: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-110 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-600"
-                placeholder="e.g., username#1234"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Target Redirect URL *</label>
-              <input
-                type="url"
-                required
-                value={formData.redirect_url}
-                onChange={(e) => setFormData({...formData, redirect_url: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-110 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-600"
-                placeholder="https://..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Ad Banner Image URL</label>
-              <input
-                type="url"
-                value={formData.banner_image}
-                onChange={(e) => setFormData({...formData, banner_image: e.target.value})}
-                className="w-full px-4 py-2 bg-gray-110 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-600"
-                placeholder="https://... (image URL)"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-3">Select Ad Tier *</label>
-              <div className="space-y-3">
-                {Object.entries(tiers).map(([key, tier]) => (
-                  <label key={key} className={`block p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    formData.tier === key 
-                      ? 'border-blue-600 bg-blue-600/10' 
-                      : 'border-gray-300 dark:border-gray-700 hover:border-gray-400'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="tier"
-                      value={key}
-                      checked={formData.tier === key}
-                      onChange={(e) => setFormData({...formData, tier: e.target.value})}
-                      className="sr-only"
-                    />
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-bold flex items-center gap-2">
-                          {tier.name}
-                          {tier.type === 'sponsored' && <span className="text-xs bg-yellow-600 text-white px-2 py-0.5 rounded">SPONSORED</span>}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{tier.duration}</p>
-                        <p className="text-xs text-gray-600 mt-1">{tier.features}</p>
-                      </div>
-                      <p className="text-xl font-bold text-blue-600">${tier.price}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {!canAfford && (
-              <div className="p-4 bg-red-600/10 border border-red-600/30 rounded-lg">
-                <p className="text-sm text-red-600 dark:text-red-400 font-medium">
-                  ⚠️ Insufficient balance. You need ${tiers[formData.tier].price - balance} more.
-                </p>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || !canAfford}
-              className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Category *</label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({...formData, category: e.target.value})}
+              className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white"
             >
-              {loading ? 'Submitting...' : `Submit Ad ($${tiers[formData.tier].price})`}
-            </button>
-          </form>
-        </div>
+              <option value="shop">Shop</option>
+              <option value="bank">Bank</option>
+              <option value="casino">Casino</option>
+              <option value="service">Service</option>
+              <option value="entertainment">Entertainment</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Description *</label>
+            <textarea
+              required
+              rows="3"
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white"
+              placeholder="Describe your site..."
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-bold"
+          >
+            {submitting ? 'Submitting...' : `Submit Ad ($${tiers[tier].price})`}
+          </button>
+        </form>
       </main>
     </Layout>
   );
