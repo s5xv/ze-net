@@ -36,7 +36,7 @@ export default function SiteReviews({ siteId, user }) {
         .select('*')
         .eq('site_id', siteId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       setUserReview(ur);
     }
   };

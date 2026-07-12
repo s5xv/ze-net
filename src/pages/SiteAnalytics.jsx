@@ -19,7 +19,7 @@ export default function SiteAnalytics() {
 
   const fetchAnalytics = async () => {
     setLoading(true);
-    const { data: siteData } = await supabase.from('sites').select('*').eq('slug', slug).single();
+    const { data: siteData } = await supabase.from('sites').select('*').eq('slug', slug).maybeSingle();
     if (!siteData) { navigate('/'); return; }
     if (siteData.owner_user_id !== user?.id) { navigate(`/site/${slug}`); return; }
     setSite(siteData);

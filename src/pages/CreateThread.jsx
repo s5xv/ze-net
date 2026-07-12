@@ -20,7 +20,7 @@ export default function CreateThread() {
     setPosting(true);
     const { data: thread } = await supabase.from('forum_threads').insert({
       category_id: parseInt(categoryId), title: title.trim(), author_id: user.id, last_post_at: new Date().toISOString()
-    }).select().single();
+    }).select().maybeSingle();
 
     if (thread) {
       await supabase.from('forum_posts').insert({ thread_id: thread.id, author_id: user.id, content: content.trim() });

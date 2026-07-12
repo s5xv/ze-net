@@ -23,7 +23,7 @@ export default function SiteManage() {
   }, [slug, user, loading]);
 
   const fetchSite = async () => {
-    const { data } = await supabase.from('sites').select('*').eq('slug', slug).single();
+    const { data } = await supabase.from('sites').select('*').eq('slug', slug).maybeSingle();
     if (!data) { alert('Site not found'); navigate('/'); return; }
 
     if (data.owner_user_id && data.owner_user_id !== user.id) {

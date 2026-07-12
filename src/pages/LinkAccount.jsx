@@ -16,7 +16,7 @@ export default function LinkAccount() {
   }, [user]);
 
   const checkLinkStatus = async () => {
-    const { data } = await supabase.from('profiles').select('mc_username, mc_verified').eq('id', user.id).single();
+    const { data } = await supabase.from('profiles').select('mc_username, mc_verified').eq('id', user.id).maybeSingle();
     if (data?.mc_username) {
       setLinked(true);
       setMcName(data.mc_username);

@@ -17,7 +17,7 @@ export default function ForumPost() {
 
   useEffect(() => {
     if (!threadId) return;
-    supabase.from('forum_threads').select('*, author:author_id(username)').eq('id', threadId).single().then(({ data }) => {
+    supabase.from('forum_threads').select('*, author:author_id(username)').eq('id', threadId).maybeSingle().then(({ data }) => {
       if (!data) { navigate('/forums'); return; }
       setThread(data);
     });
@@ -36,7 +36,7 @@ export default function ForumPost() {
     e.preventDefault();
     if (!reply.trim()) return;
     setPosting(true);
-    const { data: post } = await supabase.from('forum_posts').insert({ thread_id: parseInt(threadId), author_id: user.id, content: reply.trim() }).select('*, author:author_id(username)').single();
+    const { data: post } = await supabase.from('forum_posts').insert({ thread_id: parseInt(threadId), author_id: user.id, content: reply.trim() }).select('*, author:author_id(username)').maybeSingle();
     if (post) {
       setPosts(prev => [...prev, post]);
       setReply('');

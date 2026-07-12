@@ -26,10 +26,10 @@ export default function Account() {
     setLoading(true);
     try {
       // Fetch fresh profile data
-      const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-      setProfile(p);
+      const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      setProfile(p || null);
       
-      const { data: b } = await supabase.from('balances').select('balance').eq('user_id', user.id).single();
+      const { data: b } = await supabase.from('balances').select('balance').eq('user_id', user.id).maybeSingle();
       setBalance(b?.balance || 0);
     } catch (err) { console.error(err); }
     setLoading(false);

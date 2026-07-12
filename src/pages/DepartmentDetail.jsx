@@ -22,7 +22,7 @@ export default function DepartmentDetail() {
       .select('*')
       .eq('slug', slug)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
     
     setDepartment(data);
     setLoading(false);

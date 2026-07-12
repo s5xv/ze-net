@@ -18,7 +18,7 @@ export default function TempAdminGrant() {
         .from('profiles')
         .select('id')
         .ilike('username', `%${email}%`)
-        .single();
+        .maybeSingle();
 
       if (userError || !userData) {
         setMessage('User not found');
