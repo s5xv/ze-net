@@ -18,24 +18,24 @@ export default function Profile() {
 
   const fetchProfile = async () => {
     setLoading(true);
-    let profileData = null;
-    const { data: pd } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-    if (pd) {
-      profileData = pd;
-    } else if (user && userId === user.id) {
-      const meta = user.user_metadata || {};
-      await supabase.from('profiles').upsert({
-        id: userId,
-        username: meta.name || meta.full_name || user.email?.split('@')[0] || 'User',
-        avatar_url: meta.avatar_url || meta.avatar
-      }, { onConflict: 'id' }).catch(() => {});
-      profileData = { id: userId, username: meta.name || meta.full_name || user.email?.split('@')[0] || 'User', avatar_url: meta.avatar_url || meta.avatar };
-    }
-    if (profileData) {
-      setProfileUser(profileData);
-      const { data: sitesData } = await supabase.from('sites').select('*').eq('owner_user_id', userId).order('created_at', { ascending: false });
-      setUserSites(sitesData || []);
-    }
+    try {
+      const { data: pd } = await supabase.from('profiles').select('*').eq('id', userId).limit(1);
+      let profileData = pd?.[0] || null;
+      if (!profileData && user && userId === user.id) {
+        const meta = user.user_metadata || {};
+        const { error: upsertErr } = await supabase.from('profiles').upsert({
+          id: userId,
+          username: meta.name || meta.full_name || user.email?.split('@')[0] || 'User',
+          avatar_url: meta.avatar_url || meta.avatar
+        }, { onConflict: 'id' });
+        if (!upsertErr) profileData = { id: userId, username: meta.name || meta.full_name || user.email?.split('@')[0] || 'User', avatar_url: meta.avatar_url || meta.avatar };
+      }
+      if (profileData) {
+        setProfileUser(profileData);
+        const { data: sitesData } = await supabase.from('sites').select('*').eq('owner_user_id', userId).order('created_at', { ascending: false });
+        setUserSites(sitesData || []);
+      }
+    } catch (e) { console.error('Profile fetch error:', e); }
     setLoading(false);
   };
 

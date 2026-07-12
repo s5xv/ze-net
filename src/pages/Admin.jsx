@@ -24,7 +24,7 @@ export default function Admin() {
   const [depositUserId, setDepositUserId] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositNote, setDepositNote] = useState('');
-  const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '' });
+  const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '' });
 
   useEffect(() => { fetchData(); }, [activeTab]);
 
@@ -156,8 +156,8 @@ export default function Admin() {
 
   const addSite = () => {
     if (!newSite.name || !newSite.url || !newSite.owner_id) { setMessage('Name, URL, and Owner are required'); return; }
-    callAdmin('admin-add-site', { name: newSite.name, url: newSite.url, category: newSite.category, description: newSite.description, owner_id: newSite.owner_id });
-    setNewSite({ name: '', url: '', category: 'Other', description: '', owner_id: '' });
+    callAdmin('admin-add-site', { name: newSite.name, url: newSite.url, category: newSite.category, description: newSite.description, owner_id: newSite.owner_id, owner_discord: newSite.owner_discord, plot_number: newSite.plot_number, shortcut: newSite.shortcut, discord_invite: newSite.discord_invite });
+    setNewSite({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '' });
   };
 
   const deleteSite = (siteId) => {
@@ -380,12 +380,16 @@ export default function Admin() {
             <div className="mb-4 bg-[#303134] border border-green-700 rounded-xl p-4">
               <h3 className="text-white font-bold mb-3 text-lg">Add New Site</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" placeholder="Site Name" value={newSite.name} onChange={(e) => setNewSite({...newSite, name: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
-                <input type="url" placeholder="Site URL" value={newSite.url} onChange={(e) => setNewSite({...newSite, url: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="text" placeholder="Site Name *" value={newSite.name} onChange={(e) => setNewSite({...newSite, name: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="url" placeholder="Website URL *" value={newSite.url} onChange={(e) => setNewSite({...newSite, url: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="text" placeholder="Owner User ID *" value={newSite.owner_id} onChange={(e) => setNewSite({...newSite, owner_id: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="text" placeholder="Owner Discord Username" value={newSite.owner_discord} onChange={(e) => setNewSite({...newSite, owner_discord: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <select value={newSite.category} onChange={(e) => setNewSite({...newSite, category: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white">
                   {['Government','Corporate','Service','Charity','Community','Business','Shop','Entertainment','Social','Other'].map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <input type="text" placeholder="Owner User ID" value={newSite.owner_id} onChange={(e) => setNewSite({...newSite, owner_id: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="text" placeholder="Plot Number" value={newSite.plot_number} onChange={(e) => setNewSite({...newSite, plot_number: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="text" placeholder="Search Shortcut" value={newSite.shortcut} onChange={(e) => setNewSite({...newSite, shortcut: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
+                <input type="url" placeholder="Discord Invite Link" value={newSite.discord_invite} onChange={(e) => setNewSite({...newSite, discord_invite: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <textarea placeholder="Description" value={newSite.description} onChange={(e) => setNewSite({...newSite, description: e.target.value})} className="md:col-span-2 px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" rows={2} />
                 <button onClick={addSite} className="md:col-span-2 px-4 py-2 bg-green-600 text-white rounded-lg font-bold">Create Site</button>
               </div>
