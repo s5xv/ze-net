@@ -403,9 +403,9 @@ export default function Admin() {
 
         {!loading && activeTab === 'sites' && (
           <div>
-            <details className="mb-4 bg-[#303134] border border-gray-700 rounded-xl p-4">
-              <summary className="text-white font-bold cursor-pointer">Add New Site</summary>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mb-4 bg-[#303134] border border-green-700 rounded-xl p-4">
+              <h3 className="text-white font-bold mb-3 text-lg">Add New Site</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="text" placeholder="Site Name" value={newSite.name} onChange={(e) => setNewSite({...newSite, name: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <input type="url" placeholder="Site URL" value={newSite.url} onChange={(e) => setNewSite({...newSite, url: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <select value={newSite.category} onChange={(e) => setNewSite({...newSite, category: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white">
@@ -415,7 +415,7 @@ export default function Admin() {
                 <textarea placeholder="Description" value={newSite.description} onChange={(e) => setNewSite({...newSite, description: e.target.value})} className="md:col-span-2 px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" rows={2} />
                 <button onClick={addSite} className="md:col-span-2 px-4 py-2 bg-green-600 text-white rounded-lg font-bold">Create Site</button>
               </div>
-            </details>
+            </div>
 
             {filteredSites.filter(s => s.status === 'pending').length > 0 && (
               <div className="mb-4">
@@ -474,15 +474,15 @@ export default function Admin() {
 
         {!loading && activeTab === 'users' && (
           <div>
-            <details className="mb-4 bg-[#303134] border border-gray-700 rounded-xl p-4">
-              <summary className="text-white font-bold cursor-pointer">Manual Deposit</summary>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="mb-4 bg-[#303134] border border-green-700 rounded-xl p-4">
+              <h3 className="text-white font-bold mb-3 text-lg">Manual Deposit</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <input type="text" placeholder="User ID" value={depositUserId} onChange={(e) => setDepositUserId(e.target.value)} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <input type="number" placeholder="Amount" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <input type="text" placeholder="Note (optional)" value={depositNote} onChange={(e) => setDepositNote(e.target.value)} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <button onClick={manualDeposit} className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold">Deposit</button>
               </div>
-            </details>
+            </div>
 
             <input type="text" placeholder="Search users..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full px-4 py-2 mb-4 bg-[#202124] border border-gray-700 rounded-lg text-white" />
             <div className="space-y-2">
