@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
@@ -6,6 +7,8 @@ import WithdrawModal from '../components/WithdrawModal';
 
 export default function Profile() {
   const { id } = useParams();
+  const { user: authUser } = useAuth();
+  const profileId = id || authUser?.id;
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [balance, setBalance] = useState(0);
@@ -16,16 +19,16 @@ export default function Profile() {
 
   useEffect(() => {
     fetchData();
-  }, [id]);
+  }, [id, authUser]);
 
   const fetchData = async () => {
     setLoading(true);
     // Fetch Profile
-    const { data: p } = await supabase.from('profiles').select('*').eq('id', id).single();
+    const { data: p } = await supabase.from('profiles').select('*').eq('id', profileId).single();
     setProfile(p);
     
     // Fetch Balance
-    const { data: b } = await supabase.from('balances').select('balance').eq('user_id', id).single();
+    const { data: b } = await supabase.from('balances').select('balance').eq('user_id', profileId).single();
     setBalance(b?.balance || 0);
 
     // Fetch Prefs
@@ -54,7 +57,7 @@ export default function Profile() {
       ? preferences.filter(p => p !== cat) 
       : [...preferences, cat];
     setPreferences(newPrefs);
-    await supabase.from('profiles').update({ ad_preferences: newPrefs }).eq('id', id);
+    await supabase.from('profiles').update({ ad_preferences: newPrefs }).eq('id', profileId);
   };
 
   if (loading) return <Layout><div className="p-8 text-center">Loading...</div></Layout>;
