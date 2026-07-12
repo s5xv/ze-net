@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
+import { usePolling } from '../hooks/useRealtime';
 
 export default function Site() {
   const { user } = useAuth();
@@ -25,6 +26,13 @@ export default function Site() {
   const [userBalance, setUserBalance] = useState(0);
 
   useEffect(() => { fetchSite(); }, [slug, user]);
+  usePolling(async () => {
+    if (!site?.id) return;
+    const { data: c } = await supabase.from('site_comments').select('*, user:user_id(username)').eq('site_id', site.id).order('created_at', { ascending: false });
+    if (c) setComments(c);
+    const { data: r } = await supabase.from('site_reviews').select('*, user:user_id(username)').eq('site_id', site.id).order('created_at', { ascending: false });
+    if (r) setReviews(r);
+  }, 10000, !!site?.id);
 
   const fetchSite = async () => {
     setLoading(true);
@@ -207,6 +215,12 @@ export default function Site() {
               <a href={site.url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold">Visit Site</a>
               {user && site.user_id && user.id !== site.user_id && (
                 <button onClick={() => setShowTipModal(true)} className="px-6 py-3 bg-green-600 text-white rounded-lg font-bold">Tip Owner</button>
+              )}
+              {user && (site.owner_user_id === user.id || site.user_id === user.id) && (
+                <>
+                  <a href={`/site/${slug}/manage`} className="px-4 py-3 bg-yellow-600 text-white rounded-lg font-bold text-sm">Manage</a>
+                  <a href={`/site/${slug}/analytics`} className="px-4 py-3 bg-purple-600 text-white rounded-lg font-bold text-sm">Analytics</a>
+                </>
               )}
               <button onClick={() => setShowReportModal(true)} className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold">Report</button>
             </div>

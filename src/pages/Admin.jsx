@@ -20,6 +20,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingStaff, setEditingStaff] = useState(null);
+  const [reports, setReports] = useState([]);
 
   useEffect(() => { fetchData(); }, [activeTab]);
 
@@ -61,6 +62,9 @@ export default function Admin() {
       } else if (activeTab === 'staff') {
         const { data } = await supabase.from('profiles').select('*').eq('is_staff', true);
         setStaff(data || []);
+      } else if (activeTab === 'moderation') {
+        const { data } = await supabase.from('site_reports').select('*, profiles(username), sites(name, slug)').order('created_at', { ascending: false }).limit(50);
+        setReports(data || []);
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -71,10 +75,10 @@ export default function Admin() {
 
   const handleWithdrawal = async (id, action) => {
     try {
-      const res = await fetch('/api/approve-withdrawal', {
+      const res = await fetch('/api/economy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ withdrawalId: id, action })
+        body: JSON.stringify({ action: 'approve-withdrawal', withdrawalId: id, actionType: action })
       });
       const data = await res.json();
       setMessage(data.message || data.error);
@@ -245,6 +249,7 @@ export default function Admin() {
           <TabButton id="users" label="Users" />
           <TabButton id="transactions" label="Transactions" />
           <TabButton id="staff" label="Staff" />
+          <TabButton id="moderation" label="Moderation" badge={reports.length} />
         </div>
 
         {loading && <p className="text-center text-gray-400 py-10">Loading...</p>}
@@ -485,6 +490,30 @@ export default function Admin() {
               ))}
               {staff.length === 0 && <p className="text-center text-gray-500 py-8">No staff members yet</p>}
             </div>
+          </div>
+        )}
+
+        {!loading && activeTab === 'moderation' && (
+          <div className="space-y-3">
+            {reports.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No reports to review</p>
+            ) : reports.map(r => (
+              <div key={r.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <p className="text-white font-bold">{r.sites?.name || 'Unknown Site'}</p>
+                    <p className="text-sm text-gray-400 mt-1">Reported by: {r.profiles?.username || 'Unknown'}</p>
+                    {r.reason && <p className="text-sm text-yellow-400 mt-1">Reason: {r.reason}</p>}
+                    <p className="text-xs text-gray-500 mt-1">{new Date(r.created_at).toLocaleString()}</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <a href={`/site/${r.sites?.slug}`} target="_blank" className="px-3 py-1 bg-blue-600 text-white text-xs rounded text-center">View Site</a>
+                    <button onClick={async () => { await supabase.from('site_reports').delete().eq('id', r.id); await supabase.from('sites').update({ is_verified: false, is_active: false }).eq('id', r.site_id); fetchData(); }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Remove Site</button>
+                    <button onClick={async () => { await supabase.from('site_reports').update({ status: 'dismissed' }).eq('id', r.id); fetchData(); }} className="px-3 py-1 bg-gray-600 text-white text-xs rounded">Dismiss</button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </main>

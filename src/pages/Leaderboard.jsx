@@ -15,7 +15,7 @@ export default function Leaderboard() {
   const fetchLeaderboard = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api?endpoint=leaderboard&type=${activeTab}`);
+      const res = await fetch(`/api/app?action=leaderboard&type=${activeTab}`);
       const json = await res.json();
       setData(json.leaderboard || []);
     } catch (err) { console.error(err); } finally { setLoading(false); }

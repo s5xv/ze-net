@@ -70,7 +70,7 @@ export default function Search() {
   const generateAISummary = async (results) => {
     setSummarizing(true);
     try {
-      const res = await fetch('/api/summarize', {
+      const res = await fetch('/api/app?action=summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, results })

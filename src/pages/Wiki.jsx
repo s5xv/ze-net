@@ -5,7 +5,7 @@ import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 
-const ADMIN_PASSWORD = 'Khalid124_';
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
 
 export default function Wiki() {
   const { user, loading: authLoading } = useAuth();
@@ -52,7 +52,7 @@ export default function Wiki() {
     setSyncing(true);
     setSyncResults(null);
     try {
-      const res = await fetch(`/api/wiki-scrape?action=${type}`);
+      const res = await fetch('/api/content?action=wiki');
       const data = await res.json();
       setSyncResults(data);
       alert(data.message || 'Wiki synced!');

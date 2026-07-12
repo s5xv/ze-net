@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
-import { Header, Footer } from '../components/Layout';
+import Layout from '../components/Layout';
 import { Button } from '../components/UI';
 
 export default function AutoDeposit() {
@@ -73,8 +73,7 @@ export default function AutoDeposit() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      <Header user={user} />
+    <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 py-12 w-full">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-white">Auto-Deposit Rules</h1>
@@ -163,7 +162,6 @@ export default function AutoDeposit() {
           </div>
         )}
       </main>
-      <Footer />
-    </div>
+    </Layout>
   );
 }

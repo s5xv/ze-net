@@ -15,7 +15,7 @@ export default function Challenge() {
 
   const fetchChallenge = async () => {
     try {
-      const url = user ? `/api?endpoint=daily-challenge&userId=${user.id}` : '/api?endpoint=daily-challenge';
+      const url = user ? `/api/app?action=daily-challenge&userId=${user.id}` : '/api/app?action=daily-challenge';
       const res = await fetch(url);
       const data = await res.json();
       setChallenge(data.challenge);

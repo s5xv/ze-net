@@ -1,24 +1,14 @@
 {
   "name": "Z&E Net - DemocracyCraft Directory",
   "short_name": "Z&E Net",
-  "description": "The centralized directory for DemocracyCraft",
+  "description": "The Centralized Directory for DemocracyCraft",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#09090b",
-  "theme_color": "#f97316",
-  "orientation": "portrait-primary",
+  "background_color": "#202124",
+  "theme_color": "#171717",
   "icons": [
-    {
-      "src": "/assets/logo.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/assets/logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/favicon-16x16.png", "sizes": "16x16", "type": "image/png" },
+    { "src": "/favicon-32x32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
   ]
 }

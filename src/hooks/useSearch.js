@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { listings } from '../services/supabase';
+import { supabase } from '../services/supabase';
 
 export function useSearch(query) {
   const [results, setResults] = useState([]);
@@ -16,15 +16,18 @@ export function useSearch(query) {
 
       setLoading(true);
       setError(null);
-      
-      const { data, error } = await listings.search(query);
-      
+
+      const { data, error } = await supabase.from('wiki_pages')
+        .select('title, url, content, category, slug')
+        .ilike('title', `%${query}%`)
+        .limit(50);
+
       if (error) {
         setError(error);
       } else {
         setResults(data || []);
       }
-      
+
       setLoading(false);
     };
 

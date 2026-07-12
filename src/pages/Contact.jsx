@@ -18,7 +18,7 @@ export default function Contact() {
     setSending(true);
     try {
       setSent(true);
-      setName(''); setEmail(''); setSubject(''); setMessage('');
+      setName(''); setSubject(''); setMessage('');
     } catch (err) {
       alert('Error: ' + err.message);
     } finally {
@@ -40,9 +40,7 @@ export default function Contact() {
               <label className="block text-sm font-medium mb-2">Name</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-3 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Email</label>
-            </div>
+
             <div>
               <label className="block text-sm font-medium mb-2">Subject</label>
               <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} required className="w-full px-3 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" />

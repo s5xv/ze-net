@@ -29,10 +29,10 @@ export default function LinkAccount() {
     setError('');
 
     try {
-      const response = await fetch('/api/verify-mc', {
+      const response = await fetch('/api/economy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, mc_username: mcName.trim(), step })
+        body: JSON.stringify({ action: 'verify-mc', userId: user.id, mc_username: mcName.trim(), step })
       });
 
       // Prevent JSON parse errors if server returns HTML

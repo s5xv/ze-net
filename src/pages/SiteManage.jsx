@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
+import ImageUpload from '../components/ImageUpload';
 
 export default function SiteManage() {
   const { user, loading } = useAuth();
@@ -33,7 +34,7 @@ export default function SiteManage() {
     setFormData({
       name: data.name || '', description: data.description || '', category: data.category || '',
       url: data.url || '', shortcuts: data.shortcuts || '', keywords: data.keywords?.join(', ') || '',
-      is_verified: data.is_verified || false
+      is_verified: data.is_verified || false, image_url: data.image_url || ''
     });
 
     // Fetch Announcements
@@ -92,7 +93,10 @@ export default function SiteManage() {
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Manage: {site.name}</h1>
-          <button onClick={() => navigate(`/site/${slug}`)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg text-sm">← Back to Site</button>
+          <div className="flex gap-2">
+            <a href={`/site/${slug}/analytics`} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm">Analytics</a>
+            <button onClick={() => navigate(`/site/${slug}`)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg text-sm">← Back to Site</button>
+          </div>
         </div>
 
         <form onSubmit={handleSave} className="space-y-6 mb-8">
@@ -124,6 +128,14 @@ export default function SiteManage() {
                   <input type="url" value={formData.url} onChange={(e) => setFormData({...formData, url: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://..." />
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold mb-4">Site Image</h2>
+            <div className="flex items-center gap-4">
+              {formData.image_url && <img src={formData.image_url} alt="" className="w-24 h-24 rounded-lg object-cover" />}
+              <ImageUpload bucket="site-images" path={slug} onUpload={(url) => setFormData(prev => ({ ...prev, image_url: url }))} label="Upload Image" />
             </div>
           </div>
 

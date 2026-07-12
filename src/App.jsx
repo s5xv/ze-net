@@ -23,6 +23,8 @@ import Departments from './pages/Departments';
 import DepartmentDetail from './pages/DepartmentDetail';
 import Forums from './pages/Forums';
 import ForumThreads from './pages/ForumThreads';
+import CreateThread from './pages/CreateThread';
+import ForumPost from './pages/ForumPost';
 import Wiki from './pages/Wiki';
 import Utilities from './pages/Utilities';
 import Challenge from './pages/Challenge';
@@ -32,6 +34,9 @@ import Docs from './pages/Docs';
 import RegisterBusiness from './pages/RegisterBusiness';
 import SubmitAd from './pages/SubmitAd';
 import VerifySite from './pages/VerifySite';
+import Settings from './pages/Settings';
+import NotificationsPage from './pages/Notifications';
+import SiteAnalytics from './pages/SiteAnalytics';
 import NotFound from './pages/NotFound';
 
 function AuthHandler() {
@@ -91,6 +96,11 @@ function App() {
           <Route path="/register-business" element={<RegisterBusiness user={user} />} />
           <Route path="/submit-ad" element={<SubmitAd user={user} />} />
           <Route path="/verify-site" element={<VerifySite user={user} />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/site/:slug/analytics" element={<SiteAnalytics />} />
+          <Route path="/forums/new-thread/:categoryId" element={<CreateThread />} />
+          <Route path="/forums/thread/:threadId" element={<ForumPost />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -38,7 +38,7 @@ export default function Account() {
   const checkDeposits = async () => {
     setMessage('Checking Treasury API...');
     try {
-      const res = await fetch('/api/auto-deposit', { method: 'POST' });
+      const res = await fetch('/api/economy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'auto-deposit' }) });
       const data = await res.json();
       setMessage(`Scan complete. Processed ${data.processed || 0} deposits.`);
       fetchData();
