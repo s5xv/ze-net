@@ -13,7 +13,6 @@ export default function Layout({ children }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // Fetch balance and user data
   useEffect(() => {
     if (!user?.id) {
       setBalance(0);
@@ -22,7 +21,6 @@ export default function Layout({ children }) {
       return;
     }
 
-    // Live wallet
     supabase
       .from('balances')
       .select('balance')
@@ -32,7 +30,6 @@ export default function Layout({ children }) {
         setBalance(data?.balance || 0);
       });
 
-    // Bookmarks
     supabase
       .from('bookmarks')
       .select('*, sites(id, name, url)')
@@ -41,7 +38,6 @@ export default function Layout({ children }) {
         setBookmarks(data || []);
       });
 
-    // My Sites (owned by this user)
     supabase
       .from('sites')
       .select('id, name, url, slug, is_verified')
@@ -51,7 +47,6 @@ export default function Layout({ children }) {
       });
   }, [user?.id, location.pathname]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClick = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -72,37 +67,24 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#1a1b1e] text-white">
-      {/* HEADER */}
       <header className="bg-[#25262b] border-b border-gray-800 px-6 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          {/* Left side */}
-          <div className="flex items-center gap-5">
-            <div
-              className="flex items-center gap-3 cursor-pointer"
-              onClick={() => goTo('/')}
-            >
-              <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
-              <h1 className="text-lg font-bold">
-                <span className="text-yellow-400">Z</span>
-                <span className="text-gray-200">&amp;</span>
-                <span className="text-blue-500">E</span>
-                <span className="text-gray-200 ml-2">NET</span>
-              </h1>
-            </div>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => goTo('/')}>
+            <h1 className="text-lg font-bold">
+              <span className="text-white">Z&E</span>
+              <span className="text-blue-500 ml-2">NET</span>
+            </h1>
           </div>
 
-          {/* Right side */}
           {user ? (
             <div className="flex items-center gap-4">
-              {/* Wallet (click to go to account) */}
               <button
                 onClick={() => goTo('/account')}
                 className="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 border border-green-600/40 rounded-lg text-green-400 text-sm font-bold transition"
               >
-                💰 ${balance.toFixed(2)}
+                ${balance.toFixed(2)}
               </button>
 
-              {/* User Dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -124,14 +106,14 @@ export default function Layout({ children }) {
                     </div>
 
                     <div className="py-1">
-                      <button onClick={() => goTo('/account')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-2">
-                        💰 Wallet
+                      <button onClick={() => goTo('/account')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+                        Wallet
                       </button>
-                      <button onClick={() => goTo('/collections')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-2">
-                        📚 Collections
+                      <button onClick={() => goTo('/collections')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+                        Collections
                       </button>
-                      <button onClick={() => goTo(`/profile/${user.id}`)} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-2">
-                        👤 My Profile
+                      <button onClick={() => goTo(`/profile/${user.id}`)} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+                        My Profile
                       </button>
                     </div>
 
@@ -147,7 +129,7 @@ export default function Layout({ children }) {
                               onClick={() => goTo(bm.sites?.url || '/')}
                               className="w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 truncate"
                             >
-                              ⭐ {bm.sites?.name || 'Site'}
+                              {bm.sites?.name || 'Site'}
                             </button>
                           ))}
                         </div>
@@ -166,7 +148,7 @@ export default function Layout({ children }) {
                               onClick={() => goTo(site.url || `/site/${site.slug}`)}
                               className="w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 truncate"
                             >
-                              🏪 {site.is_verified ? '✓ ' : ''}{site.name}
+                              {site.is_verified ? '✓ ' : ''}{site.name}
                             </button>
                           ))}
                         </div>
@@ -174,9 +156,9 @@ export default function Layout({ children }) {
                     )}
 
                     <div className="border-t border-gray-700 py-1">
-                      <button onClick={() => goTo('/submit-ad')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">➕ Submit Ad</button>
-                      <button onClick={() => goTo('/verify-site')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">✓ Verify Site</button>
-                      <button onClick={() => goTo('/admin')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">🛡 Admin Panel</button>
+                      <button onClick={() => goTo('/submit-ad')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Submit Ad</button>
+                      <button onClick={() => goTo('/verify-site')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Verify Site</button>
+                      <button onClick={() => goTo('/admin')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">Admin Panel</button>
                       <button
                         onClick={async () => { await supabase.auth.signOut(); goTo('/'); }}
                         className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 border-t border-gray-700"
@@ -196,12 +178,10 @@ export default function Layout({ children }) {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="flex-grow">
         {children}
       </div>
 
-      {/* Footer */}
       <footer className="bg-[#25262b] border-t border-gray-800 py-6 text-center text-gray-500 text-sm">
         <p>Z&E Net is an independent search directory not affiliated with DemocracyCraft.</p>
         <p className="mt-1">© 2026 Z&E Net</p>

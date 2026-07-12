@@ -21,16 +21,11 @@ export default function Site() {
       setLoading(true);
       setError('');
       
-      let query = supabase.from('sites').select('*');
-      
-      // Try to match by slug or id
-      if (slug.startsWith('http')) {
-        query = query.eq('url', slug);
-      } else {
-        query = query.ilike('slug', slug.replace(/-/g, ' '));
-      }
-      
-      const { data, error: fetchError } = await query.single();
+      const { data, error: fetchError } = await supabase
+        .from('sites')
+        .select('*')
+        .eq('slug', slug)
+        .single();
       
       if (fetchError) throw fetchError;
       if (!data) throw new Error('Site not found');

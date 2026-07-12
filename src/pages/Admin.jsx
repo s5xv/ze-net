@@ -24,7 +24,6 @@ export default function Admin() {
     setLoading(true);
     setMessage('');
     try {
-      // Always load stats for the header bar
       const { data: wdCount } = await supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
       const { data: vfCount } = await supabase.from('site_verification_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
       const { data: siteCount } = await supabase.from('sites').select('*', { count: 'exact', head: true });
@@ -88,7 +87,7 @@ export default function Admin() {
           verification_paid_at: new Date().toISOString()
         }).eq('id', req.site_id);
       }
-      setMessage('✓ Verification approved');
+      setMessage('Verification approved');
       fetchData();
     } catch (err) {
       setMessage('Error: ' + err.message);
@@ -98,7 +97,7 @@ export default function Admin() {
   const toggleVerified = async (siteId, currentVal) => {
     try {
       await supabase.from('sites').update({ is_verified: !currentVal }).eq('id', siteId);
-      setMessage(!currentVal ? '✓ Site verified' : '✓ Verification removed');
+      setMessage(!currentVal ? 'Site verified' : 'Verification removed');
       fetchData();
     } catch (err) {
       setMessage('Error: ' + err.message);
@@ -156,9 +155,8 @@ export default function Admin() {
   return (
     <Layout>
       <main className="flex-grow max-w-7xl mx-auto px-4 py-8">
-        {/* Admin Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-white">🛡 Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('overview')}
@@ -169,7 +167,6 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-[#303134] border border-gray-700 rounded-xl p-4">
             <p className="text-gray-400 text-sm">Pending Withdrawals</p>
@@ -185,14 +182,12 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Status message */}
         {message && (
           <div className="mb-4 p-3 bg-blue-900/30 border border-blue-800 rounded-lg text-blue-300">
             {message}
           </div>
         )}
 
-        {/* Tabs */}
         <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-3">
           <TabButton id="overview" label="Overview" />
           <TabButton id="withdrawals" label="Withdrawals" badge={stats.pendingWithdrawals} />
@@ -203,26 +198,24 @@ export default function Admin() {
           <TabButton id="staff" label="Staff Tools" />
         </div>
 
-        {/* Loading state */}
         {loading && <p className="text-center text-gray-400 py-10">Loading...</p>}
 
-        {/* TAB: OVERVIEW */}
         {!loading && activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
               <h3 className="text-lg font-bold text-white mb-3">Quick Actions</h3>
               <div className="space-y-2">
                 <button onClick={() => setActiveTab('withdrawals')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">
-                  → Review Withdrawal Requests
+                  Review Withdrawal Requests
                 </button>
                 <button onClick={() => setActiveTab('verifications')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">
-                  → Review Verification Requests
+                  Review Verification Requests
                 </button>
                 <button onClick={() => setActiveTab('ads')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">
-                  → Manage Active Ads
+                  Manage Active Ads
                 </button>
                 <button onClick={() => setActiveTab('users')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">
-                  → Manage User Profiles
+                  Manage User Profiles
                 </button>
               </div>
             </div>
@@ -236,7 +229,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* TAB: WITHDRAWALS */}
         {!loading && activeTab === 'withdrawals' && (
           <div>
             {filteredWithdrawals.length === 0 ? (
@@ -265,13 +257,13 @@ export default function Admin() {
                           onClick={() => handleWithdrawal(w.id, 'approve', w.profiles?.mc_username, w.amount, w.user_id)}
                           className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold"
                         >
-                          ✓ Approve &amp; Deduct
+                          Approve & Deduct
                         </button>
                         <button
                           onClick={() => handleWithdrawal(w.id, 'reject')}
                           className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold"
                         >
-                          ✗ Reject
+                          Reject
                         </button>
                       </div>
                     </div>
@@ -282,7 +274,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* TAB: VERIFICATIONS */}
         {!loading && activeTab === 'verifications' && (
           <div>
             {filteredVerifications.length === 0 ? (
@@ -295,12 +286,12 @@ export default function Admin() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <p className="text-white font-bold">{v.site_name || v.sites?.name}</p>
-                          {v.sites?.is_verified && <span className="text-blue-400 text-xs">✓ Already Verified</span>}
+                          {v.sites?.is_verified && <span className="text-blue-400 text-xs">Already Verified</span>}
                         </div>
                         <p className="text-blue-400 text-sm mb-2 break-all">{v.site_url}</p>
                         <p className="text-gray-400 text-sm">Owner: {v.profiles?.username}</p>
                         {v.description && <p className="text-gray-500 text-xs mt-2">{v.description}</p>}
-                        <p className="text-gray-600 text-xs mt-2">{new Date(v.created_at).toLocaleString()} · <strong>$100 fee</strong></p>
+                        <p className="text-gray-600 text-xs mt-2">{new Date(v.created_at).toLocaleString()} · $100 fee</p>
                       </div>
                       <div className="flex flex-col gap-2">
                         <button
@@ -308,7 +299,7 @@ export default function Admin() {
                           disabled={!v.site_id}
                           className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold"
                         >
-                          ✓ Verify
+                          Verify
                         </button>
                         <button
                           onClick={async () => {
@@ -318,7 +309,7 @@ export default function Admin() {
                           }}
                           className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold"
                         >
-                          ✗ Reject
+                          Reject
                         </button>
                       </div>
                     </div>
@@ -329,7 +320,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* TAB: ADS & LISTINGS */}
         {!loading && activeTab === 'ads' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {ads.map(site => (
@@ -349,7 +339,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* TAB: SITES */}
         {!loading && activeTab === 'sites' && (
           <div>
             <div className="mb-4">
@@ -388,7 +377,7 @@ export default function Admin() {
                             site.is_verified ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
                           }`}
                         >
-                          {site.is_verified ? '✓ Verified' : 'Not Verified'}
+                          {site.is_verified ? 'Verified' : 'Not Verified'}
                         </button>
                       </td>
                       <td className="p-3">
@@ -407,7 +396,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* TAB: USERS */}
         {!loading && activeTab === 'users' && (
           <div>
             <div className="mb-4">
@@ -436,7 +424,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* TAB: STAFF */}
         {!loading && activeTab === 'staff' && (
           <div className="space-y-4">
             <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
@@ -476,7 +463,7 @@ export default function Admin() {
                   className="p-3 bg-gray-700 hover:bg-gray-600 rounded text-left"
                 >
                   <p className="text-white text-sm font-bold">Ads Management</p>
-                  <p className="text-gray-400 text-xs mt-1">View ad listings &amp; tiers.</p>
+                  <p className="text-gray-400 text-xs mt-1">View ad listings & tiers.</p>
                 </button>
                 <button
                   onClick={() => setActiveTab('overview')}
