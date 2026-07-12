@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
@@ -7,47 +7,66 @@ import { supabase } from '../services/supabase';
 export default function SubmitAd() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [ownedSites, setOwnedSites] = useState([]);
+  const [selectedSiteId, setSelectedSiteId] = useState('');
   const [tier, setTier] = useState('standard');
-  const [formData, setFormData] = useState({
-    siteName: '',
-    siteUrl: '',
-    description: '',
-    category: 'shop',
-    imageUrl: ''
-  });
+  const [imageUrl, setImageUrl] = useState('');
+  const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const tiers = {
-    standard: { name: 'Standard', price: 110, color: 'blue', description: 'Basic listing in directory' },
-    featured: { name: 'Featured', price: 160, color: 'yellow', description: 'Pinned to top of category' },
-    premium: { name: 'Premium', price: 400, color: 'purple', description: 'Homepage carousel rotation' },
-    elite: { name: 'Elite', price: 600, color: 'cyan', description: 'Top row + diamond border' }
+    standard: { name: 'Standard', price: 110, description: 'Basic banner placement' },
+    featured: { name: 'Featured', price: 160, description: 'Highlighted position' },
+    premium: { name: 'Premium', price: 400, description: 'Top placement + rotation' },
+    elite: { name: 'Elite', price: 600, description: 'Premium spot + featured badge' }
+  };
+
+  useEffect(() => {
+    if (user) fetchOwnedSites();
+  }, [user]);
+
+  const fetchOwnedSites = async () => {
+    try {
+      const { data, error } = await supabase.from('sites').select('*').eq('user_id', user.id);
+      if (error) throw error;
+      setOwnedSites(data || []);
+    } catch (err) {
+      console.error('Error fetching sites:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !selectedSiteId) return;
     
     setSubmitting(true);
+    setMessage('');
 
     try {
-      const { error } = await supabase.from('sites').insert({
+      const selectedSite = ownedSites.find(s => s.id === selectedSiteId);
+      if (!selectedSite) throw new Error('Site not found');
+
+      const { error } = await supabase.from('ad_requests').insert({
         user_id: user.id,
-        name: formData.siteName,
-        url: formData.siteUrl,
-        description: formData.description,
-        category: formData.category,
-        image_url: formData.imageUrl,
-        ad_tier: tier,
-        ad_price: tiers[tier].price,
-        is_verified: false,
-        created_at: new Date().toISOString()
+        site_id: selectedSiteId,
+        site_name: selectedSite.name,
+        tier: tier,
+        price: tiers[tier].price,
+        image_url: imageUrl,
+        description: description,
+        status: 'pending'
       });
 
       if (error) throw error;
-      navigate('/profile');
+
+      setMessage('Ad request submitted! Admin will review within 24 hours.');
+      setTimeout(() => navigate('/profile'), 3000);
     } catch (err) {
-      alert('Error: ' + err.message);
+      setMessage('Error: ' + err.message);
     }
     setSubmitting(false);
   };
@@ -55,90 +74,71 @@ export default function SubmitAd() {
   if (!user) return <Layout><div className="p-8 text-center text-white">Please sign in</div></Layout>;
 
   return (
-    <Layout user={user}>
-      <main className="flex-grow max-w-4xl mx-auto px-4 py-12">
-        <h1 className="text-3xl font-bold text-white mb-8">Submit Advertisement</h1>
+    <Layout>
+      <main className="flex-grow max-w-2xl mx-auto px-4 py-12">
+        <div className="bg-[#303134] border border-gray-700 rounded-xl p-8">
+          <h1 className="text-3xl font-bold text-white mb-6">Submit Ad Request</h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {Object.entries(tiers).map(([key, t]) => (
-            <button
-              key={key}
-              onClick={() => setTier(key)}
-              className={`p-6 rounded-xl border-2 text-left transition-all ${
-                tier === key 
-                  ? `border-${t.color}-500 bg-${t.color}-500/10` 
-                  : 'border-gray-700 bg-[#303134]'
-              }`}
-            >
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-xl font-bold text-white">{t.name}</h3>
-                <span className="text-2xl font-bold text-green-500">${t.price}</span>
+          {loading ? (
+            <div className="text-center text-gray-400">Loading your sites...</div>
+          ) : ownedSites.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400 mb-4">You don't own any sites yet.</p>
+              <button onClick={() => navigate('/profile')} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold">Go to Profile</button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Select Site *</label>
+                <select value={selectedSiteId} onChange={(e) => setSelectedSiteId(e.target.value)} required className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white">
+                  <option value="">Choose a site...</option>
+                  {ownedSites.map(site => (
+                    <option key={site.id} value={site.id}>{site.name}</option>
+                  ))}
+                </select>
               </div>
-              <p className="text-gray-400 text-sm">{t.description}</p>
-            </button>
-          ))}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Ad Tier *</label>
+                <select value={tier} onChange={(e) => setTier(e.target.value)} className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white">
+                  {Object.entries(tiers).map(([key, t]) => (
+                    <option key={key} value={key}>{t.name} - ${t.price}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">{tiers[tier].description}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Ad Image URL (Imgur)</label>
+                <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://i.imgur.com/..." className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500" />
+                <p className="text-xs text-gray-500 mt-1">Upload your ad image to Imgur and paste the direct link here</p>
+                {imageUrl && (
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-400 mb-1">Preview:</p>
+                    <img src={imageUrl} alt="Preview" className="max-w-xs rounded border border-gray-700" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Description</label>
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows="3" placeholder="Brief description of your ad..." className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500" />
+              </div>
+
+              {message && (
+                <div className={`p-4 rounded-lg ${message.includes('!') ? 'bg-green-900/30 border border-green-800 text-green-400' : 'bg-red-900/30 border border-red-800 text-red-400'}`}>
+                  {message}
+                </div>
+              )}
+
+              <button type="submit" disabled={submitting || !selectedSiteId} className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-bold text-lg">
+                {submitting ? 'Submitting...' : `Submit Ad Request ($${tiers[tier].price})`}
+              </button>
+
+              <p className="text-xs text-gray-500 text-center">After submission, you'll receive payment instructions via Discord DM.</p>
+            </form>
+          )}
         </div>
-
-        <form onSubmit={handleSubmit} className="bg-[#303134] border border-gray-700 rounded-xl p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">Site Name *</label>
-            <input
-              type="text"
-              required
-              value={formData.siteName}
-              onChange={(e) => setFormData({...formData, siteName: e.target.value})}
-              className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white"
-              placeholder="My Awesome Shop"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">Site URL *</label>
-            <input
-              type="url"
-              required
-              value={formData.siteUrl}
-              onChange={(e) => setFormData({...formData, siteUrl: e.target.value})}
-              className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white"
-              placeholder="https://example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">Category *</label>
-            <select
-              value={formData.category}
-              onChange={(e) => setFormData({...formData, category: e.target.value})}
-              className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white"
-            >
-              <option value="shop">Shop</option>
-              <option value="bank">Bank</option>
-              <option value="casino">Casino</option>
-              <option value="service">Service</option>
-              <option value="entertainment">Entertainment</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">Description *</label>
-            <textarea
-              required
-              rows="3"
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
-              className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white"
-              placeholder="Describe your site..."
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-bold"
-          >
-            {submitting ? 'Submitting...' : `Submit Ad ($${tiers[tier].price})`}
-          </button>
-        </form>
       </main>
     </Layout>
   );
