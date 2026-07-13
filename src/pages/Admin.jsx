@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
@@ -33,39 +33,67 @@ export default function Admin() {
   const [lookupResults, setLookupResults] = useState([]);
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [passwordOk, setPasswordOk] = useState(false);
 
-  useEffect(() => {
-    if (!user) { navigate('/login'); return; }
-    if (ADMIN_PW && sessionStorage.getItem('admin_pw') !== ADMIN_PW) return;
-    checkAuth();
-  }, [user]);
-
-  const checkAuth = async () => {
+  const checkAdminAccess = useCallback(async () => {
     const { data: profile } = await supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle();
     if (profile?.is_staff) {
       setAuthorized(true);
       fetchData();
-    } else {
+      return;
+    }
+    if (ADMIN_PW && sessionStorage.getItem('admin_pw') === ADMIN_PW) {
       const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_staff', true);
-      if (count === 0 && ADMIN_PW && sessionStorage.getItem('admin_pw') === ADMIN_PW) {
+      if (count === 0) {
         await supabase.from('profiles').update({ is_staff: true, staff_permissions: [] }).eq('id', user.id);
         setAuthorized(true);
         fetchData();
-      } else {
-        navigate('/');
+        return;
       }
     }
-  };
+    navigate('/');
+  }, [user, navigate]);
+
+  useEffect(() => {
+    if (!user) { navigate('/login'); return; }
+    if (ADMIN_PW && sessionStorage.getItem('admin_pw') !== ADMIN_PW) {
+      setPasswordOk(false);
+      return;
+    }
+    checkAdminAccess();
+  }, [user, checkAdminAccess]);
 
   const handlePasswordSubmit = () => {
     if (passwordInput === ADMIN_PW) {
       sessionStorage.setItem('admin_pw', passwordInput);
+      setPasswordOk(true);
       setPasswordError('');
-      checkAuth();
+      checkAdminAccess();
     } else {
       setPasswordError('Wrong password');
     }
   };
+
+  if (ADMIN_PW && !passwordOk && sessionStorage.getItem('admin_pw') !== ADMIN_PW) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#1a1a2e]">
+        <div className="bg-[#303134] border border-gray-700 rounded-xl p-8 w-full max-w-sm">
+          <h1 className="text-2xl font-bold text-white mb-4 text-center">Admin Access</h1>
+          <input
+            type="password"
+            placeholder="Enter admin password"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+            className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white mb-3"
+            autoFocus
+          />
+          {passwordError && <p className="text-red-400 text-sm mb-3">{passwordError}</p>}
+          <button onClick={handlePasswordSubmit} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-bold">Enter</button>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => { if (authorized) fetchData(); }, [activeTab, authorized]);
 
@@ -296,27 +324,6 @@ export default function Admin() {
     { id: 'manage_users', label: 'Manage Users' },
     { id: 'manage_staff', label: 'Manage Staff' }
   ];
-
-  if (ADMIN_PW && sessionStorage.getItem('admin_pw') !== ADMIN_PW) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1a1a2e]">
-        <div className="bg-[#303134] border border-gray-700 rounded-xl p-8 w-full max-w-sm">
-          <h1 className="text-2xl font-bold text-white mb-4 text-center">Admin Access</h1>
-          <input
-            type="password"
-            placeholder="Enter admin password"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
-            className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white mb-3"
-            autoFocus
-          />
-          {passwordError && <p className="text-red-400 text-sm mb-3">{passwordError}</p>}
-          <button onClick={handlePasswordSubmit} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-bold">Enter</button>
-        </div>
-      </div>
-    );
-  }
 
   if (!authorized) return <div className="min-h-screen flex items-center justify-center text-gray-400">Checking permissions...</div>;
 
