@@ -68,8 +68,12 @@ export default function Admin() {
       } else if (activeTab === 'pending') {
         try {
           const d = await apiFetch('/api/app?action=admin-get-pending-sites');
+          console.log('Pending sites response:', d);
           setPendingSites(d.sites || []);
-        } catch (e) { setMessage('API Error: ' + e.message); }
+        } catch (e) { 
+          console.error('Pending fetch error:', e);
+          setMessage('API Error: ' + e.message); 
+        }
       } else if (activeTab === 'sites') {
         try {
           const d = await apiFetch('/api/app?action=admin-get-sites');
@@ -501,19 +505,19 @@ export default function Admin() {
           <div>
             <h3 className="text-lg font-bold text-yellow-400 mb-3">Pending Approval ({pendingSites.length})</h3>
             {pendingSites.length === 0 ? (
-              <p className="text-gray-500 text-sm italic">No pending sites. Users can submit via /submit-site.</p>
+              <p className="text-gray-500 text-sm italic">No pending items. Users can submit via /submit-site.</p>
             ) : (
               <div className="space-y-3">
-                {pendingSites.map(site => (
-                  <div key={site.id} className="bg-[#303134] border border-yellow-700 rounded-xl p-4 flex justify-between items-center">
+                {pendingSites.map(item => (
+                  <div key={item.id} className="bg-[#303134] border border-yellow-700 rounded-xl p-4 flex justify-between items-center">
                     <div>
-                      <p className="text-white font-bold text-lg">{site.name}</p>
-                      <p className="text-sm text-gray-400">{site.url} &middot; {site.profiles?.username || site.owner_name || 'Unknown'}</p>
-                      {site.description && <p className="text-xs text-gray-500 mt-1">{site.description}</p>}
+                      <p className="text-white font-bold text-lg">{item.name}</p>
+                      <p className="text-sm text-gray-400">{item.url} &middot; {item.owner_name || 'Unknown'}</p>
+                      {item.description && <p className="text-xs text-gray-500 mt-1">{item.description}</p>}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => callAdmin('admin-approve-site', { siteId: site.id })} className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold text-sm">Approve</button>
-                      <button onClick={() => callAdmin('admin-reject-site', { siteId: site.id })} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold text-sm">Reject</button>
+                      <button onClick={() => callAdmin('admin-approve-site', { siteId: item.id })} className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold text-sm">Approve</button>
+                      <button onClick={() => callAdmin('admin-reject-site', { siteId: item.id })} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold text-sm">Reject</button>
                     </div>
                   </div>
                 ))}

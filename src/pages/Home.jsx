@@ -83,19 +83,28 @@ export default function Home() {
         return;
       }
 
-      if (topSite && id === fetchId.current) {
-        setFeaturedContent({
-          type: 'site',
-          leftLabel: 'Top Site',
-          highlight: topSite.name,
-          subtitle: topSite.view_count > 0
-            ? `Visited ${topSite.view_count} times by the community!`
-            : "The community's top-rated site!",
-          actionText: 'Visit Site',
-          actionLink: `/site/${topSite.slug}`
-        });
-      } else if (id === fetchId.current) {
-        setFeaturedContent(null);
+      if (id === fetchId.current) {
+        if (topSite) {
+          setFeaturedContent({
+            type: 'site',
+            leftLabel: 'Top Site',
+            highlight: topSite.name,
+            subtitle: topSite.view_count > 0
+              ? `Visited ${topSite.view_count} times by the community!`
+              : "The community's top-rated site!",
+            actionText: 'Visit Site',
+            actionLink: `/site/${topSite.slug}`
+          });
+        } else {
+          setFeaturedContent({
+            type: 'site',
+            leftLabel: 'Featured',
+            highlight: 'No sites yet',
+            subtitle: 'Be the first to register!',
+            actionText: 'Register Site',
+            actionLink: '/register-business'
+          });
+        }
       }
 
     } catch (e) {
