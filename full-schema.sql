@@ -512,6 +512,8 @@ ON CONFLICT (id) DO NOTHING;
 -- 4. RPC FUNCTIONS
 -- ============================================================
 
+DROP FUNCTION IF EXISTS public.increment_balance(uuid, numeric, uuid, numeric);
+DROP FUNCTION IF EXISTS public.increment_balance(uuid, numeric);
 CREATE OR REPLACE FUNCTION public.increment_balance(target_user_id uuid DEFAULT NULL, deposit_amount numeric DEFAULT NULL, user_id uuid DEFAULT NULL, amount numeric DEFAULT NULL)
 RETURNS void AS $$
 DECLARE
@@ -528,6 +530,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP FUNCTION IF EXISTS public.grant_temp_admin(uuid, integer);
 CREATE OR REPLACE FUNCTION public.grant_temp_admin(target_user_id uuid, duration_hours integer DEFAULT 24)
 RETURNS void AS $$
 BEGIN
