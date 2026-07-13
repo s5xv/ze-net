@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY);
 const BASE_URL = "https://api.democracycraft.net/economy/api/v1";
 const DC_API_TOKEN = process.env.DC_TREASURY_TOKEN;
 const ZEC_ACCOUNT_ID = process.env.ZEC_ACCOUNT_ID;
