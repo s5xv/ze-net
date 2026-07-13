@@ -26,7 +26,7 @@ export default function Forums() {
         ) : (
           <div className="space-y-3">
             {categories.map(cat => (
-              <div key={cat.id} onClick={() => navigate(`/forums/${cat.id}`)} className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:border-blue-500/50 transition-all cursor-pointer">
+              <div key={cat.id} onClick={() => navigate(`/forums/${cat.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/forums/${cat.id}`); } }} className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:border-blue-500/50 transition-all cursor-pointer">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">💬</span>
                   <div>

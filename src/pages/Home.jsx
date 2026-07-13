@@ -260,7 +260,7 @@ export default function Home() {
                   <p className="text-sm text-gray-500 italic">No new sites yet.</p>
                 ) : (
                   newSites.map((site) => (
-                    <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] cursor-pointer transition-colors">
+                    <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/site/${site.slug}`); } }} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] cursor-pointer transition-colors">
                       <h4 className="font-semibold text-sm flex items-center gap-2">
                         {site.name}
                         {site.is_verified && <span className="text-blue-500 text-xs">✓</span>}
@@ -282,7 +282,7 @@ export default function Home() {
                   <p className="text-sm text-gray-500 italic">No trending sites yet.</p>
                 ) : (
                   trendingSites.map((site) => (
-                    <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] cursor-pointer transition-colors">
+                    <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/site/${site.slug}`); } }} className="p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] cursor-pointer transition-colors">
                       <h4 className="font-semibold text-sm flex items-center gap-2">
                         {site.name}
                         {site.is_verified && <span className="text-blue-500 text-xs">✓</span>}

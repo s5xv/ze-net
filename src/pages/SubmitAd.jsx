@@ -123,7 +123,7 @@ export default function SubmitAd() {
                 {imageUrl && (
                   <div className="mt-2">
                     <p className="text-xs text-gray-400 mb-1">Preview:</p>
-                    <img src={imageUrl} alt="Preview" className="max-w-xs rounded border border-gray-700" />
+                    <img src={imageUrl} alt="Preview" className="max-w-xs rounded border border-gray-700" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />
                   </div>
                 )}
               </div>

@@ -63,6 +63,7 @@ export default function Departments() {
               <div
                 key={dept.id}
                 onClick={() => navigate(`/departments/${dept.slug}`)}
+                role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/departments/${dept.slug}`); } }}
                 className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:border-blue-500/50 hover:shadow-lg transition-all cursor-pointer group"
               >
                 <div className="flex items-start gap-4">

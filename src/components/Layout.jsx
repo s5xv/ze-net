@@ -68,7 +68,7 @@ export default function Layout({ children, user }) {
       <header className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#303134]">
         <div className="flex items-center gap-3">
           <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <img src="/assets/logo.png" alt="Z&E Net" className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain" style={{ imageRendering: 'pixelated', filter: 'contrast(1.2) brightness(1.1)' }} />
+            <img src="/assets/logo.png" alt="Z&E Net" className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain" style={{ imageRendering: 'pixelated', filter: 'contrast(1.2) brightness(1.1)' }} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />
             <span className="text-xl sm:text-2xl font-bold hidden sm:inline">Z&E <span className="text-blue-600 dark:text-blue-400">NET</span></span>
           </a>
           
@@ -117,7 +117,7 @@ export default function Layout({ children, user }) {
           {user ? (
             <a href={`/profile/${user.id}`} className="flex items-center gap-2 hover:opacity-80">
               {fullAvatarUrl ? (
-                <img src={fullAvatarUrl} alt={displayName} className="w-7 h-7 rounded-full object-cover border border-gray-300 dark:border-gray-600" />
+                <img src={fullAvatarUrl} alt={displayName} className="w-7 h-7 rounded-full object-cover border border-gray-300 dark:border-gray-600" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />
               ) : (
                 <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xs">{displayName[0]?.toUpperCase()}</div>
               )}

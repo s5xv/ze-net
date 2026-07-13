@@ -397,7 +397,7 @@ export default function Admin() {
                       {req.image_url && (
                         <div className="mt-2">
                           <p className="text-gray-400 text-xs mb-1">Ad Image:</p>
-                          <img src={req.image_url} alt="Ad" className="max-w-xs rounded border border-gray-700" />
+                          <img src={req.image_url} alt="Ad" className="max-w-xs rounded border border-gray-700" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />
                         </div>
                       )}
                       {req.description && <p className="text-gray-300 text-sm mt-2">{req.description}</p>}

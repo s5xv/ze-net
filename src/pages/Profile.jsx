@@ -51,7 +51,7 @@ export default function Profile() {
     <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="bg-white dark:bg-[#303134] rounded-xl p-8 border border-gray-200 dark:border-gray-700 shadow-sm mb-8 flex items-center gap-6">
-          {avatarUrl ? <img src={avatarUrl} alt={displayName} className="w-24 h-24 rounded-full object-cover border-4 border-blue-500" /> : <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-4xl">{displayName[0]?.toUpperCase()}</div>}
+          {avatarUrl ? <img src={avatarUrl} alt={displayName} className="w-24 h-24 rounded-full object-cover border-4 border-blue-500" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} /> : <div className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-4xl">{displayName[0]?.toUpperCase()}</div>}
           <div>
             <h1 className="text-3xl font-bold mb-2">{displayName}</h1>
             <p className="text-gray-500 dark:text-gray-400">{userSites.length} sites owned</p>
@@ -63,7 +63,7 @@ export default function Profile() {
           <h2 className="text-xl font-bold mb-4">Owned Sites ({userSites.length})</h2>
           {userSites.length === 0 ? <p className="text-gray-500 italic">No sites owned yet</p> : (
             <div className="space-y-3">
-              {userSites.map((site) => (<div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500/30 cursor-pointer transition-colors"><div className="flex justify-between items-start"><div><h3 className="font-semibold text-lg">{site.name} {site.is_verified && <span className="text-blue-500 text-sm">✓</span>}</h3><p className="text-sm text-gray-500">{site.category}</p></div><div className="text-right"><p className="text-sm text-gray-500">{site.view_count || 0} views</p></div></div></div>))}
+              {userSites.map((site) => (<div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/site/${site.slug}`); } }} className="p-4 bg-gray-50 dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500/30 cursor-pointer transition-colors"><div className="flex justify-between items-start"><div><h3 className="font-semibold text-lg">{site.name} {site.is_verified && <span className="text-blue-500 text-sm">✓</span>}</h3><p className="text-sm text-gray-500">{site.category}</p></div><div className="text-right"><p className="text-sm text-gray-500">{site.view_count || 0} views</p></div></div></div>))}
             </div>
           )}
         </div>

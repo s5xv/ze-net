@@ -196,7 +196,7 @@ export default function Search() {
                 <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Departments ({deptResults.length})</h2>
                 <div className="space-y-3">
                   {deptResults.map((dept) => (
-                    <div key={dept.id} onClick={() => navigate(`/departments/${dept.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md cursor-pointer transition-all hover:border-purple-500/30">
+                    <div key={dept.id} onClick={() => navigate(`/departments/${dept.slug}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/departments/${dept.slug}`); } }} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md cursor-pointer transition-all hover:border-purple-500/30">
                       <h3 className="text-lg font-semibold text-purple-600 dark:text-purple-400">{dept.name}</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{dept.description || 'Government Department'}</p>
                     </div>
@@ -231,7 +231,7 @@ export default function Search() {
                 <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Sites</h2>
                 <div className="space-y-3">
                   {siteResults.map((site) => (
-                    <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md cursor-pointer transition-all hover:border-blue-500/30">
+                    <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/site/${site.slug}`); } }} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md cursor-pointer transition-all hover:border-blue-500/30">
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">

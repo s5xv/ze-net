@@ -44,7 +44,7 @@ export default function Settings() {
             <div>
               <label className="block text-sm font-medium mb-1">Avatar</label>
               <div className="flex items-center gap-4">
-                {avatarUrl && <img src={avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover" />}
+                {avatarUrl && <img src={avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
                 <ImageUpload bucket="avatars" path={user?.id} onUpload={setAvatarUrl} label="Upload Avatar" />
               </div>
             </div>

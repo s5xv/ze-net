@@ -47,7 +47,7 @@ export default function ForumThreads() {
         ) : (
           <div className="space-y-2">
             {threads.map(thread => (
-              <div key={thread.id} onClick={() => navigate(`/forums/thread/${thread.id}`)} className={`bg-white dark:bg-[#303134] rounded-xl p-5 border ${thread.is_pinned ? 'border-yellow-400/50' : 'border-gray-200 dark:border-gray-700'} hover:border-blue-500/50 transition-all cursor-pointer`}>
+              <div key={thread.id} onClick={() => navigate(`/forums/thread/${thread.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/forums/thread/${thread.id}`); } }} className={`bg-white dark:bg-[#303134] rounded-xl p-5 border ${thread.is_pinned ? 'border-yellow-400/50' : 'border-gray-200 dark:border-gray-700'} hover:border-blue-500/50 transition-all cursor-pointer`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-grow min-w-0">
                     <div className="flex items-center gap-2">
