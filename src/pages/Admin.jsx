@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
 import { apiFetch } from '../services/api';
 
+const ADMIN_PW = import.meta.env.VITE_ADMIN_PASSWORD;
+
 export default function Admin() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -29,13 +31,41 @@ export default function Admin() {
   const [depositNote, setDepositNote] = useState('');
   const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
   const [lookupResults, setLookupResults] = useState([]);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
-    supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => {
-      if (data?.is_staff) { setAuthorized(true); fetchData(); } else { navigate('/'); }
-    }).catch(() => navigate('/'));
+    if (ADMIN_PW && sessionStorage.getItem('admin_pw') !== ADMIN_PW) return;
+    checkAuth();
   }, [user]);
+
+  const checkAuth = async () => {
+    const { data: profile } = await supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle();
+    if (profile?.is_staff) {
+      setAuthorized(true);
+      fetchData();
+    } else {
+      const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_staff', true);
+      if (count === 0 && ADMIN_PW && sessionStorage.getItem('admin_pw') === ADMIN_PW) {
+        await supabase.from('profiles').update({ is_staff: true, staff_permissions: [] }).eq('id', user.id);
+        setAuthorized(true);
+        fetchData();
+      } else {
+        navigate('/');
+      }
+    }
+  };
+
+  const handlePasswordSubmit = () => {
+    if (passwordInput === ADMIN_PW) {
+      sessionStorage.setItem('admin_pw', passwordInput);
+      setPasswordError('');
+      checkAuth();
+    } else {
+      setPasswordError('Wrong password');
+    }
+  };
 
   useEffect(() => { if (authorized) fetchData(); }, [activeTab, authorized]);
 
@@ -266,6 +296,27 @@ export default function Admin() {
     { id: 'manage_users', label: 'Manage Users' },
     { id: 'manage_staff', label: 'Manage Staff' }
   ];
+
+  if (ADMIN_PW && sessionStorage.getItem('admin_pw') !== ADMIN_PW) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#1a1a2e]">
+        <div className="bg-[#303134] border border-gray-700 rounded-xl p-8 w-full max-w-sm">
+          <h1 className="text-2xl font-bold text-white mb-4 text-center">Admin Access</h1>
+          <input
+            type="password"
+            placeholder="Enter admin password"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+            className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white mb-3"
+            autoFocus
+          />
+          {passwordError && <p className="text-red-400 text-sm mb-3">{passwordError}</p>}
+          <button onClick={handlePasswordSubmit} className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-bold">Enter</button>
+        </div>
+      </div>
+    );
+  }
 
   if (!authorized) return <div className="min-h-screen flex items-center justify-center text-gray-400">Checking permissions...</div>;
 
