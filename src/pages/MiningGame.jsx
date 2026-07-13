@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 
 export default function MiningGame() {
   const { user } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [score, setScore] = useState(0);
   const [mining, setMining] = useState(false);
   const mineTimeout = useRef(null);

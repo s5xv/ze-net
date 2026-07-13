@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 
 export default function Changelog() {
   const { user } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
 
   return (
     <Layout user={user}>

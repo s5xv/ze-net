@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 
 export default function Challenge() {
   const { user } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [challenge, setChallenge] = useState(null);
   const [progress, setProgress] = useState([]);
   const [completed, setCompleted] = useState(false);

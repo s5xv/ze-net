@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 
 export default function Contact() {
   const { user } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');

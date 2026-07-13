@@ -8,7 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 export default function Departments() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
