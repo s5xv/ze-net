@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
@@ -11,6 +11,7 @@ export default function Site() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [site, setSite] = useState(null);
+  const fetchRef = useRef({ slug: null, userId: null });
   const [loading, setLoading] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -29,18 +30,20 @@ export default function Site() {
   useEffect(() => { fetchSite(); }, [slug, user]);
   usePolling(async () => {
     if (!site?.id) return;
-    const { data: c } = await supabase.from('site_comments').select('*, user:user_id(username)').eq('site_id', site.id).order('created_at', { ascending: false });
-    if (c) setComments(c);
-    const { data: r } = await supabase.from('site_reviews').select('*, user:user_id(username)').eq('site_id', site.id).order('created_at', { ascending: false });
-    if (r) setReviews(r);
+    try {
+      const { data: c } = await supabase.from('site_comments').select('*, user:user_id(username)').eq('site_id', site.id).order('created_at', { ascending: false });
+      if (c) setComments(c);
+      const { data: r } = await supabase.from('site_reviews').select('*, user:user_id(username)').eq('site_id', site.id).order('created_at', { ascending: false });
+      if (r) setReviews(r);
+    } catch (e) { console.error('Polling error:', e); }
   }, 10000, !!site?.id);
 
   const fetchSite = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('sites').select('*').eq('slug', slug).maybeSingle();
-    if (error || !data) { setLoading(false); return; }
-    
-    if (data) {
+    try {
+      const { data, error } = await supabase.from('sites').select('*').eq('slug', slug).maybeSingle();
+      if (error || !data) { setLoading(false); return; }
+      
       setSite(data);
       await supabase.from('sites').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
       
@@ -63,7 +66,7 @@ export default function Site() {
 
       const { data: coms } = await supabase.from('site_comments').select('*, profiles(username)').eq('site_id', data.id).order('created_at', { ascending: false });
       setComments(coms || []);
-    }
+    } catch (e) { console.error('Error fetching site:', e); }
     setLoading(false);
   };
 

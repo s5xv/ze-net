@@ -1,7 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const WIKI_BASE = 'https://wiki.democracycraft.net';
+
+const getUser = async (req) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return null;
+  const { data: { user }, error } = await supabase.auth.getUser(auth.split(' ')[1]);
+  if (error || !user) return null;
+  return user;
+};
 
 async function fetchJson(url) {
   try {
@@ -59,6 +67,11 @@ async function scrapeWikiViaApi() {
 }
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   const { action, type, forumId } = req.query;
 
   if (action === 'ingest') {
@@ -76,6 +89,9 @@ export default async function handler(req, res) {
   }
 
   if (action === 'wiki') {
+    const user = await getUser(req);
+    const { data: profile } = await supabase.from('profiles').select('is_staff').eq('id', user?.id).maybeSingle();
+    if (!profile?.is_staff) return res.status(403).json({ error: 'Admin access required' });
     try {
       const result = await scrapeWikiViaApi();
       return res.status(200).json({ success: true, message: `Synced ${result} pages`, results: { wiki: result } });

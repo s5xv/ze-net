@@ -20,13 +20,15 @@ export default function Home() {
   const [newSites, setNewSites] = useState([]);
   const [trendingSites, setTrendingSites] = useState([]);
   const suggestionsRef = useRef(null);
+  const fetchId = useRef(0);
 
   useEffect(() => {
-    fetchStats();
-    fetchFeaturedContent();
-    fetchAds();
-    fetchNewAndTrending();
-    if (user) fetchBookmarks();
+    const id = ++fetchId.current;
+    fetchStats(id);
+    fetchFeaturedContent(id);
+    fetchAds(id);
+    fetchNewAndTrending(id);
+    if (user) fetchBookmarks(id);
   }, [user]);
 
   useEffect(() => {
@@ -59,59 +61,71 @@ export default function Home() {
     return () => clearTimeout(timeoutId);
   }, [q, topSearches]);
 
-  const fetchStats = async () => {
-    const { count } = await supabase.from('sites').select('*', { count: 'exact', head: true }).eq('status', 'approved');
-    setStats({ totalSites: count || 0 });
+  const fetchStats = async (id) => {
+    try {
+      const { count } = await supabase.from('sites').select('*', { count: 'exact', head: true }).eq('status', 'approved');
+      if (id === fetchId.current) setStats({ totalSites: count || 0 });
+    } catch (e) { console.error('Stats error:', e); }
   };
 
-  const fetchFeaturedContent = async () => {
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: searchData } = await supabase.from('search_analytics').select('query').gte('created_at', oneWeekAgo);
-    
-    if (searchData && searchData.length > 0) {
-      const counts = {};
-      searchData.forEach(item => { counts[item.query] = (counts[item.query] || 0) + 1; });
-      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const fetchFeaturedContent = async (id) => {
+    try {
+      const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: searchData } = await supabase.from('search_analytics').select('query').gte('created_at', oneWeekAgo);
       
-      if (sorted.length > 0) {
-        setTopSearches(sorted.slice(0, 5).map(([query]) => ({ query })));
+      if (searchData && searchData.length > 0) {
+        const counts = {};
+        searchData.forEach(item => { counts[item.query] = (counts[item.query] || 0) + 1; });
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        
+        if (sorted.length > 0 && id === fetchId.current) {
+          setTopSearches(sorted.slice(0, 5).map(([query]) => ({ query })));
+          setFeaturedContent({
+            type: 'search', leftLabel: 'Trending', highlight: sorted[0][0],
+            subtitle: `Searched ${sorted[0][1]} times in the last 7 days!`,
+            actionText: 'Search it now', actionLink: `/search?q=${encodeURIComponent(sorted[0][0])}`
+          });
+          return;
+        }
+      }
+
+      const { data: topSite } = await supabase.from('sites').select('name, slug, view_count').eq('status', 'approved').order('view_count', { ascending: false }).limit(1).maybeSingle();
+      if (topSite && topSite.view_count > 0 && id === fetchId.current) {
         setFeaturedContent({
-          type: 'search', leftLabel: 'Trending', highlight: sorted[0][0],
-          subtitle: `Searched ${sorted[0][1]} times in the last 7 days!`,
-          actionText: 'Search it now', actionLink: `/search?q=${encodeURIComponent(sorted[0][0])}`
+          type: 'site', leftLabel: 'Top Site', highlight: topSite.name,
+          subtitle: `Visited ${topSite.view_count} times by the community!`,
+          actionText: 'Visit Site', actionLink: `/site/${topSite.slug}`
         });
         return;
       }
-    }
 
-    const { data: topSite } = await supabase.from('sites').select('name, slug, view_count').eq('status', 'approved').order('view_count', { ascending: false }).limit(1).maybeSingle();
-    if (topSite && topSite.view_count > 0) {
-      setFeaturedContent({
-        type: 'site', leftLabel: 'Top Site', highlight: topSite.name,
-        subtitle: `Visited ${topSite.view_count} times by the community!`,
-        actionText: 'Visit Site', actionLink: `/site/${topSite.slug}`
-      });
-      return;
-    }
-
-    setFeaturedContent(null);
+      if (id === fetchId.current) setFeaturedContent(null);
+    } catch (e) { console.error('Featured error:', e); }
   };
 
-  const fetchAds = async () => {
-    const { data } = await supabase.from('ads').select('*').eq('is_active', true).order('created_at', { ascending: false });
-    setAds(data || []);
+  const fetchAds = async (id) => {
+    try {
+      const { data } = await supabase.from('ads').select('*').eq('is_active', true).order('created_at', { ascending: false });
+      if (id === fetchId.current) setAds(data || []);
+    } catch (e) { console.error('Ads error:', e); }
   };
 
-  const fetchNewAndTrending = async () => {
-    const { data: newSitesData } = await supabase.from('sites').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(5);
-    setNewSites(newSitesData || []);
-    const { data: trendingSitesData } = await supabase.from('sites').select('*').eq('status', 'approved').order('view_count', { ascending: false }).limit(5);
-    setTrendingSites(trendingSitesData || []);
+  const fetchNewAndTrending = async (id) => {
+    try {
+      const { data: newSitesData } = await supabase.from('sites').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(5);
+      const { data: trendingSitesData } = await supabase.from('sites').select('*').eq('status', 'approved').order('view_count', { ascending: false }).limit(5);
+      if (id === fetchId.current) {
+        setNewSites(newSitesData || []);
+        setTrendingSites(trendingSitesData || []);
+      }
+    } catch (e) { console.error('Sites error:', e); }
   };
 
-  const fetchBookmarks = async () => {
-    const { data } = await supabase.from('bookmarks').select('*, sites(name, slug, category)').eq('user_id', user.id).order('created_at', { ascending: false });
-    setBookmarks(data || []);
+  const fetchBookmarks = async (id) => {
+    try {
+      const { data } = await supabase.from('bookmarks').select('*, sites(name, slug, category)').eq('user_id', user.id).order('created_at', { ascending: false });
+      if (id === fetchId.current) setBookmarks(data || []);
+    } catch (e) { console.error('Bookmarks error:', e); }
   };
 
   const handleSearch = (e) => {
@@ -132,10 +146,12 @@ export default function Home() {
   };
 
   const handleFeelingLucky = async () => {
-    const { data } = await supabase.from('sites').select('slug').eq('status', 'approved').limit(1000);
-    if (data && data.length > 0) {
-      navigate(`/site/${data[Math.floor(Math.random() * data.length)].slug}`);
-    }
+    try {
+      const { data } = await supabase.from('sites').select('slug').eq('status', 'approved').limit(1000);
+      if (data && data.length > 0) {
+        navigate(`/site/${data[Math.floor(Math.random() * data.length)].slug}`);
+      }
+    } catch (e) { console.error('Lucky error:', e); }
   };
 
   const fixUrl = (url) => {

@@ -3,6 +3,7 @@ import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
+import { apiFetch } from '../services/api';
 
 export default function Wiki() {
   const { user, loading: authLoading } = useAuth();
@@ -34,8 +35,7 @@ export default function Wiki() {
     setSyncing(true);
     setSyncResults(null);
     try {
-      const res = await fetch('/api/content?action=wiki&type=' + type);
-      const data = await res.json();
+      const data = await apiFetch('/api/content?action=wiki&type=' + type);
       setSyncResults(data);
       alert(data.message || 'Wiki synced!');
       await fetchWikiData();
