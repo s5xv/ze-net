@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
@@ -6,23 +6,28 @@ import { useAuth } from '../hooks/useAuth';
 
 export default function WikiFinder() {
   const { user } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [target, setTarget] = useState(null);
   const [guess, setGuess] = useState('');
   const [score, setScore] = useState(0);
   const [message, setMessage] = useState('');
+  const guessTimeout = useRef(null);
+
+  useEffect(() => { return () => clearTimeout(guessTimeout.current); }, []);
 
   useEffect(() => {
     loadRandomPage();
   }, []);
 
   const loadRandomPage = async () => {
-    const { data } = await supabase.from('wiki_pages').select('*').not('content', 'is', null).limit(1000);
-    if (data && data.length > 0) {
-      setTarget(data[Math.floor(Math.random() * data.length)]);
-      setMessage('');
-      setGuess('');
-    }
+    try {
+      const { data } = await supabase.from('wiki_pages').select('title').not('content', 'is', null).limit(1000);
+      if (data && data.length > 0) {
+        setTarget(data[Math.floor(Math.random() * data.length)]);
+        setMessage('');
+        setGuess('');
+      }
+    } catch (e) { console.error('Failed to load page:', e); }
   };
 
   const handleGuess = (e) => {
@@ -31,7 +36,7 @@ export default function WikiFinder() {
     if (guess.toLowerCase().trim() === target.title.toLowerCase()) {
       setScore(s => s + 10);
       setMessage('✓ Correct! +10 points');
-      setTimeout(loadRandomPage, 1500);
+      guessTimeout.current = setTimeout(loadRandomPage, 1500);
     } else {
       setMessage('✗ Wrong! Try again');
     }

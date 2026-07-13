@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
+import { apiFetch } from '../services/api';
 
 export default function LinkAccount() {
   const { user } = useAuth();
@@ -29,23 +30,11 @@ export default function LinkAccount() {
     setError('');
 
     try {
-      const response = await fetch('/api/economy', {
+      const data = await apiFetch('/api/economy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'verify-mc', userId: user.id, mc_username: mcName.trim(), step })
+        body: JSON.stringify({ action: 'verify-mc', mc_username: mcName.trim(), step })
       });
 
-      // Prevent JSON parse errors if server returns HTML
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('API returned non-JSON:', text);
-        setError('Server error. Please check Vercel logs.');
-        setChecking(false);
-        return;
-      }
-
-      const data = await response.json();
       if (data.success) {
         if (step === 'init') setLinked(true);
         if (step === 'confirm') setVerified(true);

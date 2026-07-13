@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
+import { apiFetch } from '../services/api';
 
 export default function Admin() {
   const { user } = useAuth();
@@ -33,7 +34,7 @@ export default function Admin() {
     if (!user) { navigate('/login'); return; }
     supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => {
       if (data?.is_staff) { setAuthorized(true); fetchData(); } else { navigate('/'); }
-    });
+    }).catch(() => navigate('/'));
   }, [user]);
 
   useEffect(() => { if (authorized) fetchData(); }, [activeTab, authorized]);
@@ -65,14 +66,15 @@ export default function Admin() {
         const { data } = await supabase.from('ad_requests').select('*, profiles(username), sites(name)').order('created_at', { ascending: false });
         setAdRequests(data || []);
       } else if (activeTab === 'pending') {
-        const res = await fetch('/api/app?action=admin-get-pending-sites');
-        const d = await res.json();
-        if (d.error) setMessage('API Error: ' + d.error);
-        setPendingSites(d.sites || []);
+        try {
+          const d = await apiFetch('/api/app?action=admin-get-pending-sites');
+          setPendingSites(d.sites || []);
+        } catch (e) { setMessage('API Error: ' + e.message); }
       } else if (activeTab === 'sites') {
-        const res = await fetch('/api/app?action=admin-get-sites');
-        const d = await res.json();
-        setSites(d.sites || []);
+        try {
+          const d = await apiFetch('/api/app?action=admin-get-sites');
+          setSites(d.sites || []);
+        } catch (e) { setMessage('API Error: ' + e.message); }
       } else if (activeTab === 'users') {
         const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
         setProfiles(data || []);
@@ -95,17 +97,27 @@ export default function Admin() {
 
   const handleWithdrawal = async (id, action) => {
     try {
-      const res = await fetch('/api/economy', {
+      const data = await apiFetch('/api/economy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'approve-withdrawal', withdrawalId: id, actionType: action })
       });
-      const data = await res.json();
       setMessage(data.message || data.error);
       fetchData();
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
+  };
+
+  const handleModAction = async (report, action) => {
+    try {
+      if (action === 'remove') {
+        await supabase.from('site_reports').delete().eq('id', report.id);
+        await supabase.from('sites').update({ is_verified: false, is_active: false }).eq('id', report.site_id);
+      } else {
+        await supabase.from('site_reports').update({ status: 'dismissed' }).eq('id', report.id);
+      }
+      fetchData();
+    } catch (err) { setMessage('Error: ' + err.message); }
   };
 
   const handleApproveVerification = async (req) => {
@@ -154,8 +166,7 @@ export default function Admin() {
 
   const callAdmin = async (action, body) => {
     try {
-      const res = await fetch('/api/app?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const data = await res.json();
+      const data = await apiFetch('/api/app?action=' + action, { method: 'POST', body: JSON.stringify(body) });
       setMessage(data.message || data.error || 'Done');
       fetchData();
     } catch (err) { setMessage('Error: ' + err.message); }
@@ -173,8 +184,7 @@ export default function Admin() {
   const lookupOwner = async (username) => {
     if (!username.trim()) return;
     try {
-      const res = await fetch(`/api/app?action=lookup-user&username=${encodeURIComponent(username)}`);
-      const data = await res.json();
+      const data = await apiFetch(`/api/app?action=lookup-user&username=${encodeURIComponent(username)}`);
       setLookupResults(data.users || []);
     } catch (e) { setLookupResults([]); }
   };
@@ -418,8 +428,8 @@ export default function Admin() {
                       {site.description && <p className="text-xs text-gray-500 mt-1">{site.description}</p>}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={async () => { const r = await fetch('/api/app?action=admin-approve-site', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ siteId: site.id }) }); const d = await r.json(); setMessage(d.message || d.error || 'Done'); fetchData(); }} className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold text-sm">Approve</button>
-                      <button onClick={async () => { const r = await fetch('/api/app?action=admin-reject-site', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ siteId: site.id }) }); const d = await r.json(); setMessage(d.message || d.error || 'Done'); fetchData(); }} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold text-sm">Reject</button>
+                      <button onClick={() => callAdmin('admin-approve-site', { siteId: site.id })} className="px-4 py-2 bg-green-600 text-white rounded-lg font-bold text-sm">Approve</button>
+                      <button onClick={() => callAdmin('admin-reject-site', { siteId: site.id })} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold text-sm">Reject</button>
                     </div>
                   </div>
                 ))}
@@ -617,8 +627,8 @@ export default function Admin() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <a href={`/site/${r.sites?.slug}`} target="_blank" className="px-3 py-1 bg-blue-600 text-white text-xs rounded text-center">View Site</a>
-                    <button onClick={async () => { await supabase.from('site_reports').delete().eq('id', r.id); await supabase.from('sites').update({ is_verified: false, is_active: false }).eq('id', r.site_id); fetchData(); }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Remove Site</button>
-                    <button onClick={async () => { await supabase.from('site_reports').update({ status: 'dismissed' }).eq('id', r.id); fetchData(); }} className="px-3 py-1 bg-gray-600 text-white text-xs rounded">Dismiss</button>
+                    <button onClick={() => handleModAction(r, 'remove')} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Remove Site</button>
+                    <button onClick={() => handleModAction(r, 'dismiss')} className="px-3 py-1 bg-gray-600 text-white text-xs rounded">Dismiss</button>
                   </div>
                 </div>
               </div>

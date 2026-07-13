@@ -4,6 +4,7 @@ import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 import { usePolling } from '../hooks/useRealtime';
+import { apiFetch } from '../services/api';
 
 export default function Site() {
   const { user } = useAuth();
@@ -88,32 +89,32 @@ export default function Site() {
     }
   };
 
-  const apiAction = (action, body) => fetch('/api/app?action=' + action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const apiAction = (action, body) => apiFetch('/api/app?action=' + action, { method: 'POST', body: JSON.stringify(body) });
 
   const handleUpvote = async () => {
     if (!user || !site?.id) return;
-    await apiAction('toggle-upvote', { siteId: site.id, userId: user.id, remove: hasUpvoted });
+    await apiAction('toggle-upvote', { siteId: site.id, remove: hasUpvoted });
     setHasUpvoted(!hasUpvoted);
     setUpvotes(u => hasUpvoted ? u - 1 : u + 1);
   };
 
   const submitReview = async () => {
     if (!user || !site?.id || !newReview.comment.trim()) return;
-    await apiAction('submit-review', { siteId: site.id, userId: user.id, rating: newReview.rating, comment: newReview.comment });
+    await apiAction('submit-review', { siteId: site.id, rating: newReview.rating, comment: newReview.comment });
     setNewReview({ rating: 5, comment: '' });
     fetchSite();
   };
 
   const submitComment = async () => {
     if (!user || !site?.id || !newComment.trim()) return;
-    await apiAction('submit-comment', { siteId: site.id, userId: user.id, comment: newComment });
+    await apiAction('submit-comment', { siteId: site.id, comment: newComment });
     setNewComment('');
     fetchSite();
   };
 
   const submitReport = async () => {
     if (!user || !site?.id || !reportReason.trim()) return;
-    await apiAction('submit-report', { siteId: site.id, userId: user.id, reason: reportReason });
+    await apiAction('submit-report', { siteId: site.id, reason: reportReason });
     setShowReportModal(false);
     setReportReason('');
     alert('Report submitted');
@@ -143,7 +144,7 @@ export default function Site() {
       note: `Tip to ${site.name}`
     });
     
-    setUserBalance(newMyBal);
+    setUserBalance(prev => prev - tipAmount);
     setShowTipModal(false);
     alert('Tip sent!');
   };

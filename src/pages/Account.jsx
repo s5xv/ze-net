@@ -4,6 +4,7 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import Layout from '../components/Layout';
 import WithdrawModal from '../components/WithdrawModal';
+import { apiFetch } from '../services/api';
 
 export default function Account() {
   const { user, loading: authLoading } = useAuth();
@@ -38,8 +39,7 @@ export default function Account() {
   const checkDeposits = async () => {
     setMessage('Checking Treasury API...');
     try {
-      const res = await fetch('/api/economy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'auto-deposit' }) });
-      const data = await res.json();
+      const data = await apiFetch('/api/economy', { method: 'POST', body: JSON.stringify({ action: 'auto-deposit' }) });
       setMessage(`Scan complete. Processed ${data.processed || 0} deposits.`);
       fetchData();
     } catch (err) { setMessage('Error: ' + err.message); }

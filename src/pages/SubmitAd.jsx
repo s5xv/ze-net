@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
@@ -15,6 +15,9 @@ export default function SubmitAd() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const timeoutRef = useRef(null);
+
+  useEffect(() => { return () => clearTimeout(timeoutRef.current); }, []);
 
   const tiers = {
     standard: { name: 'Standard', price: 110, description: 'Basic banner placement' },
@@ -69,7 +72,7 @@ export default function SubmitAd() {
       }
 
       setMessage('Ad request submitted! Admin will review within 24 hours.');
-      setTimeout(() => navigate('/profile'), 3000);
+      timeoutRef.current = setTimeout(() => navigate('/profile'), 3000);
     } catch (err) {
       setMessage('Error: ' + err.message);
     }

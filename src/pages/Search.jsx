@@ -1,8 +1,9 @@
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
+import { apiFetch } from '../services/api';
 
 export default function Search() {
   const { user } = useAuth();
@@ -17,6 +18,7 @@ export default function Search() {
   const [loading, setLoading] = useState(true);
   const [summarizing, setSummarizing] = useState(false);
   const navigate = useNavigate();
+  const searchId = useRef(0);
 
   useEffect(() => {
     setQ(query);
@@ -34,6 +36,7 @@ export default function Search() {
   };
 
   const fetchResults = async () => {
+    const id = ++searchId.current;
     setLoading(true);
     setAiSummary(null);
     setAiSources([]);
@@ -45,10 +48,10 @@ export default function Search() {
       sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcuts.ilike.%${searchTerm}%`);
     }
     const { data: sitesData } = await sitesQuery.order('view_count', { ascending: false }).limit(15);
-    setSiteResults(sitesData || []);
+    if (id === searchId.current) setSiteResults(sitesData || []);
 
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
-    setWikiResults(wikiData || []);
+    if (id === searchId.current) setWikiResults(wikiData || []);
 
     let deptData = [];
     try {
@@ -60,7 +63,7 @@ export default function Search() {
         deptData = data || [];
       }
     } catch (e) { console.error('Dept search error', e); }
-    setDeptResults(deptData);
+    if (id === searchId.current) setDeptResults(deptData);
 
     const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
     const isQuestion = ['who is ', 'what is ', 'what are ', 'where is ', 'how to ', 'how do i ', 'tell me about ', 'find ', 'i need '].some(p => rawQuery.startsWith(p));
@@ -77,28 +80,18 @@ export default function Search() {
       ]);
     } catch (err) { console.error('Analytics error:', err); }
     
-    setLoading(false);
+    if (id === searchId.current) setLoading(false);
   };
 
   const generateAISummary = async (results) => {
+    const id = ++searchId.current;
     setSummarizing(true);
     try {
-      const res = await fetch('/api/app?action=summarize', {
+      const data = await apiFetch('/api/app?action=summarize', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, results })
       });
-      
-      // Check if response is actually JSON
-      const contentType = res.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        console.error('AI API returned non-JSON response');
-        setSummarizing(false);
-        return;
-      }
-      
-      const data = await res.json();
-      if (data.summary) {
+      if (id === searchId.current && data.summary) {
         setAiSummary(data.summary);
         setAiSources(data.sources || []);
       }

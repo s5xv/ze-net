@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useTheme } from '../hooks/useTheme';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
+import { apiFetch } from '../services/api';
 
 export default function Leaderboard() {
   const { user } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('balance');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,8 +14,7 @@ export default function Leaderboard() {
   const fetchLeaderboard = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/app?action=leaderboard&type=${activeTab}`);
-      const json = await res.json();
+      const json = await apiFetch(`/api/app?action=leaderboard&type=${activeTab}`);
       setData(json.leaderboard || []);
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
@@ -33,7 +31,7 @@ export default function Leaderboard() {
           {loading ? <div className="p-12 text-center">Loading...</div> : data.length === 0 ? <div className="p-12 text-center">No data yet</div> : (
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {data.map((entry, i) => (
-                <div key={i} className="flex items-center justify-between p-4">
+                <div key={entry.name || entry.id || i} className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-4">
                     <span className="text-2xl font-bold w-12 text-center">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</span>
                     <span className="font-semibold">{entry.name}</span>

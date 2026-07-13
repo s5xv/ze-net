@@ -15,11 +15,11 @@ export default function ForumThreads() {
 
   useEffect(() => {
     if (!forumId) return;
-    supabase.from('forum_categories').select('*').eq('id', forumId).maybeSingle().then(({ data }) => setCategory(data));
+    supabase.from('forum_categories').select('*').eq('id', forumId).maybeSingle().then(({ data }) => setCategory(data)).catch(() => {});
     supabase.from('forum_threads').select('*, author:author_id(username)').eq('category_id', forumId).order('is_pinned', { ascending: false }).order('last_post_at', { ascending: false }).then(({ data }) => {
       setThreads(data || []);
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [forumId]);
 
   usePolling(async () => {

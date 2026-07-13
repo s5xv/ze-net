@@ -18,7 +18,7 @@ export default function Wiki() {
   const [syncResults, setSyncResults] = useState(null);
 
   useEffect(() => {
-    if (user) supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => setIsAdmin(data?.is_staff || false));
+    if (user) supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => setIsAdmin(data?.is_staff || false)).catch(() => {});
     fetchWikiData();
   }, [user]);
 

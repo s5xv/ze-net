@@ -16,7 +16,7 @@ export default function Settings() {
     if (user) {
       supabase.from('profiles').select('bio, avatar_url, ad_preferences').eq('id', user.id).maybeSingle().then(({ data }) => {
         if (data) { setBio(data.bio || ''); setAvatarUrl(data.avatar_url || ''); setAdPrefs(data.ad_preferences || []); }
-      });
+      }).catch(() => {});
     }
   }, [user]);
 

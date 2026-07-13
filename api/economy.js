@@ -1,11 +1,32 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const BASE_URL = "https://api.democracycraft.net/economy/api/v1";
 const DC_API_TOKEN = process.env.DC_TREASURY_TOKEN;
 const ZEC_ACCOUNT_ID = process.env.ZEC_ACCOUNT_ID;
 
 const _headers = () => ({ "Authorization": "Bearer " + DC_API_TOKEN });
+
+const getUser = async (req) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return null;
+  const { data: { user }, error } = await supabase.auth.getUser(auth.split(' ')[1]);
+  if (error || !user) return null;
+  return user;
+};
+
+const requireUser = async (req) => {
+  const user = await getUser(req);
+  if (!user) throw new Error('Authentication required');
+  return user;
+};
+
+const requireAdmin = async (req) => {
+  const user = await getUser(req);
+  if (!user) return false;
+  const { data } = await supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle();
+  return data?.is_staff === true;
+};
 
 async function getTransactions(limit = 100) {
   if (!DC_API_TOKEN || !ZEC_ACCOUNT_ID) return [null, "Config missing"];
@@ -37,17 +58,10 @@ async function getBalance() {
   } catch (e) { return [null, e.message]; }
 }
 
-const requireAdmin = async (req) => {
-  const userId = req.headers['x-user-id'];
-  if (!userId) return false;
-  const { data } = await supabase.from('profiles').select('is_staff').eq('id', userId).maybeSingle();
-  return data?.is_staff === true;
-};
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-user-id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   if (req.method === 'GET') {
@@ -56,10 +70,12 @@ export default async function handler(req, res) {
     return res.status(200).json({ balance });
   }
 
-  const { action, userId, mc_username, mcUsername, step, details, roleName, amount, withdrawalId, refId, userName, secretCode } = req.body;
-  if (!action || !userId) return res.status(400).json({ error: 'Missing data' });
-
   try {
+    const user = await requireUser(req);
+    const userId = user.id;
+    const { action, mc_username, mcUsername, step, details, roleName, amount, withdrawalId, refId, userName, secretCode } = req.body;
+    if (!action) return res.status(400).json({ error: 'Missing action' });
+
     // --- verify-mc ---
     if (action === 'verify-mc') {
       if (step === 'init') {
@@ -122,7 +138,7 @@ export default async function handler(req, res) {
     // --- treasury actions ---
 
     if (action === 'deposit') {
-      const { data: profile } = await supabase.from('profiles').select('mc_verified').eq('id', userId).single();
+      const { data: profile } = await supabase.from('profiles').select('mc_verified').eq('id', userId).maybeSingle();
       if (!profile?.mc_verified) return res.status(403).json({ error: 'MC account not verified' });
       const playerUuid = await resolvePlayerUuid(mcUsername);
       const [txns] = await getTransactions(100);
@@ -140,23 +156,24 @@ export default async function handler(req, res) {
       const ref_id = `DC-${validTxn.txnId}`;
       const { data: existing } = await supabase.from('transactions').select('id').eq('ref_id', ref_id).maybeSingle();
       if (existing) return res.status(400).json({ error: 'Already deposited' });
-      await supabase.rpc('increment_balance', { user_id: userId, amount: parseFloat(amount) });
+      await supabase.rpc('increment_balance', { target_user_id: userId, deposit_amount: parseFloat(amount) });
       await supabase.from('transactions').insert({ user_id: userId, amount: parseFloat(amount), type: 'deposit', ref_id, note: `MC deposit from ${mcUsername}` });
       return res.status(200).json({ success: true, message: `Deposited $${amount}` });
     }
 
     if (action === 'manual-deposit') {
       if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
+      const targetUserId = req.body.targetUserId || userId;
       if (!refId) return res.status(400).json({ error: 'Missing refId' });
-      const { data: profile } = await supabase.from('profiles').select('mc_username, mc_verified').eq('id', userId).single();
+      const { data: profile } = await supabase.from('profiles').select('mc_username, mc_verified').eq('id', targetUserId).maybeSingle();
       if (!profile?.mc_verified) return res.status(403).json({ error: 'MC account not verified' });
       const { data: existing } = await supabase.from('transactions').select('txn_id').eq('ref_id', refId).eq('type', 'deposit').maybeSingle();
       if (existing) return res.status(400).json({ error: 'Already deposited' });
-      const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', userId).maybeSingle();
+      const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', targetUserId).maybeSingle();
       const newBal = (currentBal?.balance || 0) + parseFloat(amount);
-      if (!currentBal) await supabase.from('balances').insert({ user_id: userId, balance: newBal });
-      else await supabase.from('balances').update({ balance: newBal }).eq('user_id', userId);
-      await supabase.from('transactions').insert({ user_id: userId, amount: parseFloat(amount), type: 'deposit', ref_id: refId, note: `Manual deposit from ${profile.mc_username}` });
+      if (!currentBal) await supabase.from('balances').insert({ user_id: targetUserId, balance: newBal });
+      else await supabase.from('balances').update({ balance: newBal }).eq('user_id', targetUserId);
+      await supabase.from('transactions').insert({ user_id: targetUserId, amount: parseFloat(amount), type: 'deposit', ref_id: refId, note: `Manual deposit from ${profile.mc_username}` });
       return res.status(200).json({ success: true, message: `Deposited $${amount}` });
     }
 

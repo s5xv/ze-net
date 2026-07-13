@@ -20,11 +20,11 @@ export default function ForumPost() {
     supabase.from('forum_threads').select('*, author:author_id(username)').eq('id', threadId).maybeSingle().then(({ data }) => {
       if (!data) { navigate('/forums'); return; }
       setThread(data);
-    });
+    }).catch(() => navigate('/forums'));
     supabase.from('forum_posts').select('*, author:author_id(username)').eq('thread_id', threadId).order('created_at').then(({ data }) => {
       setPosts(data || []);
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [threadId]);
 
   usePolling(async () => {

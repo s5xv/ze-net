@@ -67,10 +67,12 @@ export default function Utilities() {
   // --- Panda Clicker State ---
   const [pandaClicks, setPandaClicks] = useState(0);
   const [pandaScale, setPandaScale] = useState(1);
+  const pandaTimeout = useRef(null);
+  useEffect(() => { return () => clearTimeout(pandaTimeout.current); }, []);
   const handlePandaClick = () => {
     setPandaClicks(c => c + 1);
     setPandaScale(1.2);
-    setTimeout(() => setPandaScale(1), 100);
+    pandaTimeout.current = setTimeout(() => setPandaScale(1), 100);
   };
 
   const tools = ['Calculator', 'Stopwatch', 'Dice Roller', 'Password Generator', 'Panda Clicker'];

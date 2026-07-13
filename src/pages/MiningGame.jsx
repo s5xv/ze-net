@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../hooks/useTheme';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
@@ -8,10 +8,13 @@ export default function MiningGame() {
   const { isDark, toggleTheme } = useTheme();
   const [score, setScore] = useState(0);
   const [mining, setMining] = useState(false);
+  const mineTimeout = useRef(null);
+
+  useEffect(() => { return () => clearTimeout(mineTimeout.current); }, []);
 
   const handleMine = () => {
     setMining(true);
-    setTimeout(() => {
+    mineTimeout.current = setTimeout(() => {
       const reward = Math.floor(Math.random() * 10) + 1;
       setScore(s => s + reward);
       setMining(false);

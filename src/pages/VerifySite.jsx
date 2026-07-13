@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
@@ -12,6 +12,9 @@ export default function VerifySite() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const timeoutRef = useRef(null);
+
+  useEffect(() => { return () => clearTimeout(timeoutRef.current); }, []);
 
   useEffect(() => {
     if (user) fetchOwnedSites();
@@ -19,18 +22,13 @@ export default function VerifySite() {
 
   const fetchOwnedSites = async () => {
     try {
-      console.log('Fetching sites for user:', user.id);
       const { data, error } = await supabase
         .from('sites')
         .select('*')
         .eq('user_id', user.id);
       
-      if (error) {
-        console.error('Error fetching sites:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log('Owned sites:', data);
       setOwnedSites(data || []);
     } catch (err) {
       console.error('Fetch error:', err);
@@ -63,7 +61,7 @@ export default function VerifySite() {
       if (error) throw error;
 
       setMessage('✅ Verification request submitted! Admin will review within 24 hours.');
-      setTimeout(() => navigate('/profile'), 3000);
+      timeoutRef.current = setTimeout(() => navigate('/profile'), 3000);
     } catch (err) {
       setMessage('❌ Error: ' + err.message);
     }

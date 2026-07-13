@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
@@ -12,7 +12,8 @@ export default function CreateThread() {
   const [content, setContent] = useState('');
   const [posting, setPosting] = useState(false);
 
-  if (!user) { navigate('/login'); return null; }
+  useEffect(() => { if (!user) navigate('/login'); }, [user, navigate]);
+  if (!user) return null;
 
   const submit = async (e) => {
     e.preventDefault();

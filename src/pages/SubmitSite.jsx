@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
+import { apiFetch } from '../services/api';
 
 const CATEGORIES = ['Government','Corporate','Service','Charity','Community','Business','Shop','Entertainment','Social','Other'];
 
@@ -11,6 +12,9 @@ export default function SubmitSite() {
   const [form, setForm] = useState({ name: '', url: '', category: 'Other', description: '' });
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const timeoutRef = useRef(null);
+
+  useEffect(() => { return () => clearTimeout(timeoutRef.current); }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,14 +23,12 @@ export default function SubmitSite() {
     setMessage('');
 
     try {
-      const res = await fetch('/api/app?action=submit-site', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, user_id: user.id })
+      const data = await apiFetch('/api/app?action=submit-site', {
+        method: 'POST', body: JSON.stringify(form)
       });
-      const data = await res.json();
       if (data.error) throw new Error(data.error);
       setMessage('Site submitted for review! An admin will review it shortly.');
-      setTimeout(() => navigate('/profile'), 3000);
+      timeoutRef.current = setTimeout(() => navigate('/profile'), 3000);
     } catch (err) {
       setMessage('Error: ' + err.message);
     }

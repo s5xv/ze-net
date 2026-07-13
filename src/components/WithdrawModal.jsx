@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../services/supabase';
-import { useAuth } from '../hooks/useAuth'; // <-- FIXED: Added the missing import
+import { useAuth } from '../hooks/useAuth';
 
 export default function WithdrawModal({ balance, onUpdate, onClose }) {
   const { user } = useAuth();
   const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const closeTimeout = useRef(null);
+
+  useEffect(() => { return () => clearTimeout(closeTimeout.current); }, [onUpdate, onClose]);
 
   const handleWithdraw = async (e) => {
     e.preventDefault();
@@ -26,7 +29,7 @@ export default function WithdrawModal({ balance, onUpdate, onClose }) {
       if (error) throw error;
       
       setMessage('Withdrawal requested! Admin will process it.');
-      setTimeout(() => {
+      closeTimeout.current = setTimeout(() => {
         if (onUpdate) onUpdate();
         if (onClose) onClose();
       }, 2000);

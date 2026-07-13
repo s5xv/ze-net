@@ -1,12 +1,26 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+const getUser = async (req) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return null;
+  const { data: { user }, error } = await supabase.auth.getUser(auth.split(' ')[1]);
+  if (error || !user) return null;
+  return user;
+};
 
 const requireAdmin = async (req) => {
-  const userId = req.headers['x-user-id'];
-  if (!userId) return false;
-  const { data } = await supabase.from('profiles').select('is_staff').eq('id', userId).maybeSingle();
+  const user = await getUser(req);
+  if (!user) return false;
+  const { data } = await supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle();
   return data?.is_staff === true;
+};
+
+const requireUser = async (req) => {
+  const user = await getUser(req);
+  if (!user) throw new Error('Authentication required');
+  return user;
 };
 
 const shuffleArray = (array) => {
@@ -21,7 +35,7 @@ const shuffleArray = (array) => {
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { action } = req.query;
@@ -116,12 +130,14 @@ export default async function handler(req, res) {
     }
   }
 
-  // --- submit-site (public) ---
+  // --- submit-site ---
   if (action === 'submit-site') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-    const { name, url, category, description, user_id } = req.body;
-    if (!name || !url || !user_id) return res.status(400).json({ error: 'Name, URL, and User are required' });
     try {
+      const user = await requireUser(req);
+      const { name, url, category, description } = req.body;
+      if (!name || !url) return res.status(400).json({ error: 'Name and URL are required' });
+      const user_id = user.id;
       const { data: owner, error: profileErr } = await supabase.from('profiles').select('username').eq('id', user_id).maybeSingle();
       if (profileErr || !owner) return res.status(400).json({ error: 'User not found' });
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
@@ -243,10 +259,11 @@ export default async function handler(req, res) {
   // --- submit-review ---
   if (action === 'submit-review') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-    const { siteId, userId, rating, comment } = req.body;
-    if (!siteId || !userId) return res.status(400).json({ error: 'Missing data' });
     try {
-      await supabase.from('site_reviews').insert({ site_id: siteId, user_id: userId, rating: rating || 5, comment: comment || '' });
+      const user = await requireUser(req);
+      const { siteId, rating, comment } = req.body;
+      if (!siteId) return res.status(400).json({ error: 'Missing data' });
+      await supabase.from('site_reviews').insert({ site_id: siteId, user_id: user.id, rating: rating || 5, comment: comment || '' });
       return res.status(200).json({ success: true });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
@@ -254,10 +271,11 @@ export default async function handler(req, res) {
   // --- submit-comment ---
   if (action === 'submit-comment') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-    const { siteId, userId, comment } = req.body;
-    if (!siteId || !userId || !comment) return res.status(400).json({ error: 'Missing data' });
     try {
-      await supabase.from('site_comments').insert({ site_id: siteId, user_id: userId, comment });
+      const user = await requireUser(req);
+      const { siteId, comment } = req.body;
+      if (!siteId || !comment) return res.status(400).json({ error: 'Missing data' });
+      await supabase.from('site_comments').insert({ site_id: siteId, user_id: user.id, comment });
       return res.status(200).json({ success: true });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
@@ -265,13 +283,14 @@ export default async function handler(req, res) {
   // --- toggle-upvote ---
   if (action === 'toggle-upvote') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-    const { siteId, userId, remove } = req.body;
-    if (!siteId || !userId) return res.status(400).json({ error: 'Missing data' });
     try {
+      const user = await requireUser(req);
+      const { siteId, remove } = req.body;
+      if (!siteId) return res.status(400).json({ error: 'Missing data' });
       if (remove) {
-        await supabase.from('site_upvotes').delete().eq('user_id', userId).eq('site_id', siteId);
+        await supabase.from('site_upvotes').delete().eq('user_id', user.id).eq('site_id', siteId);
       } else {
-        await supabase.from('site_upvotes').insert({ user_id: userId, site_id: siteId });
+        await supabase.from('site_upvotes').insert({ user_id: user.id, site_id: siteId });
       }
       return res.status(200).json({ success: true });
     } catch (err) { return res.status(500).json({ error: err.message }); }
@@ -280,10 +299,11 @@ export default async function handler(req, res) {
   // --- submit-report ---
   if (action === 'submit-report') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-    const { siteId, userId, reason } = req.body;
-    if (!siteId || !userId || !reason) return res.status(400).json({ error: 'Missing data' });
     try {
-      await supabase.from('site_reports').insert({ site_id: siteId, user_id: userId, reason });
+      const user = await requireUser(req);
+      const { siteId, reason } = req.body;
+      if (!siteId || !reason) return res.status(400).json({ error: 'Missing data' });
+      await supabase.from('site_reports').insert({ site_id: siteId, user_id: user.id, reason });
       return res.status(200).json({ success: true });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
