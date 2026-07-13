@@ -5,12 +5,51 @@
 
 SET search_path TO public;
 
+-- Drop everything for a clean slate
+DROP TABLE IF EXISTS public.listings CASCADE;
+DROP TABLE IF EXISTS public.forum_cache CASCADE;
+DROP TABLE IF EXISTS public.treasury_tokens CASCADE;
+DROP TABLE IF EXISTS public.auto_deposit_rules CASCADE;
+DROP TABLE IF EXISTS public.staff_payroll CASCADE;
+DROP TABLE IF EXISTS public.staff_logs CASCADE;
+DROP TABLE IF EXISTS public.business_registrations CASCADE;
+DROP TABLE IF EXISTS public.challenge_progress CASCADE;
+DROP TABLE IF EXISTS public.daily_challenges CASCADE;
+DROP TABLE IF EXISTS public.user_achievements CASCADE;
+DROP TABLE IF EXISTS public.search_analytics CASCADE;
+DROP TABLE IF EXISTS public.search_history CASCADE;
+DROP TABLE IF EXISTS public.collections CASCADE;
+DROP TABLE IF EXISTS public.departments CASCADE;
+DROP TABLE IF EXISTS public.wiki_comments CASCADE;
+DROP TABLE IF EXISTS public.wiki_pages CASCADE;
+DROP TABLE IF EXISTS public.site_verification_requests CASCADE;
+DROP TABLE IF EXISTS public.ads CASCADE;
+DROP TABLE IF EXISTS public.ad_requests CASCADE;
+DROP TABLE IF EXISTS public.site_announcements CASCADE;
+DROP TABLE IF EXISTS public.site_reports CASCADE;
+DROP TABLE IF EXISTS public.withdrawal_requests CASCADE;
+DROP TABLE IF EXISTS public.transactions CASCADE;
+DROP TABLE IF EXISTS public.bookmarks CASCADE;
+DROP TABLE IF EXISTS public.site_followers CASCADE;
+DROP TABLE IF EXISTS public.site_comments CASCADE;
+DROP TABLE IF EXISTS public.site_reviews CASCADE;
+DROP TABLE IF EXISTS public.site_upvotes CASCADE;
+DROP TABLE IF EXISTS public.site_views CASCADE;
+DROP TABLE IF EXISTS public.sites CASCADE;
+DROP TABLE IF EXISTS public.balances CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+DROP TABLE IF EXISTS public.contact_messages CASCADE;
+DROP TABLE IF EXISTS public.forum_posts CASCADE;
+DROP TABLE IF EXISTS public.forum_threads CASCADE;
+DROP TABLE IF EXISTS public.forum_categories CASCADE;
+DROP TABLE IF EXISTS public.notifications CASCADE;
+
 -- ============================================================
 -- 1. CORE TABLES
 -- ============================================================
 
 -- Profiles (extends auth.users)
-CREATE TABLE IF NOT EXISTS public.profiles (
+CREATE TABLE public.profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username text,
   bio text,
@@ -27,15 +66,15 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- Balances
-CREATE TABLE IF NOT EXISTS public.balances (
+CREATE TABLE public.balances (
   user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   balance numeric DEFAULT 0 NOT NULL,
   updated_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_balances_user ON public.balances(user_id);
+CREATE INDEX idx_balances_user ON public.balances(user_id);
 
 -- Sites directory
-CREATE TABLE IF NOT EXISTS public.sites (
+CREATE TABLE public.sites (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   slug text UNIQUE NOT NULL,
@@ -66,35 +105,35 @@ CREATE TABLE IF NOT EXISTS public.sites (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_sites_slug ON public.sites(slug);
-CREATE INDEX IF NOT EXISTS idx_sites_status ON public.sites(status);
-CREATE INDEX IF NOT EXISTS idx_sites_category ON public.sites(category);
-CREATE INDEX IF NOT EXISTS idx_sites_owner ON public.sites(owner_user_id);
-CREATE INDEX IF NOT EXISTS idx_sites_ad ON public.sites(ad_tier, ad_expires_at, is_verified);
-CREATE INDEX IF NOT EXISTS idx_sites_user ON public.sites(user_id);
+CREATE INDEX idx_sites_slug ON public.sites(slug);
+CREATE INDEX idx_sites_status ON public.sites(status);
+CREATE INDEX idx_sites_category ON public.sites(category);
+CREATE INDEX idx_sites_owner ON public.sites(owner_user_id);
+CREATE INDEX idx_sites_ad ON public.sites(ad_tier, ad_expires_at, is_verified);
+CREATE INDEX idx_sites_user ON public.sites(user_id);
 
 -- Site views
-CREATE TABLE IF NOT EXISTS public.site_views (
+CREATE TABLE public.site_views (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   site_id uuid REFERENCES public.sites(id) ON DELETE CASCADE,
   viewer_id uuid REFERENCES auth.users(id),
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_site_views_dedup ON public.site_views(site_id, viewer_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_site_views_site ON public.site_views(site_id);
+CREATE INDEX idx_site_views_dedup ON public.site_views(site_id, viewer_id, created_at);
+CREATE INDEX idx_site_views_site ON public.site_views(site_id);
 
 -- Site upvotes
-CREATE TABLE IF NOT EXISTS public.site_upvotes (
+CREATE TABLE public.site_upvotes (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   site_id uuid NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now(),
   UNIQUE(user_id, site_id)
 );
-CREATE INDEX IF NOT EXISTS idx_site_upvotes_site ON public.site_upvotes(site_id);
+CREATE INDEX idx_site_upvotes_site ON public.site_upvotes(site_id);
 
 -- Site reviews
-CREATE TABLE IF NOT EXISTS public.site_reviews (
+CREATE TABLE public.site_reviews (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   site_id uuid NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -103,40 +142,40 @@ CREATE TABLE IF NOT EXISTS public.site_reviews (
   created_at timestamptz DEFAULT now(),
   UNIQUE(user_id, site_id)
 );
-CREATE INDEX IF NOT EXISTS idx_site_reviews_site ON public.site_reviews(site_id);
+CREATE INDEX idx_site_reviews_site ON public.site_reviews(site_id);
 
 -- Site comments
-CREATE TABLE IF NOT EXISTS public.site_comments (
+CREATE TABLE public.site_comments (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   site_id uuid NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   comment text NOT NULL,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_site_comments_site ON public.site_comments(site_id);
+CREATE INDEX idx_site_comments_site ON public.site_comments(site_id);
 
 -- Site followers
-CREATE TABLE IF NOT EXISTS public.site_followers (
+CREATE TABLE public.site_followers (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   site_id uuid NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now(),
   UNIQUE(user_id, site_id)
 );
-CREATE INDEX IF NOT EXISTS idx_site_followers_site ON public.site_followers(site_id);
+CREATE INDEX idx_site_followers_site ON public.site_followers(site_id);
 
 -- Bookmarks
-CREATE TABLE IF NOT EXISTS public.bookmarks (
+CREATE TABLE public.bookmarks (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   site_id uuid NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   created_at timestamptz DEFAULT now(),
   UNIQUE(user_id, site_id)
 );
-CREATE INDEX IF NOT EXISTS idx_bookmarks_user ON public.bookmarks(user_id, site_id);
+CREATE INDEX idx_bookmarks_user ON public.bookmarks(user_id, site_id);
 
 -- Transactions
-CREATE TABLE IF NOT EXISTS public.transactions (
+CREATE TABLE public.transactions (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   txn_id text,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -146,11 +185,11 @@ CREATE TABLE IF NOT EXISTS public.transactions (
   note text,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_transactions_user ON public.transactions(user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_transactions_ref ON public.transactions(ref_id);
+CREATE INDEX idx_transactions_user ON public.transactions(user_id, created_at DESC);
+CREATE INDEX idx_transactions_ref ON public.transactions(ref_id);
 
 -- Withdrawal requests
-CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
+CREATE TABLE public.withdrawal_requests (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   amount numeric NOT NULL,
@@ -161,10 +200,10 @@ CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
   approved_at timestamptz,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_withdrawal_status ON public.withdrawal_requests(status);
+CREATE INDEX idx_withdrawal_status ON public.withdrawal_requests(status);
 
 -- Site reports
-CREATE TABLE IF NOT EXISTS public.site_reports (
+CREATE TABLE public.site_reports (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   site_id uuid NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -174,17 +213,17 @@ CREATE TABLE IF NOT EXISTS public.site_reports (
 );
 
 -- Site announcements
-CREATE TABLE IF NOT EXISTS public.site_announcements (
+CREATE TABLE public.site_announcements (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   site_id uuid NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
   title text NOT NULL,
   content text NOT NULL,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_site_announcements ON public.site_announcements(site_id);
+CREATE INDEX idx_site_announcements ON public.site_announcements(site_id);
 
 -- Ad requests
-CREATE TABLE IF NOT EXISTS public.ad_requests (
+CREATE TABLE public.ad_requests (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   site_id uuid REFERENCES public.sites(id),
@@ -196,10 +235,10 @@ CREATE TABLE IF NOT EXISTS public.ad_requests (
   status text DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_ad_requests_status ON public.ad_requests(status);
+CREATE INDEX idx_ad_requests_status ON public.ad_requests(status);
 
 -- Ads (legacy)
-CREATE TABLE IF NOT EXISTS public.ads (
+CREATE TABLE public.ads (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   title text,
   description text,
@@ -211,7 +250,7 @@ CREATE TABLE IF NOT EXISTS public.ads (
 );
 
 -- Site verification requests
-CREATE TABLE IF NOT EXISTS public.site_verification_requests (
+CREATE TABLE public.site_verification_requests (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   site_id uuid REFERENCES public.sites(id),
@@ -222,10 +261,10 @@ CREATE TABLE IF NOT EXISTS public.site_verification_requests (
   status text DEFAULT 'pending',
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_site_verification_status ON public.site_verification_requests(status);
+CREATE INDEX idx_site_verification_status ON public.site_verification_requests(status);
 
 -- Wiki pages
-CREATE TABLE IF NOT EXISTS public.wiki_pages (
+CREATE TABLE public.wiki_pages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
   url text,
@@ -237,17 +276,17 @@ CREATE TABLE IF NOT EXISTS public.wiki_pages (
 );
 
 -- Wiki comments
-CREATE TABLE IF NOT EXISTS public.wiki_comments (
+CREATE TABLE public.wiki_comments (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   wiki_page_id uuid REFERENCES public.wiki_pages(id) ON DELETE CASCADE,
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   content text NOT NULL,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_wiki_comments_page ON public.wiki_comments(wiki_page_id);
+CREATE INDEX idx_wiki_comments_page ON public.wiki_comments(wiki_page_id);
 
 -- Departments
-CREATE TABLE IF NOT EXISTS public.departments (
+CREATE TABLE public.departments (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name text NOT NULL,
   slug text UNIQUE NOT NULL,
@@ -260,7 +299,7 @@ CREATE TABLE IF NOT EXISTS public.departments (
 );
 
 -- Collections
-CREATE TABLE IF NOT EXISTS public.collections (
+CREATE TABLE public.collections (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name text NOT NULL,
@@ -268,29 +307,29 @@ CREATE TABLE IF NOT EXISTS public.collections (
   is_public boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_collections_user ON public.collections(user_id);
+CREATE INDEX idx_collections_user ON public.collections(user_id);
 
 -- Search history
-CREATE TABLE IF NOT EXISTS public.search_history (
+CREATE TABLE public.search_history (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   query text NOT NULL,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_search_history_user ON public.search_history(user_id, created_at DESC);
+CREATE INDEX idx_search_history_user ON public.search_history(user_id, created_at DESC);
 
 -- Search analytics
-CREATE TABLE IF NOT EXISTS public.search_analytics (
+CREATE TABLE public.search_analytics (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   query text NOT NULL,
   user_id uuid,
   results_count integer DEFAULT 0,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_search_analytics_created ON public.search_analytics(created_at);
+CREATE INDEX idx_search_analytics_created ON public.search_analytics(created_at);
 
 -- Achievements
-CREATE TABLE IF NOT EXISTS public.user_achievements (
+CREATE TABLE public.user_achievements (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   achievement_id text NOT NULL,
@@ -298,10 +337,10 @@ CREATE TABLE IF NOT EXISTS public.user_achievements (
   unlocked_at timestamptz DEFAULT now(),
   UNIQUE(user_id, achievement_id)
 );
-CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON public.user_achievements(user_id);
+CREATE INDEX idx_user_achievements_user ON public.user_achievements(user_id);
 
 -- Daily challenges
-CREATE TABLE IF NOT EXISTS public.daily_challenges (
+CREATE TABLE public.daily_challenges (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   date date UNIQUE NOT NULL,
   target_count integer DEFAULT 5,
@@ -310,7 +349,7 @@ CREATE TABLE IF NOT EXISTS public.daily_challenges (
 );
 
 -- Challenge progress
-CREATE TABLE IF NOT EXISTS public.challenge_progress (
+CREATE TABLE public.challenge_progress (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   challenge_id bigint NOT NULL REFERENCES public.daily_challenges(id) ON DELETE CASCADE,
@@ -320,7 +359,7 @@ CREATE TABLE IF NOT EXISTS public.challenge_progress (
 );
 
 -- Business registrations
-CREATE TABLE IF NOT EXISTS public.business_registrations (
+CREATE TABLE public.business_registrations (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
   business_name text NOT NULL,
@@ -336,7 +375,7 @@ CREATE TABLE IF NOT EXISTS public.business_registrations (
 );
 
 -- Staff logs
-CREATE TABLE IF NOT EXISTS public.staff_logs (
+CREATE TABLE public.staff_logs (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   role_name text,
@@ -346,7 +385,7 @@ CREATE TABLE IF NOT EXISTS public.staff_logs (
 );
 
 -- Staff payroll
-CREATE TABLE IF NOT EXISTS public.staff_payroll (
+CREATE TABLE public.staff_payroll (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   week_start date NOT NULL,
@@ -361,7 +400,7 @@ CREATE TABLE IF NOT EXISTS public.staff_payroll (
 );
 
 -- Auto-deposit rules
-CREATE TABLE IF NOT EXISTS public.auto_deposit_rules (
+CREATE TABLE public.auto_deposit_rules (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   target_firm_name text NOT NULL,
@@ -372,7 +411,7 @@ CREATE TABLE IF NOT EXISTS public.auto_deposit_rules (
 );
 
 -- Treasury tokens
-CREATE TABLE IF NOT EXISTS public.treasury_tokens (
+CREATE TABLE public.treasury_tokens (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   account_id text,
@@ -380,7 +419,7 @@ CREATE TABLE IF NOT EXISTS public.treasury_tokens (
 );
 
 -- Forum cache (for scraped forum data)
-CREATE TABLE IF NOT EXISTS public.forum_cache (
+CREATE TABLE public.forum_cache (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   type text NOT NULL,
   parent_id integer,
@@ -389,7 +428,7 @@ CREATE TABLE IF NOT EXISTS public.forum_cache (
 );
 
 -- Listings (newer search system)
-CREATE TABLE IF NOT EXISTS public.listings (
+CREATE TABLE public.listings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   slug text UNIQUE NOT NULL,
@@ -408,8 +447,6 @@ CREATE TABLE IF NOT EXISTS public.listings (
 -- 2. NOTIFICATIONS & FORUMS (from add-features.sql)
 -- ============================================================
 
-DROP TABLE IF EXISTS public.notifications CASCADE;
-
 CREATE TABLE public.notifications (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -420,11 +457,7 @@ CREATE TABLE public.notifications (
   is_read boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_notifications_user ON public.notifications(user_id, created_at DESC);
-
-DROP TABLE IF EXISTS public.forum_posts CASCADE;
-DROP TABLE IF EXISTS public.forum_threads CASCADE;
-DROP TABLE IF EXISTS public.forum_categories CASCADE;
+CREATE INDEX idx_notifications_user ON public.notifications(user_id, created_at DESC);
 
 CREATE TABLE public.forum_categories (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -447,7 +480,7 @@ CREATE TABLE public.forum_threads (
   last_post_at timestamptz DEFAULT now(),
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_forum_threads_cat ON public.forum_threads(category_id, last_post_at DESC);
+CREATE INDEX idx_forum_threads_cat ON public.forum_threads(category_id, last_post_at DESC);
 
 CREATE TABLE public.forum_posts (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -457,10 +490,10 @@ CREATE TABLE public.forum_posts (
   is_solution boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS idx_forum_posts_thread ON public.forum_posts(thread_id, created_at);
+CREATE INDEX idx_forum_posts_thread ON public.forum_posts(thread_id, created_at);
 
 -- Contact messages
-CREATE TABLE IF NOT EXISTS public.contact_messages (
+CREATE TABLE public.contact_messages (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid REFERENCES auth.users(id),
   name text NOT NULL,
@@ -507,6 +540,8 @@ SELECT
 FROM auth.users
 WHERE id NOT IN (SELECT id FROM public.profiles)
 ON CONFLICT (id) DO NOTHING;
+
+
 
 -- ============================================================
 -- 4. RPC FUNCTIONS
