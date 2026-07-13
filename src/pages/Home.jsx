@@ -70,40 +70,40 @@ export default function Home() {
 
   const fetchFeaturedContent = async (id) => {
     try {
-      const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const { data: searchData } = await supabase.from('search_analytics').select('query').gte('created_at', oneWeekAgo);
-      
-      if (searchData && searchData.length > 0) {
-        const counts = {};
-        searchData.forEach(item => { counts[item.query] = (counts[item.query] || 0) + 1; });
-        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        
-        if (sorted.length > 0 && id === fetchId.current) {
-          setTopSearches(sorted.slice(0, 5).map(([query]) => ({ query })));
-          setFeaturedContent({
-            type: 'search', leftLabel: 'Trending', highlight: sorted[0][0],
-            subtitle: `Searched ${sorted[0][1]} times in the last 7 days!`,
-            actionText: 'Search it now', actionLink: `/search?q=${encodeURIComponent(sorted[0][0])}`
-          });
-          return;
-        }
-      }
+      const { data: topSite, error } = await supabase
+        .from('sites')
+        .select('name, slug, view_count')
+        .eq('status', 'approved')
+        .order('view_count', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      const { data: topSite } = await supabase.from('sites').select('name, slug, view_count').eq('status', 'approved').order('view_count', { ascending: false }).limit(1).maybeSingle();
-      if (topSite && topSite.view_count > 0 && id === fetchId.current) {
-        setFeaturedContent({
-          type: 'site', leftLabel: 'Top Site', highlight: topSite.name,
-          subtitle: `Visited ${topSite.view_count} times by the community!`,
-          actionText: 'Visit Site', actionLink: `/site/${topSite.slug}`
-        });
+      if (error) {
+        console.error('Top site error:', error);
         return;
       }
 
-      if (id === fetchId.current) setFeaturedContent(null);
-    } catch (e) { console.error('Featured error:', e); }
+      if (topSite && id === fetchId.current) {
+        setFeaturedContent({
+          type: 'site',
+          leftLabel: 'Top Site',
+          highlight: topSite.name,
+          subtitle: topSite.view_count > 0
+            ? `Visited ${topSite.view_count} times by the community!`
+            : "The community's top-rated site!",
+          actionText: 'Visit Site',
+          actionLink: `/site/${topSite.slug}`
+        });
+      } else if (id === fetchId.current) {
+        setFeaturedContent(null);
+      }
+
+    } catch (e) {
+      console.error('Featured error:', e);
+    }
   };
 
-  const fetchAds = async (id) => {
+const fetchAds = async (id) => {
     try {
       const { data } = await supabase.from('ads').select('*').eq('is_active', true).order('created_at', { ascending: false });
       if (id === fetchId.current) setAds(data || []);

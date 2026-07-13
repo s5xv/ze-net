@@ -1,9 +1,11 @@
-const CACHE = 'ze-net-v1';
-const ASSETS = ['/', '/search', '/forums', '/wiki', '/manifest.json'];
-self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); self.skipWaiting(); });
-self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
-self.addEventListener('fetch', (e) => {
-  if (e.request.url.startsWith(self.location.origin) && e.request.method === 'GET') {
-    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => { const clone = res.clone(); caches.open(CACHE).then(c => c.put(e.request, clone)); return res; })));
-  }
+// Self-destruct: clears old cache-first service worker that caused stale pages
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys()
+      .then((names) => Promise.all(names.map((n) => caches.delete(n))))
+      .then(() => self.registration.unregister())
+      .then(() => self.clients.matchAll())
+      .then((clients) => clients.forEach((c) => c.navigate(c.url)))
+  );
 });

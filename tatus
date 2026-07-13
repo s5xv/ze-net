@@ -1,0 +1,274 @@
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.oxlintrc.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'admin-pending-additions.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'api/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'api/content.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'api/economy.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'index.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'postcss.config.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'public/icons.svg', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'public/manifest.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'public/sw.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/App.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/App.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/assets/vite.svg', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/AchievementPopup.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/AdSiteCard.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/AdminButton.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/ErrorBoundary.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Footer.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/ImageUpload.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Layout.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/LazyImage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Listing/ListingCard.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Listing/ListingGrid.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Listing/index.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/NotificationBell.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Search/SearchBar.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Search/index.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/SentryTest.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/SiteReviews.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/TempAdminGrant.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Toast.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/UI/Badge.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/UI/Button.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/UI/index.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Utilities/ClickerGame.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Utilities/EasterEggs.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Utilities/Stopwatch.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/Utilities/index.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/WithdrawModal.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/hooks/index.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/hooks/useAchievements.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/hooks/useAuth.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/hooks/useNotifications.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/hooks/useRealtime.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/hooks/useTheme.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/index.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/main.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Account.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Achievements.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Admin.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/AuthCallback.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/AutoDeposit.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Category.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Challenge.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Changelog.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Collections.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Contact.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/CreateThread.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/DepartmentDetail.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Departments.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Docs.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/ForumPost.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/ForumThreads.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Forums.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Home.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Leaderboard.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/LinkAccount.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Login.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/MiningGame.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/NotFound.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Notifications.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Profile.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/RedirectHandler.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/RegisterBusiness.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Search.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/SearchResults.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Settings.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Site.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/SiteAnalytics.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/SiteManage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/SubmitAd.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/SubmitSite.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Utilities.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/VerifySite.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/Wiki.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/pages/WikiFinder.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/services/api.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/services/sentry.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/services/supabase.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/services/treasury.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/utils/constants.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/utils/tracker.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tailwind.config.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'test-players.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'vercel.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'vite.config.js', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/add-shortcuts.sql b/add-shortcuts.sql[m
+[1mdeleted file mode 100644[m
+[1mindex db8f479..0000000[m
+[1m--- a/add-shortcuts.sql[m
+[1m+++ /dev/null[m
+[36m@@ -1,14 +0,0 @@[m
+[31m--- Add shortcuts column to sites[m
+[31m-ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS shortcuts TEXT[] DEFAULT '{}';[m
+[31m-[m
+[31m--- Add more categories[m
+[31m-ALTER TABLE public.sites DROP CONSTRAINT IF EXISTS sites_category_check;[m
+[31m-ALTER TABLE public.sites ADD CONSTRAINT sites_category_check [m
+[31m-  CHECK (category IN ([m
+[31m-    'Government', 'Corporate', 'Service', 'Charity', 'Community', [m
+[31m-    'Business', 'Build Project', 'Event', 'Politics', 'Creative', [m
+[31m-    'Emergency', 'Other', 'Bank', 'Shop', 'Restaurant', 'Hotel',[m
+[31m-    'Entertainment', 'Education', 'Health', 'Transport', 'Technology',[m
+[31m-    'Media', 'Sports', 'Gaming', 'Social', 'News', 'Forum', 'Wiki',[m
+[31m-    'Discord', 'Player', 'Organization', 'Guild', 'Faction'[m
+[31m-  ));[m
+[1mdiff --git a/fix-wiki-urls.sql b/fix-wiki-urls.sql[m
+[1mdeleted file mode 100644[m
+[1mindex 2aa9b80..0000000[m
+[1m--- a/fix-wiki-urls.sql[m
+[1m+++ /dev/null[m
+[36m@@ -1,12 +0,0 @@[m
+[31m--- Fix all wiki page URLs to remove /wiki/ prefix[m
+[31m-UPDATE public.wiki_pages [m
+[31m-SET url = 'https://wiki.democracycraft.net/' || REPLACE(title, ' ', '_')[m
+[31m-WHERE category != 'Category';[m
+[31m-[m
+[31m--- Fix category URLs[m
+[31m-UPDATE public.wiki_pages [m
+[31m-SET url = 'https://wiki.democracycraft.net/Category:' || REPLACE(title, ' ', '_')[m
+[31m-WHERE category = 'Category';[m
+[31m-[m
+[31m--- Show the fixed URLs[m
+[31m-SELECT title, url FROM public.wiki_pages LIMIT 10;[m
+[1mdiff --git a/full-schema.sql b/full-schema.sql[m
+[1mdeleted file mode 100644[m
+[1mindex 163c85e..0000000[m
+[1m--- a/full-schema.sql[m
+[1m+++ /dev/null[m
+[36m@@ -1,654 +0,0 @@[m
+[31m--- ============================================================[m
+[31m--- Z&E Net — Full Database Schema[m
+[31m--- Run this ENTIRE file in Supabase Dashboard → SQL Editor[m
+[31m--- ============================================================[m
+[31m-[m
+[31m-SET search_path TO public;[m
+[31m-[m
+[31m--- Drop everything for a clean slate[m
+[31m-DROP TABLE IF EXISTS public.listings CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.forum_cache CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.treasury_tokens CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.auto_deposit_rules CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.staff_payroll CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.staff_logs CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.business_registrations CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.challenge_progress CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.daily_challenges CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.user_achievements CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.search_analytics CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.search_history CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.collections CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.departments CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.wiki_comments CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.wiki_pages CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.site_verification_requests CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.ads CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.ad_requests CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.site_announcements CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.site_reports CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.withdrawal_requests CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.transactions CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.bookmarks CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.site_followers CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.site_comments CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.site_reviews CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.site_upvotes CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.site_views CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.sites CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.balances CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.profiles CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.contact_messages CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.forum_posts CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.forum_threads CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.forum_categories CASCADE;[m
+[31m-DROP TABLE IF EXISTS public.notifications CASCADE;[m
+[31m-[m
+[31m--- ============================================================[m
+[31m--- 1. CORE TABLES[m
+[31m--- ============================================================[m
+[31m-[m
+[31m--- Profiles (extends auth.users)[m
+[31m-CREATE TABLE public.profiles ([m
+[31m-  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,[m
+[31m-  username text,[m
+[31m-  bio text,[m
+[31m-  avatar_url text,[m
+[31m-  ad_preferences jsonb DEFAULT '[]'::jsonb,[m
+[31m-  mc_username text,[m
+[31m-  mc_verified boolean DEFAULT false,[m
+[31m-  is_staff boolean DEFAULT false,[m
+[31m-  staff_permissions jsonb DEFAULT '[]'::jsonb,[m
+[31m-  xp integer DEFAULT 0,[m
+[31m-  created_at timestamptz DEFAULT now()[m
+[31m-);[m
+[31m-[m
+[31m-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;[m
+[31m-[m
+[31m--- Balances[m
+[31m-CREATE TABLE public.balances ([m
+[31m-  user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,[m
+[31m-  balance numeric DEFAULT 0 NOT NULL,[m
+[31m-  updated_at timestamptz DEFAULT now()[m
+[31m-);[m
+[31m-CREATE INDEX idx_balances_user ON public.balances(user_id);[m
+[31m-[m
+[31m--- Sites directory[m
+[31m-CREATE TABLE public.sites ([m
+[31m-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),[m
+[31m-  name text NOT NULL,[m
+[31m-  slug text UNIQUE NOT NULL,[m
+[31m-  url text NOT NULL,[m
+[31m-  category text DEFAULT 'Other',[m
+[31m-  description text DEFAULT '',[m
+[31m-  shortcuts text,[m
+[31m-  keywords text[] DEFAULT '{}',[m
+[31m-  image_url text,[m
+[31m-  owner_user_id uuid REFERENCES auth.users(id),[m
+[31m-  user_id uuid REFERENCES auth.users(id),[m
+[31m-  owner_name text DEFAULT 'Unknown',[m
+[31m-  is_verified boolean DEFAULT false,[m
+[31m-  is_active boolean DEFAULT true,[m
+[31m-  status text DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),[m
+[31m-  view_count integer DEFAULT 0,[m
+[31m-  click_count integer DEFAULT 0,[m
+[31m-  ad_tier text,[m
+[31m-  ad_price numeric,[m
+[31m-  ad_expires_at timestamptz,[m
+[31m-  verification_paid_at timestamptz,[m
+[31m-  plot_number text,[m
+[31m-  discord_invite text,[m
+[31m-  shortcut text,[m
+[31m-  submitted_by uuid REFERENCES auth.users(id),[m
+[31m-  reviewed_at timestamptz,[m
+[31m-  reviewed_by uuid REFERENCES auth.users(id),[m
+[31m-  created_at timestamptz DEFAULT now()[m
+[31m-);[m
+[31m-[m
+[31m-CREATE INDEX idx_sites_slug ON public.sites(slug);[m
+[31m-CREATE INDEX idx_sites_status ON public.sites(status);[m
+[31m-CREATE INDEX idx_sites_category ON public.sites(category);[m
+[31m-CREATE INDEX idx_sites_owner ON public.sites(owner_user_id);[m
+[31m-CREATE INDEX idx_sites_ad ON public.sites(ad_tier, ad_expires_at, is_verified);[m
+[31m-CREATE INDEX idx_sites_user ON public.sites(user_id);[m
+[31m-[m
+[31m--- Site views[m
+[31m-CREATE TABLE public.site_views ([m
+[31m-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,[m
+[31m-  site_id uuid REFERENCES public.sites(id) ON DELETE CASCADE,[m
+[31m-  viewer_id uuid REFERENCES auth.users(id),[m
+[31m-  created_at timestamptz DEFAULT now()[m
+[31m-);[m
+[31m-CREATE INDEX idx_site_views_dedup ON public.site_views(site_id, viewer_id, created_at);[m
+[31m-CREATE INDEX idx_site_views_site ON public.site_views(site_id);[m
+[31m-[m
+[31m--- Site upvotes[m
+[31m-CREATE TABLE public.site_upvotes ([m
+[31m-  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,[m
+[31m-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,[m
+[31m-  site_id uuid NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,[m
+[31m-  created_at timestamptz DEFAULT now(),[

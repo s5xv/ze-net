@@ -31,28 +31,53 @@ export default function RegisterBusiness() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user) { alert('Please sign in'); navigate('/login'); return; }
+
+    if (!user) {
+      alert('Please sign in');
+      navigate('/login');
+      return;
+    }
 
     const hasPlotNumber = formData.plot_number.trim().length > 0;
     const hasDiscordInvite = formData.discord_invite.trim().length > 0;
     const hasWebsiteUrl = formData.website_url.trim().length > 0;
 
     if (!hasPlotNumber && !hasDiscordInvite && !hasWebsiteUrl) {
-      alert('Please provide at least one of the following:\n- Plot Number\n- Discord Invite Link\n- Website URL');
+      alert(
+        'Please provide at least one of the following:\n- Plot Number\n- Discord Invite Link\n- Website URL'
+      );
       return;
     }
 
     setLoading(true);
+
     try {
-      const { error } = await supabase.from('business_registrations').insert({
-        ...formData,
-        user_id: user.id,
-        status: 'pending'
+      console.log("Submitting business:", {
+        formData,
+        user: user.id
       });
+
+      const { data, error } = await supabase
+        .from('business_registrations')
+        .insert({
+          ...formData,
+          user_id: user.id,
+          status: 'pending'
+        })
+        .select();
+
+      console.log("Supabase response:", { data, error });
+
       if (error) throw error;
+
+      console.log("Business registration created:", data);
+
       setSubmitted(true);
+
     } catch (err) {
+      console.error("Business registration error:", err);
       alert('Error: ' + err.message);
+
     } finally {
       setLoading(false);
     }

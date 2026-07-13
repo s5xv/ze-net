@@ -1,5 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+
 const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 const getUser = async (req) => {
@@ -146,7 +149,10 @@ export default async function handler(req, res) {
         owner_user_id: user_id, user_id, owner_name: owner?.username || 'Unknown',
         is_verified: false, is_active: true, status: 'pending', submitted_by: user_id
       });
-      if (error) throw error;
+      if (error) {
+        console.error("SITE INSERT ERROR:", error);
+        return res.status(500).json({ error: error.message });
+      }
       return res.status(200).json({ success: true, message: 'Site submitted for review!' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -234,12 +240,24 @@ export default async function handler(req, res) {
   }
 
   // --- admin-get-pending-sites ---
+  // --- admin-get-pending-sites ---
   if (action === 'admin-get-pending-sites') {
     try {
-      const { data, error } = await supabase.from('sites').select('*').eq('status', 'pending').order('created_at', { ascending: false });
-      if (error) return res.status(500).json({ error: error.message });
+      const { data, error } = await supabase
+        .from('business_registrations')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
       return res.status(200).json({ sites: data || [] });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
+
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
 
   // --- admin-delete-site ---
