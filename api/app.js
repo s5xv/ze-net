@@ -1,14 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY);
+
+const supabase = createClient(process.env.SUPABASE_URL  process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
 
 const getUser = async (req) => {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return null;
-  const { data: { user }, error } = await supabase.auth.getUser(auth.split(' ')[1]);
-  if (error || !user) return null;
-  return user;
-};
 
 const requireAdmin = async (req) => {
   const user = await getUser(req);
