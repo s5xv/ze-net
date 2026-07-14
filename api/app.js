@@ -158,13 +158,13 @@ export default async function handler(req, res) {
         plot_number: plot_number || null, shortcuts: shortcut || null,
         discord_invite: discord_invite || null,
         owner_user_id: user_id, user_id, owner_name: owner?.username || 'Unknown',
-        is_verified: true, is_active: true, status: 'approved', submitted_by: user_id
+        is_verified: false, is_active: true, status: 'pending', submitted_by: user_id
       });
       if (error) {
         console.error("SITE INSERT ERROR:", error);
         return res.status(500).json({ error: error.message });
       }
-      return res.status(200).json({ success: true, message: 'Site created successfully!' });
+      return res.status(200).json({ success: true, message: 'Site submitted for review!' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -204,7 +204,7 @@ export default async function handler(req, res) {
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
-      const { error } = await supabase.from('sites').update({ status: 'approved', is_verified: true, is_active: true, reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      const { error } = await supabase.rpc('admin_approve_site', { p_site_id: siteId });
       if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site approved' });
     } catch (err) {
@@ -217,7 +217,7 @@ export default async function handler(req, res) {
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
-      const { error } = await supabase.from('sites').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      const { error } = await supabase.rpc('admin_reject_site', { p_site_id: siteId });
       if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site rejected' });
     } catch (err) {

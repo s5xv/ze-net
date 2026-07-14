@@ -587,6 +587,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+CREATE OR REPLACE FUNCTION public.admin_approve_site(p_site_id uuid)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.sites SET status = 'approved', is_verified = true, is_active = true, reviewed_at = NOW() WHERE id = p_site_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.admin_reject_site(p_site_id uuid)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.sites SET status = 'rejected', reviewed_at = NOW() WHERE id = p_site_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ============================================================
 -- 5. SEED DATA
 -- ============================================================

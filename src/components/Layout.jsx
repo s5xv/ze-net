@@ -42,7 +42,7 @@ export default function Layout({ children, user }) {
     // NEW: Fetch live server status
     const fetchServerStatus = async () => {
       try {
-        const res = await fetch('https://api.mcsrvstat.us/3/play.democracycraft.net');
+        const res = await fetch('https://api.mcsrvstat.us/2/play.democracycraft.net');
         if (res.ok) {
           const data = await res.json();
           if (data?.online) {
