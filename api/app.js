@@ -11,7 +11,7 @@ const getUser = async (req) => {
   const token = auth.split(' ')[1];
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return null;
-  supabase.auth.setSession({ access_token: token, refresh_token: '' }).catch(() => {});
+  try { await supabase.auth.setSession({ access_token: token, refresh_token: '' }); } catch {}
   return user;
 };
 
