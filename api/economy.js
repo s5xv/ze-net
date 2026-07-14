@@ -172,10 +172,8 @@ export default async function handler(req, res) {
       if (!profile?.mc_verified) return res.status(403).json({ error: 'MC account not verified' });
       const { data: existing } = await supabase.from('transactions').select('txn_id').eq('ref_id', refId).eq('type', 'deposit').maybeSingle();
       if (existing) return res.status(400).json({ error: 'Already deposited' });
-      const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', targetUserId).maybeSingle();
-      const newBal = (currentBal?.balance || 0) + parseFloat(amount);
-      if (!currentBal) await supabase.from('balances').insert({ user_id: targetUserId, balance: newBal });
-      else await supabase.from('balances').update({ balance: newBal }).eq('user_id', targetUserId);
+      const { error: balErr } = await supabase.rpc('increment_balance', { target_user_id: targetUserId, deposit_amount: parseFloat(amount) });
+      if (balErr) return res.status(500).json({ error: 'Balance update failed: ' + balErr.message });
       await supabase.from('transactions').insert({ user_id: targetUserId, amount: parseFloat(amount), type: 'deposit', ref_id: refId, note: `Manual deposit from ${profile.mc_username}` });
       return res.status(200).json({ success: true, message: `Deposited $${amount}` });
     }

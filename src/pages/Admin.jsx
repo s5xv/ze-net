@@ -707,12 +707,20 @@ export default function Admin() {
                 {businessRegistrations.map(b => (
                   <div key={b.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
                     <div className="flex justify-between items-start gap-4">
-                      <div>
+                      <div className="flex-1">
                         <p className="text-white font-bold text-lg">{b.business_name}</p>
                         <p className="text-sm text-gray-400">{b.category} &middot; {b.plot_number ? `Plot #${b.plot_number}` : 'No plot'}</p>
-                        <p className="text-xs text-gray-500 mt-1">Status: <span className={b.status === 'pending' ? 'text-yellow-400' : 'text-green-400'}>{b.status}</span></p>
+                        <p className="text-xs text-gray-500 mt-1">Status: <span className={b.status === 'pending' ? 'text-yellow-400' : b.status === 'approved' ? 'text-green-400' : 'text-red-400'}>{b.status}</span></p>
                         {b.description && <p className="text-xs text-gray-500 mt-1">{b.description}</p>}
+                        {b.owner_discord && <p className="text-xs text-gray-500 mt-1">Discord: {b.owner_discord}</p>}
+                        {b.website_url && <p className="text-xs text-gray-500 mt-1">URL: {b.website_url}</p>}
                       </div>
+                      {b.status === 'pending' && (
+                        <div className="flex flex-col gap-2 shrink-0">
+                          <button onClick={async () => { await supabase.from('business_registrations').update({ status: 'approved' }).eq('id', b.id); fetchData(activeTab); }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
+                          <button onClick={async () => { await supabase.from('business_registrations').update({ status: 'rejected' }).eq('id', b.id); fetchData(activeTab); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
