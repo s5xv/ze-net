@@ -40,7 +40,7 @@ export default function Admin() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordOk, setPasswordOk] = useState(hasAdminPassword());
 
-  const fetchData = async () => {
+  const fetchData = async (tab) => {
     setLoading(true);
     setMessage('');
     try {
@@ -57,16 +57,16 @@ export default function Admin() {
         totalUsers: userCount?.length || 0
       });
 
-      if (activeTab === 'withdrawals') {
+      if (tab === 'withdrawals') {
         const { data } = await supabase.from('withdrawal_requests').select('*, profiles(mc_username, username, id)').order('created_at', { ascending: false });
         setWithdrawals(data || []);
-      } else if (activeTab === 'verifications') {
+      } else if (tab === 'verifications') {
         const { data } = await supabase.from('site_verification_requests').select('*, profiles(username), sites(name, id, user_id)').order('created_at', { ascending: false });
         setVerifications(data || []);
-      } else if (activeTab === 'ads') {
+      } else if (tab === 'ads') {
         const { data } = await supabase.from('ad_requests').select('*, profiles(username), sites(name)').order('created_at', { ascending: false });
         setAdRequests(data || []);
-      } else if (activeTab === 'pending') {
+      } else if (tab === 'pending') {
         try {
           const d = await apiFetch('/api/app?action=admin-get-pending-sites');
           console.log('Pending sites response:', d);
@@ -75,24 +75,24 @@ export default function Admin() {
           console.error('Pending fetch error:', e);
           setMessage('API Error: ' + e.message); 
         }
-      } else if (activeTab === 'sites') {
+      } else if (tab === 'sites') {
         try {
           const d = await apiFetch('/api/app?action=admin-get-sites');
           setSites(d.sites || []);
         } catch (e) { setMessage('API Error: ' + e.message); }
-      } else if (activeTab === 'users') {
+      } else if (tab === 'users') {
         const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
         setProfiles(data || []);
-      } else if (activeTab === 'transactions') {
+      } else if (tab === 'transactions') {
         const { data } = await supabase.from('transactions').select('*, profiles(username)').order('created_at', { ascending: false }).limit(100);
         setTransactions(data || []);
-      } else if (activeTab === 'staff') {
+      } else if (tab === 'staff') {
         const { data } = await supabase.from('profiles').select('*').eq('is_staff', true);
         setStaff(data || []);
-      } else if (activeTab === 'moderation') {
+      } else if (tab === 'moderation') {
         const { data } = await supabase.from('site_reports').select('*, profiles(username), sites(name, slug)').order('created_at', { ascending: false }).limit(50);
         setReports(data || []);
-      } else if (activeTab === 'businesses') {
+      } else if (tab === 'businesses') {
         const { data } = await supabase.from('business_registrations').select('*').order('created_at', { ascending: false });
         setBusinessRegistrations(data || []);
       }
@@ -140,7 +140,7 @@ export default function Admin() {
   }, [user, authLoading, checkAdminAccess, navigate]);
 
   useEffect(() => {
-    if (authorized) fetchData();
+    if (authorized) fetchData(activeTab);
   }, [activeTab, authorized]);
 
   const handlePasswordSubmit = () => {
