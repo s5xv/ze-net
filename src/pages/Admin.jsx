@@ -30,6 +30,7 @@ export default function Admin() {
   const [editingStaff, setEditingStaff] = useState(null);
   const [reports, setReports] = useState([]);
   const [pendingSites, setPendingSites] = useState([]);
+  const [businessRegistrations, setBusinessRegistrations] = useState([]);
   const [depositUserId, setDepositUserId] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositNote, setDepositNote] = useState('');
@@ -91,6 +92,9 @@ export default function Admin() {
       } else if (activeTab === 'moderation') {
         const { data } = await supabase.from('site_reports').select('*, profiles(username), sites(name, slug)').order('created_at', { ascending: false }).limit(50);
         setReports(data || []);
+      } else if (activeTab === 'businesses') {
+        const { data } = await supabase.from('business_registrations').select('*').order('created_at', { ascending: false });
+        setBusinessRegistrations(data || []);
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -98,6 +102,15 @@ export default function Admin() {
     }
     setLoading(false);
   };
+
+  const checkStaffAccess = useCallback(async () => {
+    const { data: profile } = await supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle();
+    if (profile?.is_staff) {
+      setAuthorized(true);
+    } else {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const checkAdminAccess = useCallback(async () => {
     if (!user || !hasAdminPassword()) return;
@@ -122,7 +135,7 @@ export default function Admin() {
       return;
     }
     if (!ADMIN_PW) {
-      setLoading(false);
+      checkStaffAccess();
       return;
     }
     if (!hasAdminPassword()) {
@@ -151,18 +164,7 @@ export default function Admin() {
     return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>;
   }
 
-  if (!ADMIN_PW) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1a1a2e]">
-        <div className="bg-[#303134] border border-gray-700 rounded-xl p-8 w-full max-w-sm text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Admin Unavailable</h1>
-          <p className="text-gray-400 text-sm">Admin password is not configured. Set VITE_ADMIN_PASSWORD in your environment.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!passwordOk && !hasAdminPassword()) {
+  if (ADMIN_PW && !passwordOk && !hasAdminPassword()) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#1a1a2e]">
         <div className="bg-[#303134] border border-gray-700 rounded-xl p-8 w-full max-w-sm">
@@ -397,6 +399,7 @@ export default function Admin() {
           <TabButton id="users" label="Users" />
           <TabButton id="transactions" label="Transactions" />
           <TabButton id="staff" label="Staff" />
+          <TabButton id="businesses" label="Businesses" />
           <TabButton id="moderation" label="Moderation" badge={reports.length} />
         </div>
 
@@ -697,6 +700,30 @@ export default function Admin() {
               ))}
               {staff.length === 0 && <p className="text-center text-gray-500 py-8">No staff members yet</p>}
             </div>
+          </div>
+        )}
+
+        {!loading && activeTab === 'businesses' && (
+          <div>
+            <h3 className="text-lg font-bold text-white mb-3">Business Registrations ({businessRegistrations.length})</h3>
+            {businessRegistrations.length === 0 ? (
+              <p className="text-gray-500 text-sm italic">No business registrations yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {businessRegistrations.map(b => (
+                  <div key={b.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <p className="text-white font-bold text-lg">{b.business_name}</p>
+                        <p className="text-sm text-gray-400">{b.category} &middot; {b.plot_number ? `Plot #${b.plot_number}` : 'No plot'}</p>
+                        <p className="text-xs text-gray-500 mt-1">Status: <span className={b.status === 'pending' ? 'text-yellow-400' : 'text-green-400'}>{b.status}</span></p>
+                        {b.description && <p className="text-xs text-gray-500 mt-1">{b.description}</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
