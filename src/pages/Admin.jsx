@@ -44,17 +44,17 @@ export default function Admin() {
     setLoading(true);
     setMessage('');
     try {
-      const { data: wdCount } = await supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-      const { data: vfCount } = await supabase.from('site_verification_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-      const { data: adCount } = await supabase.from('ad_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-      const { data: siteCount } = await supabase.from('sites').select('*', { count: 'exact', head: true });
-      const { data: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+      const { count: wdCount } = await supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+      const { count: vfCount } = await supabase.from('site_verification_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+      const { count: adCount } = await supabase.from('ad_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+      const { count: siteCount } = await supabase.from('sites').select('*', { count: 'exact', head: true });
+      const { count: userCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
       setStats({
-        pendingWithdrawals: wdCount?.length || 0,
-        pendingVerifications: vfCount?.length || 0,
-        pendingAds: adCount?.length || 0,
-        totalSites: siteCount?.length || 0,
-        totalUsers: userCount?.length || 0
+        pendingWithdrawals: wdCount || 0,
+        pendingVerifications: vfCount || 0,
+        pendingAds: adCount || 0,
+        totalSites: siteCount || 0,
+        totalUsers: userCount || 0
       });
 
       if (tab === 'withdrawals') {
