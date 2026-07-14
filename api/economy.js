@@ -81,7 +81,7 @@ export default async function handler(req, res) {
     // --- verify-mc ---
     if (action === 'verify-mc') {
       if (step === 'init') {
-        const { error } = await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: false });
+        const { error } = await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: false, initiated_at: new Date().toISOString() });
         if (error) throw error;
         return res.status(200).json({ success: true, message: 'Username registered.' });
       }
@@ -90,12 +90,12 @@ export default async function handler(req, res) {
         if (err) return res.status(500).json({ error: 'Treasury API error: ' + err });
         const playerUuid = await resolvePlayerUuid(mc_username);
         if (!playerUuid) return res.status(404).json({ error: `Could not find player ${mc_username}` });
-        const { data: profile } = await supabase.from('profiles').select('mc_txn_id').eq('id', userId).maybeSingle();
-        const usedTxnId = profile?.mc_txn_id;
-        const maxAge = 60 * 60 * 1000;
+        const { data: profile } = await supabase.from('profiles').select('mc_verify_initiated_at').eq('id', userId).maybeSingle();
+        const initiatedAt = profile?.mc_verify_initiated_at ? new Date(profile.mc_verify_initiated_at).getTime() : 0;
         let found = null;
         for (const txn of txns) {
-          if (usedTxnId && txn.txnId === usedTxnId) continue;
+          const settledAt = new Date(txn.settledAt).getTime();
+          if (settledAt < initiatedAt) continue;
           const memo = (txn.memo || txn.message || '').toLowerCase().trim();
           let payer = "";
           const match1 = memo.match(/^business payment:\s*([a-zA-Z0-9_]+)\s*->/);
@@ -103,13 +103,12 @@ export default async function handler(req, res) {
           else { const match2 = memo.match(/^payment from\s+([a-zA-Z0-9_]+)\s+to business/); if (match2) payer = match2[1]; }
           if (payer !== mc_username.toLowerCase() || !memo.includes('zen') && !memo.includes('zec')) continue;
           if ((txn.initiatorUuid || '').toLowerCase() !== playerUuid.toLowerCase()) continue;
-          if (new Date() - new Date(txn.settledAt) > maxAge) continue;
           if (Math.abs(parseFloat(txn.amount || 0) - 1.0) > 0.001) continue;
           found = txn;
           break;
         }
         if (!found) return res.status(404).json({ error: `No $1 payment from ${mc_username} found. Run /pay-account business ZEN 1.` });
-        await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: true, txn_id: found.txnId });
+        await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: true });
         return res.status(200).json({ success: true, message: `${mc_username} is now linked and verified!` });
       }
       return res.status(400).json({ error: 'Invalid step' });

@@ -57,7 +57,7 @@ CREATE TABLE public.profiles (
   ad_preferences jsonb DEFAULT '[]'::jsonb,
   mc_username text,
   mc_verified boolean DEFAULT false,
-  mc_txn_id text,
+  mc_verify_initiated_at timestamptz,
   is_staff boolean DEFAULT false,
   staff_permissions jsonb DEFAULT '[]'::jsonb,
   xp integer DEFAULT 0,
@@ -576,13 +576,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP FUNCTION IF EXISTS public.link_mc_account(uuid, text, boolean);
 DROP FUNCTION IF EXISTS public.link_mc_account(uuid, text, boolean, text);
-CREATE OR REPLACE FUNCTION public.link_mc_account(target_user_id uuid, mc_username text, verified boolean DEFAULT false, txn_id text DEFAULT NULL)
+DROP FUNCTION IF EXISTS public.link_mc_account(uuid, text, boolean, timestamptz);
+CREATE OR REPLACE FUNCTION public.link_mc_account(target_user_id uuid, mc_username text, verified boolean DEFAULT false, initiated_at timestamptz DEFAULT NULL)
 RETURNS void AS $$
 BEGIN
-  INSERT INTO public.profiles (id, mc_username, mc_verified, mc_txn_id)
-  VALUES (target_user_id, mc_username, verified, txn_id)
+  INSERT INTO public.profiles (id, mc_username, mc_verified, mc_verify_initiated_at)
+  VALUES (target_user_id, mc_username, verified, initiated_at)
   ON CONFLICT (id)
-  DO UPDATE SET mc_username = EXCLUDED.mc_username, mc_verified = EXCLUDED.mc_verified, mc_txn_id = COALESCE(EXCLUDED.mc_txn_id, profiles.mc_txn_id);
+  DO UPDATE SET mc_username = EXCLUDED.mc_username, mc_verified = EXCLUDED.mc_verified, mc_verify_initiated_at = COALESCE(EXCLUDED.mc_verify_initiated_at, profiles.mc_verify_initiated_at);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -665,6 +666,15 @@ ALTER TABLE public.site_views ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role manages views" ON public.site_views
   FOR ALL TO service_role
   USING (true);
+
+-- ============================================================
+-- MIGRATIONS (run incrementally on existing DB)
+-- ============================================================
+-- 2026-07-14: Add mc_verify_initiated_at for payment recency check
+-- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS mc_verify_initiated_at timestamptz;
+-- ALTER TABLE public.profiles DROP COLUMN IF EXISTS mc_txn_id;
+-- DROP FUNCTION IF EXISTS public.link_mc_account(uuid, text, boolean, text);
+-- CREATE OR REPLACE FUNCTION public.link_mc_account... (see above)
 
 -- ============================================================
 -- DONE!
