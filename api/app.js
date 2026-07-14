@@ -8,17 +8,14 @@ const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPAB
 const getUser = async (req) => {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return null;
-  const token = auth.split(' ')[1];
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  const { data: { user }, error } = await supabase.auth.getUser(auth.split(' ')[1]);
   if (error || !user) return null;
-  try { await supabase.auth.setSession({ access_token: token, refresh_token: '' }); } catch {}
   return user;
 };
 
 const requireAdmin = async (req) => {
   const user = await getUser(req);
   if (!user) return false;
-  if (process.env.VITE_ADMIN_PASSWORD) return true;
   const { data } = await supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle();
   return data?.is_staff === true;
 };
@@ -136,29 +133,11 @@ export default async function handler(req, res) {
     }
   }
 
-    // --- get-sites (public) ---
-  if (action === 'get-sites') {
-    if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
-    try {
-      await getUser(req).catch(() => {});
-      let q = supabase.from('sites').select('*');
-      const search = req.query.q;
-      if (search) q = q.or(`name.ilike.%${search}%,description.ilike.%${search}%,shortcuts.ilike.%${search}%`);
-      const { data } = await q.order('view_count', { ascending: false }).limit(50);
-      return res.status(200).json({ sites: data || [] });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
-  }
-
   // --- submit-site ---
   if (action === 'submit-site') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     try {
       const user = await requireUser(req);
-      const authHeader = req.headers.authorization;
-      const token = authHeader?.split(' ')[1];
-      if (token) {
-        try { await supabase.auth.setSession({ access_token: token, refresh_token: '' }); } catch {}
-      }
       const { name, website_url, owner_discord, category, description, plot_number, shortcut, discord_invite } = req.body;
       if (!name) return res.status(400).json({ error: 'Name is required' });
       const user_id = user.id;
@@ -217,7 +196,7 @@ export default async function handler(req, res) {
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
-      const { error } = await supabase.rpc('admin_approve_site', { p_site_id: siteId });
+      const { error } = await supabase.from('sites').update({ status: 'approved', is_verified: true, is_active: true, reviewed_at: new Date().toISOString() }).eq('id', siteId);
       if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site approved' });
     } catch (err) {
@@ -230,7 +209,7 @@ export default async function handler(req, res) {
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
-      const { error } = await supabase.rpc('admin_reject_site', { p_site_id: siteId });
+      const { error } = await supabase.from('sites').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', siteId);
       if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site rejected' });
     } catch (err) {
@@ -260,7 +239,7 @@ export default async function handler(req, res) {
   // --- admin-get-sites ---
   if (action === 'admin-get-sites') {
     try {
-      const { data } = await supabase.from('sites').select('*').order('created_at', { ascending: false });
+      const { data } = await supabase.from('sites').select('*, profiles(username)').order('created_at', { ascending: false });
       return res.status(200).json({ sites: data || [] });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }

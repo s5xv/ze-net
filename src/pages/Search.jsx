@@ -43,13 +43,12 @@ export default function Search() {
     const rawQuery = query.toLowerCase().trim();
     const searchTerm = extractSearchTerms(rawQuery);
     
-    let sitesData = [];
-    try {
-      const qs = searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : '';
-      const res = await apiFetch(`/api/app?action=get-sites${qs}`);
-      sitesData = res.sites || [];
-    } catch {}
-    if (id === searchId.current) setSiteResults(sitesData);
+    let sitesQuery = supabase.from('sites').select('*').eq('status', 'approved').eq('is_verified', true);
+    if (searchTerm) {
+      sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcuts.ilike.%${searchTerm}%`);
+    }
+    const { data: sitesData } = await sitesQuery.order('view_count', { ascending: false }).limit(15);
+    if (id === searchId.current) setSiteResults(sitesData || []);
 
     const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
     if (id === searchId.current) setWikiResults(wikiData || []);
