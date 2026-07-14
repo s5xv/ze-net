@@ -111,7 +111,6 @@ export default function Admin() {
     }
     const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_staff', true);
     if (count === 0) {
-      await supabase.from('profiles').update({ is_staff: true, staff_permissions: [] }).eq('id', user.id);
       setAuthorized(true);
       return;
     }
@@ -120,19 +119,8 @@ export default function Admin() {
 
   const checkAdminAccess = useCallback(async () => {
     if (!user || !hasAdminPassword()) return;
-    const { data: profile } = await supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle();
-    if (profile?.is_staff) {
-      setAuthorized(true);
-      return;
-    }
-    const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_staff', true);
-    if (count === 0) {
-      await supabase.from('profiles').update({ is_staff: true, staff_permissions: [] }).eq('id', user.id);
-      setAuthorized(true);
-      return;
-    }
-    navigate('/');
-  }, [user, navigate]);
+    setAuthorized(true);
+  }, [user]);
 
   useEffect(() => {
     if (authLoading) return;

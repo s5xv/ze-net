@@ -25,8 +25,12 @@ export default function Layout({ children, user }) {
       };
       fetchMCName();
 
-      // FIXED: Use maybeSingle so it doesn't crash if no balance row exists
-      supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => setIsStaff(data?.is_staff || false)).catch(() => {});
+      const pw = import.meta.env.VITE_ADMIN_PASSWORD;
+      if (pw) {
+        setIsStaff(sessionStorage.getItem('admin_pw') === pw);
+      } else {
+        supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => setIsStaff(data?.is_staff || false)).catch(() => {});
+      }
 
       const fetchBalance = async () => {
         const { data, error } = await supabase.from('balances').select('balance').eq('user_id', user.id).maybeSingle();

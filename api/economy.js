@@ -196,7 +196,7 @@ export default async function handler(req, res) {
           if (!payer || !memo.includes('zen') && !memo.includes('zec')) continue;
           let amt = 0;
           try { amt = parseFloat(t.amount || 0); } catch { continue; }
-          if (amt <= 1.0) continue;
+          if (amt < 0.01) continue;
           if (t.settledAt && now - new Date(t.settledAt) > lookback) continue;
           const { data: urow } = await supabase.from('profiles').select('id').ilike('mc_username', payer).eq('mc_verified', true).maybeSingle();
           if (!urow) continue;
