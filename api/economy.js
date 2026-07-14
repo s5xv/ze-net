@@ -187,6 +187,7 @@ export default async function handler(req, res) {
       const lookback = 60 * 60 * 1000;
       let processed = 0;
       let skipped = { noPayer: 0, lowAmount: 0, tooOld: 0, noProfile: 0, noTxnId: 0, duplicate: 0, balErr: 0 };
+      console.log('auto-deposit: first 3 tx memos:', txns.slice(0, 3).map(t => ({ memo: t.memo || t.message, amount: t.amount, settledAt: t.settledAt, txnId: t.txnId, id: t.id })));
       for (const t of txns) {
         try {
           const memo = ((t.memo || t.message || "") + "").trim().toLowerCase();
@@ -212,7 +213,7 @@ export default async function handler(req, res) {
           if (existing) { skipped.duplicate++; continue; }
           const new_txn_id = "ZEC-" + Math.random().toString(36).substring(2, 12).toUpperCase();
           const { error: balErr } = await supabase.rpc('increment_balance', { target_user_id: urow.id, deposit_amount: amt });
-          if (balErr) { skipped.balErr++; continue; }
+          if (balErr) { skipped.balErr++; console.log('increment_balance error for', urow.id, amt, balErr.message || balErr); continue; }
           await supabase.from('transactions').insert({ txn_id: new_txn_id, user_id: urow.id, amount: amt, type: 'deposit', ref_id, note: `Auto-detected from ${payer}` });
           processed++;
         } catch { continue; }
