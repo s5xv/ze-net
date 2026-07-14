@@ -181,11 +181,12 @@ export default async function handler(req, res) {
     }
 
     if (action === 'auto-deposit') {
-      const [txns, err] = await getTransactions(50);
+      const [txns, err] = await getTransactions(100);
       if (err || !txns) return res.status(200).json({ processed: 0, error: err });
       const now = new Date();
       const lookback = 60 * 60 * 1000;
       let processed = 0;
+      let skipped = { noPayer: 0, lowAmount: 0, tooOld: 0, noProfile: 0, noTxnId: 0, duplicate: 0, balErr: 0 };
       for (const t of txns) {
         try {
           const memo = ((t.memo || t.message || "") + "").trim().toLowerCase();
@@ -193,29 +194,31 @@ export default async function handler(req, res) {
           const match1 = memo.match(/^business payment:\s*([a-zA-Z0-9_]+)\s*->/);
           if (match1) payer = match1[1];
           else { const match2 = memo.match(/^payment from\s+([a-zA-Z0-9_]+)\s+to business/); if (match2) payer = match2[1]; }
-          if (!payer || !memo.includes('zen') && !memo.includes('zec')) continue;
+          if (!payer || !memo.includes('zen') && !memo.includes('zec')) { skipped.noPayer++; continue; }
           let amt = 0;
-          try { amt = parseFloat(t.amount || 0); } catch { continue; }
-          if (amt < 0.01) continue;
-          if (t.settledAt && now - new Date(t.settledAt) > lookback) continue;
-          const { data: urow } = await supabase.from('profiles').select('id, mc_verified').ilike('mc_username', payer).maybeSingle();
-          if (!urow) continue;
+          try { amt = parseFloat(t.amount || 0); } catch { skipped.lowAmount++; continue; }
+          if (amt < 0.01) { skipped.lowAmount++; continue; }
+          if (t.settledAt && now - new Date(t.settledAt) > lookback) { skipped.tooOld++; continue; }
+          const { data: urow } = await supabase.from('profiles').select('id, mc_username, mc_verified').ilike('mc_username', payer).maybeSingle();
+          if (!urow) { skipped.noProfile++; continue; }
           if (!urow.mc_verified) {
-            await supabase.rpc('link_mc_account', { target_user_id: urow.id, mc_username: payer, verified: true });
+            const { error: vr } = await supabase.rpc('link_mc_account', { target_user_id: urow.id, mc_username: payer, verified: true });
+            if (vr) { skipped.balErr++; continue; }
           }
           const dc_txn_id = String(t.txnId || t.id || t.transactionId || "");
-          if (!dc_txn_id) continue;
+          if (!dc_txn_id) { skipped.noTxnId++; continue; }
           const ref_id = "DC-" + dc_txn_id;
           const { data: existing } = await supabase.from('transactions').select('txn_id').eq('ref_id', ref_id).eq('type', 'deposit').maybeSingle();
-          if (existing) continue;
+          if (existing) { skipped.duplicate++; continue; }
           const new_txn_id = "ZEC-" + Math.random().toString(36).substring(2, 12).toUpperCase();
           const { error: balErr } = await supabase.rpc('increment_balance', { target_user_id: urow.id, deposit_amount: amt });
-          if (balErr) continue;
+          if (balErr) { skipped.balErr++; continue; }
           await supabase.from('transactions').insert({ txn_id: new_txn_id, user_id: urow.id, amount: amt, type: 'deposit', ref_id, note: `Auto-detected from ${payer}` });
           processed++;
         } catch { continue; }
       }
-      return res.status(200).json({ processed });
+      console.log('auto-deposit result:', { processed, skipped, totalTxns: txns.length });
+      return res.status(200).json({ processed, skipped });
     }
 
     if (action === 'check-deposits') {
