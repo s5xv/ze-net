@@ -58,13 +58,13 @@ export default function Admin() {
       });
 
       if (tab === 'withdrawals') {
-        const { data } = await supabase.from('withdrawal_requests').select('*, profiles(mc_username, username, id)').order('created_at', { ascending: false });
+        const { data } = await supabase.from('withdrawal_requests').select('*').order('created_at', { ascending: false });
         setWithdrawals(data || []);
       } else if (tab === 'verifications') {
-        const { data } = await supabase.from('site_verification_requests').select('*, profiles(username), sites(name, id, user_id)').order('created_at', { ascending: false });
+        const { data } = await supabase.from('site_verification_requests').select('*').order('created_at', { ascending: false });
         setVerifications(data || []);
       } else if (tab === 'ads') {
-        const { data } = await supabase.from('ad_requests').select('*, profiles(username), sites(name)').order('created_at', { ascending: false });
+        const { data } = await supabase.from('ad_requests').select('*').order('created_at', { ascending: false });
         setAdRequests(data || []);
       } else if (tab === 'pending') {
         try {
@@ -424,12 +424,12 @@ export default function Admin() {
                 <div key={w.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex-1">
-                      <p className="text-white font-bold">{w.profiles?.username || 'Unknown'}</p>
+                      <p className="text-white font-bold">{w.mc_username || w.user_id?.slice(0, 8) || 'Unknown'}</p>
                       <p className="text-2xl font-bold text-green-400 mb-2">${w.amount}</p>
-                      {w.profiles?.mc_username && (
+                      {w.mc_username && (
                         <div className="bg-gray-900 p-3 rounded text-xs">
                           <p className="text-gray-400 mb-1">Payment Command:</p>
-                          <code className="text-yellow-400 font-mono block">/pay {w.profiles.mc_username} {w.amount}</code>
+                          <code className="text-yellow-400 font-mono block">/pay {w.mc_username} {w.amount}</code>
                         </div>
                       )}
                     </div>
