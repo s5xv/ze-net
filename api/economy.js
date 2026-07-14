@@ -109,7 +109,12 @@ export default async function handler(req, res) {
         }
         if (!found) return res.status(404).json({ error: `No $1 payment from ${mc_username} found. Run /pay-account business ZEN 1.` });
         await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: true });
-        return res.status(200).json({ success: true, message: `${mc_username} is now linked and verified!` });
+        const { data: bal } = await supabase.from('balances').select('balance').eq('user_id', userId).maybeSingle();
+        const newBal = (bal?.balance || 0) + 1;
+        if (!bal) await supabase.from('balances').insert({ user_id: userId, balance: newBal });
+        else await supabase.from('balances').update({ balance: newBal }).eq('user_id', userId);
+        await supabase.from('transactions').insert({ txn_id: 'MCV-' + Date.now(), user_id: userId, amount: 1, type: 'deposit', ref_id: 'MC-VERIFY-' + mc_username, note: `MC verification deposit from ${mc_username}` });
+        return res.status(200).json({ success: true, message: `${mc_username} is now linked and verified! $1 deposited.` });
       }
       return res.status(400).json({ error: 'Invalid step' });
     }
