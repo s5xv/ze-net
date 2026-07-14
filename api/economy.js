@@ -109,9 +109,7 @@ export default async function handler(req, res) {
         }
         if (!found) return res.status(404).json({ error: `No $1 payment from ${mc_username} found. Run /pay-account business ZEN 1.` });
         await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: true });
-        await supabase.rpc('increment_balance', { target_user_id: userId, deposit_amount: 1 });
-        await supabase.from('transactions').insert({ txn_id: 'MCV-' + Date.now(), user_id: userId, amount: 1, type: 'deposit', ref_id: 'MC-VERIFY-' + mc_username, note: `MC verification deposit from ${mc_username}` });
-        return res.status(200).json({ success: true, message: `${mc_username} is now linked and verified! $1 deposited.` });
+        return res.status(200).json({ success: true, message: `${mc_username} is now linked and verified!` });
       }
       return res.status(400).json({ error: 'Invalid step' });
     }
@@ -200,8 +198,11 @@ export default async function handler(req, res) {
           try { amt = parseFloat(t.amount || 0); } catch { continue; }
           if (amt < 0.01) continue;
           if (t.settledAt && now - new Date(t.settledAt) > lookback) continue;
-          const { data: urow } = await supabase.from('profiles').select('id').ilike('mc_username', payer).eq('mc_verified', true).maybeSingle();
+          const { data: urow } = await supabase.from('profiles').select('id, mc_verified').ilike('mc_username', payer).maybeSingle();
           if (!urow) continue;
+          if (!urow.mc_verified) {
+            await supabase.rpc('link_mc_account', { target_user_id: urow.id, mc_username: payer, verified: true });
+          }
           const dc_txn_id = String(t.txnId || t.id || t.transactionId || "");
           if (!dc_txn_id) continue;
           const ref_id = "DC-" + dc_txn_id;
