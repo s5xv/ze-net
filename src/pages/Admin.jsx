@@ -186,7 +186,7 @@ export default function Admin() {
         body: JSON.stringify({ action: 'approve-withdrawal', withdrawalId: id, actionType: action })
       });
       setMessage(data.message || data.error);
-      fetchData();
+      fetchData(activeTab);
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
@@ -200,7 +200,7 @@ export default function Admin() {
       } else {
         await supabase.from('site_reports').update({ status: 'dismissed' }).eq('id', report.id);
       }
-      fetchData();
+      fetchData(activeTab);
     } catch (err) { setMessage('Error: ' + err.message); }
   };
 
@@ -211,7 +211,7 @@ export default function Admin() {
         await supabase.from('sites').update({ is_verified: true, verification_paid_at: new Date().toISOString() }).eq('id', req.site_id);
       }
       setMessage('Verification approved');
-      fetchData();
+      fetchData(activeTab);
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
@@ -232,7 +232,7 @@ export default function Admin() {
         await supabase.from('ad_requests').update({ status: 'rejected' }).eq('id', req.id);
         setMessage('Ad rejected');
       }
-      fetchData();
+      fetchData(activeTab);
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
@@ -242,7 +242,7 @@ export default function Admin() {
     try {
       await supabase.from('sites').update({ is_verified: !currentVal }).eq('id', siteId);
       setMessage(!currentVal ? 'Site verified' : 'Verification removed');
-      fetchData();
+      fetchData(activeTab);
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
@@ -252,7 +252,7 @@ export default function Admin() {
     try {
       const data = await apiFetch('/api/app?action=' + action, { method: 'POST', body: JSON.stringify(body) });
       setMessage(data.message || data.error || 'Done');
-      fetchData();
+      fetchData(activeTab);
     } catch (err) { setMessage('Error: ' + err.message); }
   };
 
@@ -288,7 +288,7 @@ export default function Admin() {
     try {
       await supabase.from('profiles').update({ staff_permissions: permissions }).eq('id', userId);
       setMessage('Permissions updated');
-      fetchData();
+      fetchData(activeTab);
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
@@ -298,7 +298,7 @@ export default function Admin() {
     try {
       await supabase.from('profiles').update({ is_staff: true, staff_permissions: [] }).eq('id', userId);
       setMessage('User promoted to staff');
-      fetchData();
+      fetchData(activeTab);
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
@@ -308,7 +308,7 @@ export default function Admin() {
     try {
       await supabase.from('profiles').update({ is_staff: false, staff_permissions: null }).eq('id', userId);
       setMessage('Staff role removed');
-      fetchData();
+      fetchData(activeTab);
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
@@ -457,7 +457,7 @@ export default function Admin() {
                     </div>
                     <div className="flex flex-col gap-2">
                       <button onClick={() => handleApproveVerification(v)} disabled={!v.site_id} className="px-4 py-2 bg-green-600 disabled:bg-gray-600 text-white rounded-lg text-sm font-bold">Verify</button>
-                      <button onClick={async () => { await supabase.from('site_verification_requests').update({ status: 'rejected' }).eq('id', v.id); fetchData(); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
+                      <button onClick={async () => { await supabase.from('site_verification_requests').update({ status: 'rejected' }).eq('id', v.id); fetchData(activeTab); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
                     </div>
                   </div>
                 </div>
