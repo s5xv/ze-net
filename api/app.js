@@ -144,7 +144,7 @@ export default async function handler(req, res) {
       const authHeader = req.headers.authorization;
       const token = authHeader?.split(' ')[1];
       if (token) {
-        await supabase.auth.setSession({ access_token: token, refresh_token: '' }).catch(() => {});
+        try { await supabase.auth.setSession({ access_token: token, refresh_token: '' }); } catch {}
       }
       const { name, website_url, owner_discord, category, description, plot_number, shortcut, discord_invite } = req.body;
       if (!name) return res.status(400).json({ error: 'Name is required' });
@@ -158,13 +158,13 @@ export default async function handler(req, res) {
         plot_number: plot_number || null, shortcuts: shortcut || null,
         discord_invite: discord_invite || null,
         owner_user_id: user_id, user_id, owner_name: owner?.username || 'Unknown',
-        is_verified: false, is_active: true, status: 'pending', submitted_by: user_id
+        is_verified: true, is_active: true, status: 'approved', submitted_by: user_id
       });
       if (error) {
         console.error("SITE INSERT ERROR:", error);
         return res.status(500).json({ error: error.message });
       }
-      return res.status(200).json({ success: true, message: 'Site submitted for review!' });
+      return res.status(200).json({ success: true, message: 'Site created successfully!' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
