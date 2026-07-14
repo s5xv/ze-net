@@ -574,6 +574,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP FUNCTION IF EXISTS public.link_mc_account(uuid, text, boolean);
 DROP FUNCTION IF EXISTS public.link_mc_account(uuid, text, boolean, text);
 CREATE OR REPLACE FUNCTION public.link_mc_account(target_user_id uuid, mc_username text, verified boolean DEFAULT false, txn_id text DEFAULT NULL)
 RETURNS void AS $$
