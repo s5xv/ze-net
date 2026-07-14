@@ -203,7 +203,7 @@ export default async function handler(req, res) {
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
-      const { error } = await supabase.from('sites').update({ status: 'approved', reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      const { error } = await supabase.from('sites').update({ status: 'approved', is_verified: true, is_active: true, reviewed_at: new Date().toISOString() }).eq('id', siteId);
       if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site approved' });
     } catch (err) {
@@ -246,7 +246,7 @@ export default async function handler(req, res) {
   // --- admin-get-sites ---
   if (action === 'admin-get-sites') {
     try {
-      const { data } = await supabase.from('sites').select('*, profiles(username)').order('created_at', { ascending: false });
+      const { data } = await supabase.from('sites').select('*').order('created_at', { ascending: false });
       return res.status(200).json({ sites: data || [] });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }

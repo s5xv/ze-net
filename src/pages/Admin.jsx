@@ -563,7 +563,7 @@ export default function Admin() {
                   {filteredSites.map(site => (
                     <tr key={site.id} className="border-t border-gray-700">
                       <td className="p-3"><p className="text-white">{site.name}</p><p className="text-xs text-gray-500">{site.url}</p></td>
-                      <td className="p-3 text-gray-300">{site.owner_name || site.profiles?.username || '-'}</td>
+                      <td className="p-3 text-gray-300">{site.owner_name || '-'}</td>
                       <td className="p-3 capitalize text-gray-300">{site.category}</td>
                       <td className="p-3">
                         <span className={`px-2 py-1 text-xs rounded ${site.status === 'pending' ? 'bg-yellow-600 text-white' : site.status === 'rejected' ? 'bg-red-600 text-white' : site.is_verified ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>

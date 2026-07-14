@@ -550,14 +550,14 @@ ON CONFLICT (id) DO NOTHING;
 
 DROP FUNCTION IF EXISTS public.increment_balance(uuid, numeric, uuid, numeric);
 DROP FUNCTION IF EXISTS public.increment_balance(uuid, numeric);
-CREATE OR REPLACE FUNCTION public.increment_balance(target_user_id uuid DEFAULT NULL, deposit_amount numeric DEFAULT NULL, user_id uuid DEFAULT NULL, amount numeric DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.increment_balance(target_user_id uuid DEFAULT NULL, deposit_amount numeric DEFAULT NULL)
 RETURNS void AS $$
 DECLARE
   uid uuid;
   amt numeric;
 BEGIN
-  uid := COALESCE(target_user_id, user_id);
-  amt := COALESCE(deposit_amount, amount);
+  uid := target_user_id;
+  amt := deposit_amount;
   IF uid IS NULL OR amt IS NULL THEN RAISE EXCEPTION 'Missing user_id or amount'; END IF;
   INSERT INTO public.balances (user_id, balance)
   VALUES (uid, amt)
@@ -633,6 +633,11 @@ CREATE POLICY "Owners can update their sites" ON public.sites
   FOR UPDATE TO authenticated
   USING (auth.uid() = owner_user_id OR auth.uid() = user_id)
   WITH CHECK (auth.uid() = owner_user_id OR auth.uid() = user_id);
+
+CREATE POLICY "Staff can update any site" ON public.sites
+  FOR UPDATE TO authenticated
+  USING ((SELECT is_staff FROM public.profiles WHERE id = auth.uid()) = true)
+  WITH CHECK ((SELECT is_staff FROM public.profiles WHERE id = auth.uid()) = true);
 
 -- Profiles RLS
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
