@@ -8,8 +8,10 @@ const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPAB
 const getUser = async (req) => {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return null;
-  const { data: { user }, error } = await supabase.auth.getUser(auth.split(' ')[1]);
+  const token = auth.split(' ')[1];
+  const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return null;
+  supabase.auth.setSession({ access_token: token, refresh_token: '' }).catch(() => {});
   return user;
 };
 
@@ -138,6 +140,11 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     try {
       const user = await requireUser(req);
+      const authHeader = req.headers.authorization;
+      const token = authHeader?.split(' ')[1];
+      if (token) {
+        await supabase.auth.setSession({ access_token: token, refresh_token: '' }).catch(() => {});
+      }
       const { name, website_url, owner_discord, category, description, plot_number, shortcut, discord_invite } = req.body;
       if (!name) return res.status(400).json({ error: 'Name is required' });
       const user_id = user.id;
