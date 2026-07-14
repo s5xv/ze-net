@@ -205,8 +205,8 @@ export default async function handler(req, res) {
             const { error: vr } = await supabase.rpc('link_mc_account', { target_user_id: urow.id, mc_username: payer, verified: true });
             if (vr) { skipped.balErr++; continue; }
           }
-          const dc_txn_id = String(t.txnId || t.id || t.transactionId || "");
-          if (!dc_txn_id) { skipped.noTxnId++; continue; }
+          let dc_txn_id = String(t.txnId || t.id || t.transactionId || t.uuid || t.txn_id || t.reference || '');
+          if (!dc_txn_id) dc_txn_id = `${payer}-${amt}-${t.settledAt || Date.now()}`.replace(/[^a-zA-Z0-9_-]/g, '');
           const ref_id = "DC-" + dc_txn_id;
           const { data: existing } = await supabase.from('transactions').select('txn_id').eq('ref_id', ref_id).eq('type', 'deposit').maybeSingle();
           if (existing) { skipped.duplicate++; continue; }
