@@ -109,10 +109,7 @@ export default async function handler(req, res) {
         }
         if (!found) return res.status(404).json({ error: `No $1 payment from ${mc_username} found. Run /pay-account business ZEN 1.` });
         await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: true });
-        const { data: bal } = await supabase.from('balances').select('balance').eq('user_id', userId).maybeSingle();
-        const newBal = (bal?.balance || 0) + 1;
-        if (!bal) await supabase.from('balances').insert({ user_id: userId, balance: newBal });
-        else await supabase.from('balances').update({ balance: newBal }).eq('user_id', userId);
+        await supabase.rpc('increment_balance', { target_user_id: userId, deposit_amount: 1 });
         await supabase.from('transactions').insert({ txn_id: 'MCV-' + Date.now(), user_id: userId, amount: 1, type: 'deposit', ref_id: 'MC-VERIFY-' + mc_username, note: `MC verification deposit from ${mc_username}` });
         return res.status(200).json({ success: true, message: `${mc_username} is now linked and verified! $1 deposited.` });
       }
@@ -211,10 +208,8 @@ export default async function handler(req, res) {
           const { data: existing } = await supabase.from('transactions').select('txn_id').eq('ref_id', ref_id).eq('type', 'deposit').maybeSingle();
           if (existing) continue;
           const new_txn_id = "ZEC-" + Math.random().toString(36).substring(2, 12).toUpperCase();
-          const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', urow.id).maybeSingle();
-          const newBal = (currentBal?.balance || 0) + amt;
-          if (!currentBal) await supabase.from('balances').insert({ user_id: urow.id, balance: newBal });
-          else await supabase.from('balances').update({ balance: newBal, updated_at: now.toISOString() }).eq('user_id', urow.id);
+          const { error: balErr } = await supabase.rpc('increment_balance', { target_user_id: urow.id, deposit_amount: amt });
+          if (balErr) continue;
           await supabase.from('transactions').insert({ txn_id: new_txn_id, user_id: urow.id, amount: amt, type: 'deposit', ref_id, note: `Auto-detected from ${payer}` });
           processed++;
         } catch { continue; }
