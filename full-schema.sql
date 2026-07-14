@@ -57,6 +57,7 @@ CREATE TABLE public.profiles (
   ad_preferences jsonb DEFAULT '[]'::jsonb,
   mc_username text,
   mc_verified boolean DEFAULT false,
+  mc_txn_id text,
   is_staff boolean DEFAULT false,
   staff_permissions jsonb DEFAULT '[]'::jsonb,
   xp integer DEFAULT 0,
@@ -573,14 +574,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP FUNCTION IF EXISTS public.link_mc_account(uuid, text, boolean);
-CREATE OR REPLACE FUNCTION public.link_mc_account(target_user_id uuid, mc_username text, verified boolean DEFAULT false)
+DROP FUNCTION IF EXISTS public.link_mc_account(uuid, text, boolean, text);
+CREATE OR REPLACE FUNCTION public.link_mc_account(target_user_id uuid, mc_username text, verified boolean DEFAULT false, txn_id text DEFAULT NULL)
 RETURNS void AS $$
 BEGIN
-  INSERT INTO public.profiles (id, mc_username, mc_verified)
-  VALUES (target_user_id, mc_username, verified)
+  INSERT INTO public.profiles (id, mc_username, mc_verified, mc_txn_id)
+  VALUES (target_user_id, mc_username, verified, txn_id)
   ON CONFLICT (id)
-  DO UPDATE SET mc_username = EXCLUDED.mc_username, mc_verified = EXCLUDED.mc_verified;
+  DO UPDATE SET mc_username = EXCLUDED.mc_username, mc_verified = EXCLUDED.mc_verified, mc_txn_id = COALESCE(EXCLUDED.mc_txn_id, profiles.mc_txn_id);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

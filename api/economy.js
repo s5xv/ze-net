@@ -90,10 +90,12 @@ export default async function handler(req, res) {
         if (err) return res.status(500).json({ error: 'Treasury API error: ' + err });
         const playerUuid = await resolvePlayerUuid(mc_username);
         if (!playerUuid) return res.status(404).json({ error: `Could not find player ${mc_username}` });
-        const now = new Date();
+        const { data: profile } = await supabase.from('profiles').select('mc_txn_id').eq('id', userId).maybeSingle();
+        const usedTxnId = profile?.mc_txn_id;
         const maxAge = 60 * 60 * 1000;
-        let found = false;
+        let found = null;
         for (const txn of txns) {
+          if (usedTxnId && txn.txnId === usedTxnId) continue;
           const memo = (txn.memo || txn.message || '').toLowerCase().trim();
           let payer = "";
           const match1 = memo.match(/^business payment:\s*([a-zA-Z0-9_]+)\s*->/);
@@ -101,13 +103,13 @@ export default async function handler(req, res) {
           else { const match2 = memo.match(/^payment from\s+([a-zA-Z0-9_]+)\s+to business/); if (match2) payer = match2[1]; }
           if (payer !== mc_username.toLowerCase() || !memo.includes('zen') && !memo.includes('zec')) continue;
           if ((txn.initiatorUuid || '').toLowerCase() !== playerUuid.toLowerCase()) continue;
-          if (now - new Date(txn.settledAt) > maxAge) continue;
+          if (new Date() - new Date(txn.settledAt) > maxAge) continue;
           if (Math.abs(parseFloat(txn.amount || 0) - 1.0) > 0.001) continue;
-          found = true;
+          found = txn;
           break;
         }
         if (!found) return res.status(404).json({ error: `No $1 payment from ${mc_username} found. Run /pay-account business ZEN 1.` });
-        await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: true });
+        await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: true, txn_id: found.txnId });
         return res.status(200).json({ success: true, message: `${mc_username} is now linked and verified!` });
       }
       return res.status(400).json({ error: 'Invalid step' });
