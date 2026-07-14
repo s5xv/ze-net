@@ -138,14 +138,17 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     try {
       const user = await requireUser(req);
-      const { name, url, category, description } = req.body;
-      if (!name || !url) return res.status(400).json({ error: 'Name and URL are required' });
+      const { name, website_url, owner_discord, category, description, plot_number, shortcut, discord_invite } = req.body;
+      if (!name) return res.status(400).json({ error: 'Name is required' });
       const user_id = user.id;
       const { data: owner, error: profileErr } = await supabase.from('profiles').select('username').eq('id', user_id).maybeSingle();
       if (profileErr || !owner) return res.status(400).json({ error: 'User not found' });
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
       const { error } = await supabase.from('sites').insert({
-        name, slug, url, category: category || 'Other', description: description || '',
+        name, slug, url: website_url || '', category: category || 'Other',
+        description: description || '', owner_discord,
+        plot_number: plot_number || null, shortcuts: shortcut || null,
+        discord_invite: discord_invite || null,
         owner_user_id: user_id, user_id, owner_name: owner?.username || 'Unknown',
         is_verified: false, is_active: true, status: 'pending', submitted_by: user_id
       });
@@ -169,13 +172,15 @@ export default async function handler(req, res) {
   if (action === 'admin-add-site') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     const { name, url, category, description, owner_id, owner_discord, plot_number, shortcut, discord_invite, keywords } = req.body;
-    if (!name || !url || !owner_id) return res.status(400).json({ error: 'Name, URL, and Owner are required' });
+    if (!name || !owner_id) return res.status(400).json({ error: 'Name and Owner are required' });
     try {
       const { data: owner } = await supabase.from('profiles').select('username').eq('id', owner_id).maybeSingle();
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
       const { error } = await supabase.from('sites').insert({
-        name, slug, url, category: category || 'Other', description: description || '',
+        name, slug, url: url || '', category: category || 'Other', description: description || '',
         owner_user_id: owner_id, user_id: owner_id, owner_name: owner?.username || 'Unknown',
+        owner_discord: owner_discord || null, plot_number: plot_number || null,
+        discord_invite: discord_invite || null,
         is_verified: true, is_active: true, status: 'approved',
         shortcuts: shortcut || null, keywords: keywords ? keywords.split(',').map(k => k.trim()).filter(Boolean) : null
       });
