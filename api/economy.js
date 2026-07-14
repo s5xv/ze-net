@@ -81,7 +81,7 @@ export default async function handler(req, res) {
     // --- verify-mc ---
     if (action === 'verify-mc') {
       if (step === 'init') {
-        const { error } = await supabase.from('profiles').upsert({ id: userId, mc_username, mc_verified: false }, { onConflict: 'id' });
+        const { error } = await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: false });
         if (error) throw error;
         return res.status(200).json({ success: true, message: 'Username registered.' });
       }
@@ -107,7 +107,7 @@ export default async function handler(req, res) {
           break;
         }
         if (!found) return res.status(404).json({ error: `No $1 payment from ${mc_username} found. Run /pay-account business ZEN 1.` });
-        await supabase.from('profiles').upsert({ id: userId, mc_verified: true, mc_username }, { onConflict: 'id' });
+        await supabase.rpc('link_mc_account', { target_user_id: userId, mc_username, verified: true });
         return res.status(200).json({ success: true, message: `${mc_username} is now linked and verified!` });
       }
       return res.status(400).json({ error: 'Invalid step' });

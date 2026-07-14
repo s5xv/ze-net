@@ -573,6 +573,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP FUNCTION IF EXISTS public.link_mc_account(uuid, text, boolean);
+CREATE OR REPLACE FUNCTION public.link_mc_account(target_user_id uuid, mc_username text, verified boolean DEFAULT false)
+RETURNS void AS $$
+BEGIN
+  INSERT INTO public.profiles (id, mc_username, mc_verified)
+  VALUES (target_user_id, mc_username, verified)
+  ON CONFLICT (id)
+  DO UPDATE SET mc_username = EXCLUDED.mc_username, mc_verified = EXCLUDED.mc_verified;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ============================================================
 -- 5. SEED DATA
 -- ============================================================
