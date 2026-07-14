@@ -140,6 +140,7 @@ export default async function handler(req, res) {
   if (action === 'get-sites') {
     if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
     try {
+      await getUser(req).catch(() => {});
       let q = supabase.from('sites').select('*');
       const search = req.query.q;
       if (search) q = q.or(`name.ilike.%${search}%,description.ilike.%${search}%,shortcuts.ilike.%${search}%`);
