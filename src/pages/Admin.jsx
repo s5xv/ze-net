@@ -454,16 +454,14 @@ export default function Admin() {
               filteredWithdrawals.map(w => (
                 <div key={w.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
                   <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1">
-                      <p className="text-white font-bold">{w.mc_username || w.user_id?.slice(0, 8) || 'Unknown'}</p>
-                      <p className="text-2xl font-bold text-green-400 mb-2">${w.amount}</p>
-                      {w.mc_username && (
-                        <div className="bg-gray-900 p-3 rounded text-xs">
-                          <p className="text-gray-400 mb-1">Payment Command:</p>
-                          <code className="text-yellow-400 font-mono block">/pay {w.mc_username} {w.amount}</code>
-                        </div>
-                      )}
+                  <div className="flex-1">
+                    <p className="text-white font-bold">{w.mc_username || w.user_id?.slice(0, 8) || 'Unknown'}</p>
+                    <p className="text-2xl font-bold text-green-400 mb-2">${parseFloat(w.amount).toFixed(2)}</p>
+                    <div className="bg-gray-900 p-3 rounded text-xs">
+                      <p className="text-gray-400 mb-1">Payment Command:</p>
+                      <code className="text-yellow-400 font-mono block">/pay {w.mc_username || w.balance_before || 'Player'} {parseFloat(w.amount).toFixed(2)}</code>
                     </div>
+                  </div>
                     <div className="flex flex-col gap-2">
                       <button onClick={() => handleWithdrawal(w.id, 'approve')} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
                       <button onClick={() => handleWithdrawal(w.id, 'reject')} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>

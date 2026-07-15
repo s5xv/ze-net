@@ -44,11 +44,8 @@ export default function Search() {
       const rawQuery = query.toLowerCase().trim();
       const searchTerm = extractSearchTerms(rawQuery);
       
-      let sitesQuery = supabase.from('sites').select('*').eq('status', 'approved');
-      if (searchTerm) {
-        sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcut.ilike.%${searchTerm}%,keywords::text.ilike.%${searchTerm}%`);
-      }
-      const { data: sitesData } = await sitesQuery.order('view_count', { ascending: false }).limit(15);
+      let sitesData = null;
+      try { const d = await apiFetch('/api/app?action=search-sites', { method: 'POST', body: JSON.stringify({ q: searchTerm }) }); sitesData = d.sites || []; } catch (e) { console.error('Site search error:', e); }
       if (id === searchId.current) setSiteResults(sitesData || []);
 
       const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);

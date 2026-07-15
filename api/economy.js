@@ -243,6 +243,7 @@ export default async function handler(req, res) {
       if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
       const { data: withdrawal } = await supabase.from('withdrawal_requests').select('*').eq('id', withdrawalId).maybeSingle();
       if (!withdrawal) return res.status(404).json({ error: 'Withdrawal not found' });
+      if (withdrawal.status !== 'pending') return res.status(400).json({ error: 'Withdrawal already ' + withdrawal.status });
       if (req.body.actionType === 'approve') {
         const { error } = await supabase.from('withdrawal_requests').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', withdrawalId);
         if (error) throw error;

@@ -133,6 +133,18 @@ export default async function handler(req, res) {
     }
   }
 
+  // --- search-sites ---
+  if (action === 'search-sites') {
+    try {
+      const q = (req.body?.q || req.query?.q || '').toLowerCase().trim();
+      if (!q) return res.status(400).json({ error: 'Missing query' });
+      const { data: sites } = await supabase.from('sites').select('*').eq('status', 'approved')
+        .or(`name.ilike.%${q}%,description.ilike.%${q}%,shortcut.ilike.%${q}%`)
+        .order('view_count', { ascending: false }).limit(15);
+      return res.status(200).json({ sites: sites || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // --- submit-site ---
   if (action === 'submit-site') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
