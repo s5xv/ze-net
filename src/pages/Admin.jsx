@@ -230,6 +230,11 @@ export default function Admin() {
     }
   };
 
+  const getAdExpiry = (tier) => {
+    const days = tier === 'standard' ? 7 : tier === 'featured' ? 14 : 30;
+    return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  };
+
   const handleAdRequest = async (adReq, action) => {
     try {
       if (action === 'approve') {
@@ -241,7 +246,7 @@ export default function Admin() {
           ad_tier: adReq.tier, 
           ad_price: adReq.price,
           image_url: adReq.image_url,
-          ad_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          ad_expires_at: getAdExpiry(adReq.tier)
         }).eq('id', adReq.site_id);
         const { data: site } = await supabase.from('sites').select('slug').eq('id', adReq.site_id).maybeSingle();
         await supabase.from('ads').insert({
@@ -850,7 +855,7 @@ export default function Admin() {
                   if (!siteId) return setMessage('Select a site');
                   const site = managedAds.sites.find(s => s.id === siteId);
                   await supabase.from('ads').insert({ title: site.name, link_url: `/site/${site.slug}`, tier, is_active: true, description: '', image_url: '' });
-                  await supabase.from('sites').update({ ad_tier: tier, ad_expires_at: new Date(Date.now() + 30*24*60*60*1000).toISOString() }).eq('id', siteId);
+                  await supabase.from('sites').update({ ad_tier: tier, ad_expires_at: getAdExpiry(tier) }).eq('id', siteId);
                   setMessage('Ad added to site');
                   fetchData(activeTab);
                 }} className="px-4 py-2 bg-green-600 text-white rounded text-sm">Add</button>

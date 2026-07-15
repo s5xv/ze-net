@@ -119,7 +119,7 @@ export default function SubmitAd() {
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Ad Image URL (Imgur)</label>
                 <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://i.imgur.com/..." className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500" />
-                <p className="text-xs text-gray-500 mt-1">Upload your ad image to Imgur and paste the direct link here</p>
+                <p className="text-xs text-gray-500 mt-1">Upload to Imgur → right-click the image → <strong className="text-gray-300">Copy Image Address</strong> → paste here (use direct <code className="text-blue-400">i.imgur.com</code> link, not album URL)</p>
                 {imageUrl && (
                   <div className="mt-2">
                     <p className="text-xs text-gray-400 mb-1">Preview:</p>
