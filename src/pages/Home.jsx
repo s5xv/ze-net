@@ -165,18 +165,17 @@ const fetchAds = async (id) => {
     } catch (e) { console.error('Lucky error:', e); }
   };
 
-  const fixUrl = (url) => {
-    if (!url) return '#';
+  const fixUrl = (url, name) => {
+    if (!url || url === '#') return name ? `/search?q=${encodeURIComponent(name)}` : '#';
     if (url.startsWith('/')) return url;
     return url.startsWith('http') ? url : `https://${url}`;
   };
 
   const fixImgUrl = (url) => {
     if (!url) return '';
-    if (url.startsWith('data:')) return url;
     const m = url.match(/imgur\.com\/(?:gallery\/|a\/)?([a-zA-Z0-9]{5,})(?:\.[a-z]+)?(?:\?.*)?$/);
-    if (m) return `https://images.weserv.nl/?url=https://i.imgur.com/${m[1]}.png`;
-    if (url.match(/^https?:\/\//)) return `https://images.weserv.nl/?url=${url}`;
+    if (m) return `https://wsrv.nl/?url=https://i.imgur.com/${m[1]}.png&default=${encodeURIComponent(url)}`;
+    if (url.startsWith('http')) return `https://wsrv.nl/?url=${url}`;
     return url;
   };
 
@@ -337,13 +336,14 @@ const fetchAds = async (id) => {
           )}
 
           {ads.map((ad) => (
-            <a key={ad.id} href={fixUrl(ad.link_url)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${ad.tier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : ad.tier === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
-              {ad.image_url && (
-                <div className="w-full aspect-[4/3] mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center">
+            <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${ad.tier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : ad.tier === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
+              <div className="w-full aspect-[4/3] mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center">
+                {ad.image_url ? (
                   <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
-                  <span className="absolute text-gray-400 text-xs opacity-50">Sponsored</span>
-                </div>
-              )}
+                ) : (
+                  <span className="text-gray-400 text-xs">Sponsored</span>
+                )}
+              </div>
               <h4 className={`font-bold mb-1 group-hover:underline ${ad.tier === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : ad.tier === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
                 {ad.title}
               </h4>
