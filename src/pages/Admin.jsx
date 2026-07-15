@@ -717,7 +717,7 @@ export default function Admin() {
                       </div>
                       {b.status === 'pending' && (
                         <div className="flex flex-col gap-2 shrink-0">
-                          <button onClick={async () => { await supabase.from('business_registrations').update({ status: 'approved' }).eq('id', b.id); fetchData(activeTab); }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
+                          <button onClick={async () => { try { await apiFetch('/api/app?action=approve-business', { method: 'POST', body: JSON.stringify({ id: b.id }) }); } catch (e) { setMessage('Error: ' + e.message); } fetchData(activeTab); }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
                           <button onClick={async () => { await supabase.from('business_registrations').update({ status: 'rejected' }).eq('id', b.id); fetchData(activeTab); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
                         </div>
                       )}
