@@ -170,7 +170,7 @@ const fetchAds = async (id) => {
     return url.startsWith('http') ? url : `https://${url}`;
   };
 
-  const fixImgurUrl = (url) => {
+  const fixImgUrl = (url) => {
     if (!url) return '';
     const match = url.match(/imgur\.com\/([a-zA-Z0-9]+)/);
     if (match) return `https://i.imgur.com/${match[1]}.png`;
@@ -188,8 +188,7 @@ const fetchAds = async (id) => {
   return (
     <Layout user={user}>
       <main className="flex-grow px-4 py-8 sm:py-12 min-h-screen relative">
-        <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-8 relative z-10">
-          <div className="flex-1 min-w-0 space-y-8">
+        <div className="max-w-4xl mx-auto space-y-8 relative z-10">
             <div className="text-center mb-6">
               <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight">
                 Z&E <span className="text-blue-600 dark:text-blue-400">NET</span>
@@ -312,97 +311,44 @@ const fetchAds = async (id) => {
                   )}
                 </div>
               </div>
-            </div>
           </div>
+        </div>
 
-          {ads.length > 0 && (
-            <aside className="w-full lg:w-72 shrink-0 space-y-4">
-              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
-                {user ? (
-                  <>
-                    <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                      </svg>
-                      Bookmarks
-                    </h3>
-                    {bookmarks.length === 0 ? (
-                      <p className="text-xs text-gray-500 italic">No bookmarks yet.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {bookmarks.slice(0, 5).map((bm) => (
-                          <a key={bm.id} href={`/site/${bm.sites?.slug}`} className="block p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors">
-                            <h4 className="font-semibold text-xs text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center">
-                    <h3 className="text-sm font-bold mb-2">Bookmarks</h3>
-                    <p className="text-xs text-gray-500 mb-3">Sign in to save sites!</p>
-                    <button onClick={() => navigate('/login')} className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium">
-                      Sign In
-                    </button>
-                  </div>
-                )}
+        <div className="hidden lg:block absolute top-8 right-4 xl:right-10 w-72 space-y-4">
+          {user && bookmarks.length > 0 && (
+            <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
+              <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                </svg>
+                Bookmarks
+              </h3>
+              <div className="space-y-2">
+                {bookmarks.slice(0, 5).map((bm) => (
+                  <a key={bm.id} href={`/site/${bm.sites?.slug}`} className="block p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors">
+                    <h4 className="font-semibold text-xs text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
+                  </a>
+                ))}
               </div>
-              {ads.map((ad) => (
-                <a key={ad.id} href={fixUrl(ad.link_url)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${ad.tier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : ad.tier === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
-                  {ad.image_url && (
-                    <div className="w-full aspect-[4/3] mb-3 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#202124]">
-                      <img src={fixImgurUrl(ad.image_url)} alt={ad.title} className="w-full h-full object-cover" onError={(e) => { e.target.src = ''; e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div class=\"w-full h-full flex items-center justify-center text-gray-400 text-sm\">Ad</div>'; }} />
-                    </div>
-                  )}
-                  <h4 className={`font-bold mb-1 group-hover:underline ${ad.tier === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : ad.tier === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
-                    {ad.title}
-                  </h4>
-                  {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
-                  <span className={`text-xs mt-2 block ${ad.tier === 'gold' ? 'text-yellow-500' : ad.tier === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {ad.tier === 'gold' ? '⭐ Gold Sponsor' : ad.tier === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}
-                  </span>
-                </a>
-              ))}
-            </aside>
+            </div>
           )}
 
-          {(!ads || ads.length === 0) && (
-            <aside className="w-full lg:w-72 shrink-0">
-              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-                {user ? (
-                  <>
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                      <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                      </svg>
-                      Your Bookmarks
-                    </h3>
-                    {bookmarks.length === 0 ? (
-                      <p className="text-sm text-gray-500 italic">No bookmarks yet.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {bookmarks.map((bm) => (
-                          <a key={bm.id} href={`/site/${bm.sites?.slug}`} className="block p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors">
-                            <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
-                            <p className="text-xs text-gray-500 truncate">{bm.sites?.category}</p>
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-lg font-bold mb-2">Bookmarks</h3>
-                    <p className="text-sm text-gray-500 mb-4">Sign in to save sites!</p>
-                    <button onClick={() => navigate('/login')} className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
-                      Sign In
-                    </button>
-                  </>
-                )}
-              </div>
-            </aside>
-          )}
+          {ads.map((ad) => (
+            <a key={ad.id} href={fixUrl(ad.link_url)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${ad.tier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : ad.tier === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
+              {ad.image_url && (
+                <div className="w-full aspect-[4/3] mb-3 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#202124] flex items-center justify-center">
+                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.classList.add('text-gray-400', 'text-sm'); e.target.parentElement.textContent = 'Ad'; }} />
+                </div>
+              )}
+              <h4 className={`font-bold mb-1 group-hover:underline ${ad.tier === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : ad.tier === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
+                {ad.title}
+              </h4>
+              {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
+              <span className={`text-xs mt-2 block ${ad.tier === 'gold' ? 'text-yellow-500' : ad.tier === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>
+                {ad.tier === 'gold' ? '⭐ Gold Sponsor' : ad.tier === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}
+              </span>
+            </a>
+          ))}
         </div>
       </main>
     </Layout>
