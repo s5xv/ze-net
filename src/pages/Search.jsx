@@ -87,15 +87,16 @@ export default function Search() {
     }
   };
 
+  const aiId = useRef(0);
   const generateAISummary = async (results) => {
-    const id = ++searchId.current;
+    const id = ++aiId.current;
     setSummarizing(true);
     try {
       const data = await apiFetch('/api/app?action=summarize', {
         method: 'POST',
         body: JSON.stringify({ query, results })
       });
-      if (id === searchId.current && data.summary) {
+      if (id === aiId.current && data.summary) {
         setAiSummary(data.summary);
         setAiSources(data.sources || []);
       }
