@@ -13,7 +13,7 @@ export default function Wiki() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(null);
   const [activePage, setActivePage] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -97,7 +97,7 @@ export default function Wiki() {
     archive: pages.filter(p => p.source === 'archive').length
   };
 
-  if (authLoading || adminLoading) return <Layout user={null}><div className="flex-grow flex items-center justify-center"><div className="text-gray-500">Loading...</div></div></Layout>;
+  if (authLoading || adminLoading || isAdmin === null) return <Layout user={null}><div className="flex-grow flex items-center justify-center"><div className="text-gray-500">Loading...</div></div></Layout>;
   if (!user) return <Navigate to="/login" replace />;
   if (!isAdmin) return <Navigate to="/" replace />;
 

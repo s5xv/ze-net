@@ -246,7 +246,7 @@ export default async function handler(req, res) {
       if (req.body.actionType === 'approve') {
         const { error } = await supabase.from('withdrawal_requests').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', withdrawalId);
         if (error) throw error;
-        await supabase.from('transactions').insert({ txn_id: 'WD-' + Date.now(), user_id: withdrawal.user_id, amount: -parseFloat(withdrawal.amount), type: 'withdrawal', note: `Withdrawal to ${withdrawal.mc_username || 'Unknown'}` }).catch(() => {});
+        try { await supabase.from('transactions').insert({ txn_id: 'WD-' + Date.now(), user_id: withdrawal.user_id, amount: -parseFloat(withdrawal.amount), type: 'withdrawal', note: `Withdrawal to ${withdrawal.mc_username || 'Unknown'}` }); } catch (_) {}
         return res.status(200).json({ success: true, message: `Withdrawal approved. Pay them: /pay ${withdrawal.mc_username || 'Unknown'} ${withdrawal.amount}` });
       } else {
         const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', withdrawal.user_id).maybeSingle();

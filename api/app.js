@@ -414,6 +414,24 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // --- get-transactions (admin: all transactions with profile info) ---
+  if (action === 'get-transactions') {
+    try {
+      if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
+      const { data } = await supabase.from('transactions').select('*, profiles(username)').order('created_at', { ascending: false }).limit(100);
+      return res.status(200).json({ transactions: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- get-contact-messages (admin: all contact messages) ---
+  if (action === 'get-contact-messages') {
+    try {
+      if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
+      const { data } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false }).limit(100);
+      return res.status(200).json({ messages: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // --- record-view (anti-spam + pay 5c per view) ---
   if (action === 'record-view') {
     const auth = req.headers.authorization;

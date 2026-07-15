@@ -29,6 +29,7 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingStaff, setEditingStaff] = useState(null);
   const [reports, setReports] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [pendingSites, setPendingSites] = useState([]);
   const [businessRegistrations, setBusinessRegistrations] = useState([]);
   const [depositUserId, setDepositUserId] = useState('');
@@ -89,17 +90,17 @@ export default function Admin() {
         const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
         setProfiles(data || []);
       } else if (tab === 'transactions') {
-        const { data } = await supabase.from('transactions').select('*, profiles(username)').order('created_at', { ascending: false }).limit(100);
-        setTransactions(data || []);
+        try { const d = await apiFetch('/api/app?action=get-transactions', { method: 'POST' }); setTransactions(d.transactions || []); } catch (e) { setMessage('Error: ' + e.message); }
       } else if (tab === 'staff') {
         const { data } = await supabase.from('profiles').select('*').eq('is_staff', true);
         setStaff(data || []);
       } else if (tab === 'moderation') {
-        const { data } = await supabase.from('site_reports').select('*, profiles(username), sites(name, slug)').order('created_at', { ascending: false }).limit(50);
-        setReports(data || []);
+        try { const d = await apiFetch('/api/app?action=get-reports', { method: 'POST' }); setReports(d.reports || []); } catch (e) { setMessage('Error: ' + e.message); }
       } else if (tab === 'businesses') {
         const { data } = await supabase.from('business_registrations').select('*').order('created_at', { ascending: false });
         setBusinessRegistrations(data || []);
+      } else if (tab === 'messages') {
+        try { const d = await apiFetch('/api/app?action=get-contact-messages', { method: 'POST' }); setMessages(d.messages || []); } catch (e) { setMessage('Error: ' + e.message); }
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -424,6 +425,7 @@ export default function Admin() {
           <TabButton id="staff" label="Staff" />
           <TabButton id="businesses" label="Businesses" />
           <TabButton id="moderation" label="Moderation" badge={reports.length} />
+          <TabButton id="messages" label="Messages" />
         </div>
 
         {loading && <p className="text-center text-gray-400 py-10">Loading...</p>}
@@ -780,6 +782,32 @@ export default function Admin() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {!loading && activeTab === 'messages' && (
+          <div className="space-y-3">
+            {messages.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No messages yet</p>
+            ) : messages.map(m => (
+              <div key={m.id} className={`bg-[#303134] border rounded-xl p-4 ${m.is_read ? 'border-gray-700' : 'border-yellow-500/50'}`}>
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-white font-bold">{m.name}</p>
+                      {!m.is_read && <span className="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded-full">New</span>}
+                    </div>
+                    <p className="text-sm text-gray-300 font-medium mt-1">{m.subject}</p>
+                    <p className="text-sm text-gray-400 mt-1">{m.message}</p>
+                    <p className="text-xs text-gray-500 mt-1">{new Date(m.created_at).toLocaleString()}</p>
+                    {m.user_id && <p className="text-xs text-gray-600 mt-1">User ID: {m.user_id}</p>}
+                  </div>
+                  {!m.is_read && (
+                    <button onClick={async () => { await supabase.from('contact_messages').update({ is_read: true }).eq('id', m.id); setMessages(prev => prev.map(x => x.id === m.id ? { ...x, is_read: true } : x)); }} className="px-3 py-1 bg-blue-600 text-white text-xs rounded whitespace-nowrap">Mark Read</button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
