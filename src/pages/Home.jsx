@@ -167,14 +167,16 @@ const fetchAds = async (id) => {
 
   const fixUrl = (url) => {
     if (!url) return '#';
+    if (url.startsWith('/')) return url;
     return url.startsWith('http') ? url : `https://${url}`;
   };
 
   const fixImgUrl = (url) => {
     if (!url) return '';
-    if (url.startsWith('data:') || url.match(/^https?:\/\/i\.imgur\.com\//)) return url;
+    if (url.startsWith('data:')) return url;
     const m = url.match(/imgur\.com\/(?:gallery\/|a\/)?([a-zA-Z0-9]{5,})(?:\.[a-z]+)?(?:\?.*)?$/);
-    if (m) return `https://i.imgur.com/${m[1]}.png`;
+    if (m) return `https://images.weserv.nl/?url=https://i.imgur.com/${m[1]}.png`;
+    if (url.match(/^https?:\/\//)) return `https://images.weserv.nl/?url=${url}`;
     return url;
   };
 
