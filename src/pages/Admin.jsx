@@ -293,9 +293,18 @@ export default function Admin() {
     } catch (e) { setLookupResults([]); }
   };
 
-  const addSite = () => {
-    if (!newSite.name || !newSite.owner_id) { setMessage('Name and Owner are required'); return; }
-    callAdmin('admin-add-site', { name: newSite.name, url: newSite.url, category: newSite.category, description: newSite.description, owner_id: newSite.owner_id, owner_discord: newSite.owner_discord, plot_number: newSite.plot_number, shortcut: newSite.shortcut, discord_invite: newSite.discord_invite, keywords: newSite.keywords });
+  const addSite = async () => {
+    if (!newSite.name) { setMessage('Name is required'); return; }
+    let ownerId = newSite.owner_id;
+    if (!ownerId && newSite.owner_discord) {
+      try {
+        const data = await apiFetch(`/api/app?action=lookup-user&username=${encodeURIComponent(newSite.owner_discord)}`);
+        if (data.users?.length === 1) ownerId = data.users[0].id;
+        else if (data.users?.length > 1) { setMessage('Multiple users found, select one from the dropdown'); return; }
+      } catch {}
+    }
+    if (!ownerId) { setMessage('Owner is required - type Discord username above and click a result'); return; }
+    callAdmin('admin-add-site', { name: newSite.name, url: newSite.url, category: newSite.category, description: newSite.description, owner_id: ownerId, owner_discord: newSite.owner_discord, plot_number: newSite.plot_number, shortcut: newSite.shortcut, discord_invite: newSite.discord_invite, keywords: newSite.keywords });
     setNewSite({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
   };
 
@@ -549,7 +558,7 @@ export default function Admin() {
               <h3 className="text-white font-bold mb-3 text-lg">Add New Site</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="text" placeholder="Site Name *" value={newSite.name} onChange={(e) => setNewSite({...newSite, name: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
-                <input type="text" placeholder="Owner User ID (auto-filled)" value={newSite.owner_id} readOnly className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white opacity-60" />
+                <input type="text" placeholder="Owner User ID (UUID) - type username above to auto-fill" value={newSite.owner_id} onChange={(e) => setNewSite({...newSite, owner_id: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <div className="relative">
                   <input type="text" placeholder="Owner Discord Username" value={newSite.owner_discord} onChange={(e) => { setNewSite({...newSite, owner_discord: e.target.value}); if (e.target.value.length > 2) lookupOwner(e.target.value); }} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white w-full" />
                   {lookupResults.length > 0 && <div className="absolute z-10 top-full left-0 right-0 bg-[#202124] border border-gray-700 rounded mt-1 max-h-32 overflow-y-auto">{lookupResults.map(u => <button key={u.id} type="button" onClick={() => { setNewSite({...newSite, owner_id: u.id, owner_discord: u.username}); setLookupResults([]); }} className="w-full text-left px-3 py-2 text-white text-sm hover:bg-gray-700 border-b border-gray-700 last:border-0">{u.username} {u.mc_username && `(MC: ${u.mc_username})`}</button>)}</div>}
