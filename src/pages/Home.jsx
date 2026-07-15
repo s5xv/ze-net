@@ -317,6 +317,37 @@ const fetchAds = async (id) => {
 
           {ads.length > 0 && (
             <aside className="w-full lg:w-72 shrink-0 space-y-4">
+              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
+                {user ? (
+                  <>
+                    <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                      </svg>
+                      Bookmarks
+                    </h3>
+                    {bookmarks.length === 0 ? (
+                      <p className="text-xs text-gray-500 italic">No bookmarks yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {bookmarks.slice(0, 5).map((bm) => (
+                          <a key={bm.id} href={`/site/${bm.sites?.slug}`} className="block p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors">
+                            <h4 className="font-semibold text-xs text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center">
+                    <h3 className="text-sm font-bold mb-2">Bookmarks</h3>
+                    <p className="text-xs text-gray-500 mb-3">Sign in to save sites!</p>
+                    <button onClick={() => navigate('/login')} className="w-full px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium">
+                      Sign In
+                    </button>
+                  </div>
+                )}
+              </div>
               {ads.map((ad) => (
                 <a key={ad.id} href={fixUrl(ad.link_url)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${ad.tier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : ad.tier === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
                   {ad.image_url && (
@@ -335,40 +366,45 @@ const fetchAds = async (id) => {
               ))}
             </aside>
           )}
-        </div>
 
-        <div className="hidden lg:block absolute top-8 right-4 xl:right-10 w-64">
-          {user ? (
-            <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                </svg>
-                Your Bookmarks
-              </h3>
-              {bookmarks.length === 0 ? (
-                <p className="text-sm text-gray-500 italic">No bookmarks yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  {bookmarks.map((bm) => (
-                    <a key={bm.id} href={`/site/${bm.sites?.slug}`} className="block p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors">
-                      <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
-                      <p className="text-xs text-gray-500 truncate">{bm.sites?.category}</p>
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm text-center">
-              <h3 className="text-lg font-bold mb-2">Bookmarks</h3>
-              <p className="text-sm text-gray-500 mb-4">Sign in to save sites!</p>
-              <button onClick={() => navigate('/login')} className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
-                Sign In
-              </button>
-            </div>
+          {(!ads || ads.length === 0) && (
+            <aside className="w-full lg:w-72 shrink-0">
+              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+                {user ? (
+                  <>
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                      </svg>
+                      Your Bookmarks
+                    </h3>
+                    {bookmarks.length === 0 ? (
+                      <p className="text-sm text-gray-500 italic">No bookmarks yet.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {bookmarks.map((bm) => (
+                          <a key={bm.id} href={`/site/${bm.sites?.slug}`} className="block p-3 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors">
+                            <h4 className="font-semibold text-sm text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
+                            <p className="text-xs text-gray-500 truncate">{bm.sites?.category}</p>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-bold mb-2">Bookmarks</h3>
+                    <p className="text-sm text-gray-500 mb-4">Sign in to save sites!</p>
+                    <button onClick={() => navigate('/login')} className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">
+                      Sign In
+                    </button>
+                  </>
+                )}
+              </div>
+            </aside>
           )}
         </div>
       </main>
     </Layout>
   );
+}
