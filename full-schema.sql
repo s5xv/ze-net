@@ -235,6 +235,7 @@ CREATE TABLE public.ad_requests (
   price numeric NOT NULL,
   image_url text,
   description text,
+  duration_days integer DEFAULT 7,
   status text DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   created_at timestamptz DEFAULT now()
 );
@@ -249,6 +250,7 @@ CREATE TABLE public.ads (
   link_url text,
   tier text,
   is_active boolean DEFAULT true,
+  duration_days integer DEFAULT 7,
   created_at timestamptz DEFAULT now()
 );
 

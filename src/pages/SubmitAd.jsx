@@ -10,6 +10,7 @@ export default function SubmitAd() {
   const [ownedSites, setOwnedSites] = useState([]);
   const [selectedSiteId, setSelectedSiteId] = useState('');
   const [tier, setTier] = useState('standard');
+  const [extraDays, setExtraDays] = useState(0);
   const [imageUrl, setImageUrl] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -20,11 +21,14 @@ export default function SubmitAd() {
   useEffect(() => { return () => clearTimeout(timeoutRef.current); }, []);
 
   const tiers = {
-    standard: { name: 'Standard', price: 110, description: 'Basic banner placement' },
-    featured: { name: 'Featured', price: 160, description: 'Highlighted position' },
-    premium: { name: 'Premium', price: 400, description: 'Top placement + rotation' },
-    elite: { name: 'Elite', price: 600, description: 'Premium spot + featured badge' }
+    standard: { name: 'Standard', price: 110, dailyExtra: 10, description: 'Basic banner placement' },
+    featured: { name: 'Featured', price: 160, dailyExtra: 20, description: 'Highlighted position' },
+    premium: { name: 'Premium', price: 400, dailyExtra: 30, description: 'Top placement + rotation' },
+    elite: { name: 'Elite', price: 600, dailyExtra: 40, description: 'Premium spot + featured badge' }
   };
+
+  const totalDays = 7 + extraDays;
+  const totalPrice = tiers[tier].price + extraDays * tiers[tier].dailyExtra;
 
   useEffect(() => {
     if (user) fetchOwnedSites();
@@ -53,21 +57,22 @@ export default function SubmitAd() {
       const selectedSite = ownedSites.find(s => s.id === selectedSiteId);
       if (!selectedSite) throw new Error('Site not found');
 
+      const extraDaysVal = extraDays;
       const { error } = await supabase.from('ad_requests').insert({
         user_id: user.id,
         site_id: selectedSiteId,
         site_name: selectedSite.name,
         tier: tier,
-        price: tiers[tier].price,
+        price: totalPrice,
         image_url: imageUrl,
-        description: description,
+        description: `${description}||D:${7 + extraDaysVal}`,
         status: 'pending'
       });
       if (error) throw error;
 
       const { data: admins } = await supabase.from('profiles').select('id').eq('is_staff', true);
       if (admins && admins.length > 0) {
-        const notif = { type: 'ad_request', title: 'New Ad Request', body: `${selectedSite.name} - ${tiers[tier].name} ($${tiers[tier].price})`, link: '/admin' };
+        const notif = { type: 'ad_request', title: 'New Ad Request', body: `${selectedSite.name} - ${tiers[tier].name} ($${totalPrice}, ${7 + extraDaysVal}d)`, link: '/admin' };
         await supabase.from('notifications').insert(admins.map(a => ({ ...notif, user_id: a.id })));
       }
 
@@ -108,12 +113,25 @@ export default function SubmitAd() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Ad Tier *</label>
-                <select value={tier} onChange={(e) => setTier(e.target.value)} className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white">
+                <select value={tier} onChange={(e) => { setTier(e.target.value); setExtraDays(0); }} className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white">
                   {Object.entries(tiers).map(([key, t]) => (
-                    <option key={key} value={key}>{t.name} - ${t.price}</option>
+                    <option key={key} value={key}>{t.name} - ${t.price}/7d (${t.dailyExtra}/day extra)</option>
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">{tiers[tier].description}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Duration</label>
+                <div className="flex items-center gap-3">
+                  <input type="range" min="0" max="90" value={extraDays} onChange={(e) => setExtraDays(parseInt(e.target.value))} className="flex-1" />
+                  <span className="text-white text-sm font-mono w-24 text-right">{totalDays} days</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>7 days (base)</span>
+                  <span>+{extraDays} extra days (${extraDays * tiers[tier].dailyExtra})</span>
+                </div>
+                <p className="text-sm text-blue-400 font-bold mt-2">Total: ${totalPrice}</p>
               </div>
 
               <div>
@@ -140,7 +158,7 @@ export default function SubmitAd() {
               )}
 
               <button type="submit" disabled={submitting || !selectedSiteId} className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-bold text-lg">
-                {submitting ? 'Submitting...' : `Submit Ad Request ($${tiers[tier].price})`}
+                {submitting ? 'Submitting...' : `Submit Ad Request ($${totalPrice} — ${totalDays}d)`}
               </button>
 
               <p className="text-xs text-gray-500 text-center">After submission, you'll receive payment instructions via Discord DM.</p>
