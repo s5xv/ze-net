@@ -202,7 +202,16 @@ export default function Site() {
             </div>
 
             <div className="flex gap-3">
-              <a href={site.url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold">Visit Site</a>
+              {site.discord_invite && site.url ? (
+                <div className="flex gap-2">
+                  <a href={site.url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold">Visit Website</a>
+                  <a href={site.discord_invite} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-bold">Join Discord</a>
+                </div>
+              ) : site.discord_invite ? (
+                <a href={site.discord_invite} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-bold">Join Discord</a>
+              ) : (
+                <a href={site.url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold">Visit Site</a>
+              )}
               {user && site.user_id && user.id !== site.user_id && (
                 <button onClick={() => setShowTipModal(true)} className="px-6 py-3 bg-green-600 text-white rounded-lg font-bold">Tip Owner</button>
               )}
@@ -218,6 +227,8 @@ export default function Site() {
             <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-700">
               <div><p className="text-sm text-gray-400">Category</p><p className="text-white capitalize">{site.category}</p></div>
               <div><p className="text-sm text-gray-400">Views</p><p className="text-white">{site.view_count || 0}</p></div>
+              {site.plot_number && <div><p className="text-sm text-gray-400">Plot</p><p className="text-white">{site.plot_number}</p></div>}
+              {site.shortcut && <div><p className="text-sm text-gray-400">Shortcut</p><p className="text-white">{site.shortcut}</p></div>}
             </div>
           </div>
         </div>
