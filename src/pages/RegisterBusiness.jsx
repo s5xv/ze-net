@@ -19,7 +19,8 @@ export default function RegisterBusiness() {
     shortcut: '',
     discord_invite: '',
     website_url: '',
-    description: '' // Added description
+    description: '',
+    keywords: ''
   });
 
   const categories = [
@@ -149,6 +150,12 @@ export default function RegisterBusiness() {
             <div>
               <label className="block text-sm font-medium mb-2">Company Website URL</label>
               <input type="url" value={formData.website_url} onChange={(e) => setFormData({...formData, website_url: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" placeholder="https://..." />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Keywords (Optional)</label>
+              <input type="text" value={formData.keywords} onChange={(e) => setFormData({...formData, keywords: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-blue-500" placeholder="e.g., shop, food, market" />
+              <p className="text-xs text-gray-500 mt-1">Comma-separated keywords to help people find your business in search.</p>
             </div>
 
             <button type="submit" disabled={loading} className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors">

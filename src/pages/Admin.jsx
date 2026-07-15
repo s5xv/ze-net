@@ -78,7 +78,9 @@ export default function Admin() {
       } else if (tab === 'sites') {
         try {
           const d = await apiFetch('/api/app?action=admin-get-sites');
+          console.log('Admin sites response:', d);
           setSites(d.sites || []);
+          if (!d.sites || d.sites.length === 0) setMessage('No sites found in database');
         } catch (e) { setMessage('API Error: ' + e.message); }
       } else if (tab === 'users') {
         const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });

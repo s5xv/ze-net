@@ -342,12 +342,13 @@ export default async function handler(req, res) {
     try {
       const { data: biz } = await supabase.from('business_registrations').select('*').eq('id', id).maybeSingle();
       if (!biz) return res.status(404).json({ error: 'Business registration not found' });
+      const keywords = biz.keywords ? biz.keywords.split(',').map(k => k.trim()).filter(Boolean) : null;
       const slug = biz.business_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
       const { error: insertErr } = await supabase.from('sites').insert({
         name: biz.business_name, slug, url: biz.website_url || '', category: biz.category || 'Other',
         description: biz.description || '', plot_number: biz.plot_number, shortcut: biz.shortcut,
         discord_invite: biz.discord_invite, owner_user_id: biz.user_id, user_id: biz.user_id,
-        owner_name: 'Unknown', submitted_by: biz.user_id,
+        owner_name: 'Unknown', submitted_by: biz.user_id, keywords,
         is_verified: false, is_active: true, status: 'approved'
       });
       if (insertErr) throw insertErr;
