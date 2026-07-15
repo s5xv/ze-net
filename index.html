@@ -14,6 +14,22 @@
     <meta name="theme-color" content="#171717" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://api.mistral.ai https://api.mcsrvstat.us https://api.democracycraft.net https://*.sentry.io https://oidc.vercel.app;" />
     <meta name="description" content="Z&E Net - DemocracyCraft Centralized Directory" />
+    <meta name="build-version" content="2" />
+    <script>
+      (function() {
+        var v = document.querySelector('meta[name="build-version"]').getAttribute('content');
+        if (localStorage.getItem('ze_build') !== v) {
+          localStorage.setItem('ze_build', v);
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              regs.forEach(function(r) { r.unregister(); });
+            });
+          }
+          caches.keys().then(function(names) { names.forEach(function(n) { caches.delete(n); }); });
+          location.reload(true);
+        }
+      })();
+    </script>
     <title>Z&E Net</title>
   </head>
   <body>
