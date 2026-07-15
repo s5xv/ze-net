@@ -54,7 +54,9 @@ async function scrapeWikiBatch(cursor, requestedLimit) {
   }));
 
   if (rows.length > 0) {
-    const { error } = await supabase.from('wiki_pages').upsert(rows, { onConflict: 'slug' });
+    const seen = new Set();
+    const unique = rows.filter(r => { const k = r.slug; return seen.has(k) ? false : seen.add(k); });
+    const { error } = await supabase.from('wiki_pages').upsert(unique, { onConflict: 'slug' });
     if (error) throw new Error(`Wiki storage failed: ${error.message}`);
   }
 
