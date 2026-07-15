@@ -172,8 +172,9 @@ const fetchAds = async (id) => {
 
   const fixImgUrl = (url) => {
     if (!url) return '';
-    const match = url.match(/imgur\.com\/([a-zA-Z0-9]+)/);
-    if (match) return `https://i.imgur.com/${match[1]}.png`;
+    if (url.startsWith('data:') || url.match(/^https?:\/\/i\.imgur\.com\//)) return url;
+    const m = url.match(/imgur\.com\/(?:gallery\/|a\/)?([a-zA-Z0-9]{5,})(?:\.[a-z]+)?(?:\?.*)?$/);
+    if (m) return `https://i.imgur.com/${m[1]}.png`;
     return url;
   };
 
@@ -336,8 +337,9 @@ const fetchAds = async (id) => {
           {ads.map((ad) => (
             <a key={ad.id} href={fixUrl(ad.link_url)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${ad.tier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : ad.tier === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
               {ad.image_url && (
-                <div className="w-full aspect-[4/3] mb-3 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#202124] flex items-center justify-center">
-                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.classList.add('text-gray-400', 'text-sm'); e.target.parentElement.textContent = 'Ad'; }} />
+                <div className="w-full aspect-[4/3] mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center">
+                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                  <span className="absolute text-gray-400 text-xs opacity-50">Sponsored</span>
                 </div>
               )}
               <h4 className={`font-bold mb-1 group-hover:underline ${ad.tier === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : ad.tier === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
