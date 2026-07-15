@@ -240,8 +240,8 @@ export default async function handler(req, res) {
   if (action === 'admin-get-sites') {
     try {
       console.log('admin-get-sites: querying sites table');
-      const { data, error } = await supabase.from('sites').select('*, profiles(username)').order('created_at', { ascending: false });
-      console.log('admin-get-sites: result', { count: data?.length, error });
+      const { data, error } = await supabase.from('sites').select('*').order('created_at', { ascending: false });
+      console.log('admin-get-sites: result', data, error);
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ sites: data || [] });
     } catch (err) { return res.status(500).json({ error: err.message }); }
