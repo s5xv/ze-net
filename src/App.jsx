@@ -1,44 +1,45 @@
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { supabase } from './services/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 
-import Home from './pages/Home';
-import Search from './pages/Search';
-import Site from './pages/Site';
-import SiteManage from './pages/SiteManage';
-import Profile from './pages/Profile';
-import Collections from './pages/Collections';
-import Login from './pages/Login';
-import Account from './pages/Account';
 import Admin from './pages/Admin';
-import LinkAccount from './pages/LinkAccount';
-import MiningGame from './pages/MiningGame';
-import WikiFinder from './pages/WikiFinder';
-import Changelog from './pages/Changelog';
-import Contact from './pages/Contact';
-import Departments from './pages/Departments';
-import DepartmentDetail from './pages/DepartmentDetail';
-import Forums from './pages/Forums';
-import ForumThreads from './pages/ForumThreads';
-import CreateThread from './pages/CreateThread';
-import ForumPost from './pages/ForumPost';
-import Wiki from './pages/Wiki';
-import Utilities from './pages/Utilities';
-import Challenge from './pages/Challenge';
-import Achievements from './pages/Achievements';
-import Leaderboard from './pages/Leaderboard';
-import Docs from './pages/Docs';
-import RegisterBusiness from './pages/RegisterBusiness';
-import SubmitAd from './pages/SubmitAd';
-import VerifySite from './pages/VerifySite';
-import Settings from './pages/Settings';
-import NotificationsPage from './pages/Notifications';
-import SiteAnalytics from './pages/SiteAnalytics';
-import SubmitSite from './pages/SubmitSite';
-import NotFound from './pages/NotFound';
+
+const Home = lazy(() => import('./pages/Home'));
+const Search = lazy(() => import('./pages/Search'));
+const Site = lazy(() => import('./pages/Site'));
+const SiteManage = lazy(() => import('./pages/SiteManage'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Collections = lazy(() => import('./pages/Collections'));
+const Login = lazy(() => import('./pages/Login'));
+const Account = lazy(() => import('./pages/Account'));
+const LinkAccount = lazy(() => import('./pages/LinkAccount'));
+const MiningGame = lazy(() => import('./pages/MiningGame'));
+const WikiFinder = lazy(() => import('./pages/WikiFinder'));
+const Changelog = lazy(() => import('./pages/Changelog'));
+const Contact = lazy(() => import('./pages/Contact'));
+const Departments = lazy(() => import('./pages/Departments'));
+const DepartmentDetail = lazy(() => import('./pages/DepartmentDetail'));
+const Forums = lazy(() => import('./pages/Forums'));
+const ForumThreads = lazy(() => import('./pages/ForumThreads'));
+const CreateThread = lazy(() => import('./pages/CreateThread'));
+const ForumPost = lazy(() => import('./pages/ForumPost'));
+const Wiki = lazy(() => import('./pages/Wiki'));
+const Utilities = lazy(() => import('./pages/Utilities'));
+const Challenge = lazy(() => import('./pages/Challenge'));
+const Achievements = lazy(() => import('./pages/Achievements'));
+const Leaderboard = lazy(() => import('./pages/Leaderboard'));
+const Docs = lazy(() => import('./pages/Docs'));
+const RegisterBusiness = lazy(() => import('./pages/RegisterBusiness'));
+const SubmitAd = lazy(() => import('./pages/SubmitAd'));
+const VerifySite = lazy(() => import('./pages/VerifySite'));
+const Settings = lazy(() => import('./pages/Settings'));
+const NotificationsPage = lazy(() => import('./pages/Notifications'));
+const SiteAnalytics = lazy(() => import('./pages/SiteAnalytics'));
+const SubmitSite = lazy(() => import('./pages/SubmitSite'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 function AuthHandler() {
   const navigate = useNavigate();
@@ -69,7 +70,8 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <AuthHandler />
-        <Routes>
+        <Suspense fallback={<div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center"><div className="text-gray-500">Loading...</div></div>}>
+          <Routes>
           <Route path="/" element={<Home user={user} />} />
           <Route path="/search" element={<Search user={user} />} />
           <Route path="/site/:slug" element={<Site user={user} />} />
@@ -104,7 +106,8 @@ function App() {
           <Route path="/forums/new-thread/:categoryId" element={<CreateThread />} />
           <Route path="/forums/thread/:threadId" element={<ForumPost />} />
           <Route path="*" element={<NotFound />} />
-        </Routes>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </ErrorBoundary>
   );

@@ -121,11 +121,13 @@ const fetchAds = async (id) => {
 
   const fetchNewAndTrending = async (id) => {
     try {
-      const { data: newSitesData } = await supabase.from('sites').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(5);
-      const { data: trendingSitesData } = await supabase.from('sites').select('*').eq('status', 'approved').order('view_count', { ascending: false }).limit(5);
+      const [newSitesResult, trendingSitesResult] = await Promise.all([
+        supabase.from('sites').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(5),
+        supabase.from('sites').select('*').eq('status', 'approved').order('view_count', { ascending: false }).limit(5),
+      ]);
       if (id === fetchId.current) {
-        setNewSites(newSitesData || []);
-        setTrendingSites(trendingSitesData || []);
+        setNewSites(newSitesResult.data || []);
+        setTrendingSites(trendingSitesResult.data || []);
       }
     } catch (e) { console.error('Sites error:', e); }
   };
