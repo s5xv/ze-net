@@ -46,11 +46,7 @@ export default function Site() {
       if (error || !data) { setLoading(false); return; }
       
       setSite(data);
-      if (user) {
-        apiAction('record-view', { siteId: data.id }).catch(() => {});
-      } else {
-        await supabase.from('sites').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
-      }
+      apiAction('record-view', { siteId: data.id }).catch(e => console.error('View recording:', e));
       
       if (user) {
         const { data: bookmark } = await supabase.from('bookmarks').select('id').eq('user_id', user.id).eq('site_id', data.id).maybeSingle();
@@ -66,14 +62,9 @@ export default function Site() {
       const { count } = await supabase.from('site_upvotes').select('*', { count: 'exact', head: true }).eq('site_id', data.id);
       setUpvotes(count || 0);
 
-      const { data: revs } = await supabase.from('site_reviews').select('*, profiles(username)').eq('site_id', data.id).order('created_at', { ascending: false });
-      setReviews(revs || []);
-
-      const { data: coms } = await supabase.from('site_comments').select('*, profiles(username)').eq('site_id', data.id).order('created_at', { ascending: false });
-      setComments(coms || []);
-
-      const { data: anns } = await supabase.from('site_announcements').select('*').eq('site_id', data.id).order('created_at', { ascending: false });
-      setAnnouncements(anns || []);
+      apiAction('get-site-data', { slug: data.slug })
+        .then(r => { setReviews(r.reviews || []); setComments(r.comments || []); setAnnouncements(r.announcements || []); })
+        .catch(e => console.error('Site data fetch:', e));
     } catch (e) { console.error('Error fetching site:', e); }
     setLoading(false);
   };

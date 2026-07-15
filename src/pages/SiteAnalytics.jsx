@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
+import { apiFetch } from '../services/api';
 
 export default function SiteAnalytics() {
   const { user } = useAuth();
@@ -11,6 +12,7 @@ export default function SiteAnalytics() {
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ views: 0, upvotes: 0, reviews: 0, comments: 0, followers: 0, adViews: 0, adClicks: 0 });
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!slug) return;
@@ -19,16 +21,12 @@ export default function SiteAnalytics() {
 
   const fetchAnalytics = async () => {
     setLoading(true);
-    const { data: siteData } = await supabase.from('sites').select('*').eq('slug', slug).maybeSingle();
-    if (!siteData) { navigate('/'); return; }
-    if (siteData.owner_user_id !== user?.id) { navigate(`/site/${slug}`); return; }
-    setSite(siteData);
-    const { count: views } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteData.id);
-    const { count: upvotes } = await supabase.from('site_upvotes').select('*', { count: 'exact', head: true }).eq('site_id', siteData.id);
-    const { count: reviews } = await supabase.from('site_reviews').select('*', { count: 'exact', head: true }).eq('site_id', siteData.id);
-    const { count: comments } = await supabase.from('site_comments').select('*', { count: 'exact', head: true }).eq('site_id', siteData.id);
-    const { count: followers } = await supabase.from('site_followers').select('*', { count: 'exact', head: true }).eq('site_id', siteData.id);
-    setStats({ views: views || 0, upvotes: upvotes || 0, reviews: reviews || 0, comments: comments || 0, followers: followers || 0, adViews: siteData.view_count || 0, adClicks: siteData.click_count || 0 });
+    try {
+      const d = await apiFetch(`/api/app?action=get-analytics&slug=${encodeURIComponent(slug)}`);
+      setStats(d.stats);
+      const { data: siteData } = await supabase.from('sites').select('*').eq('slug', slug).maybeSingle();
+      setSite(siteData);
+    } catch (e) { setError(e.message); }
     setLoading(false);
   };
 

@@ -302,7 +302,7 @@ export default async function handler(req, res) {
       const user = await requireUser(req);
       const { siteId, rating, comment } = req.body;
       if (!siteId) return res.status(400).json({ error: 'Missing data' });
-      await supabase.from('site_reviews').insert({ site_id: siteId, user_id: user.id, rating: rating || 5, comment: comment || '' });
+      await supabase.from('site_reviews').upsert({ site_id: siteId, user_id: user.id, rating: rating || 5, comment: comment || '' }, { onConflict: 'user_id,site_id' });
       return res.status(200).json({ success: true });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
@@ -371,28 +371,81 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
-  // --- record-view (anti-spam + pay 5c per view) ---
-  if (action === 'record-view') {
+  // --- get-analytics ---
+  if (action === 'get-analytics') {
     try {
       const user = await requireUser(req);
-      const { siteId } = req.body;
-      if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
-      const { data: profile } = await supabase.from('profiles').select('mc_verified, discord_id').eq('id', user.id).maybeSingle();
-      if (!profile?.mc_verified) return res.status(403).json({ error: 'Must link Minecraft account first' });
-      if (!profile?.discord_id) return res.status(403).json({ error: 'Must have Discord linked' });
-      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { count } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', fiveMinAgo);
-      if (count > 0) return res.status(429).json({ error: 'Already viewed recently. Try again later.' });
-      const { error: viewErr } = await supabase.from('site_views').insert({ site_id: siteId, viewer_id: user.id });
-      if (viewErr) throw viewErr;
+      const { slug } = req.query;
+      if (!slug) return res.status(400).json({ error: 'Missing slug' });
+      const { data: site } = await supabase.from('sites').select('*').eq('slug', slug).maybeSingle();
+      if (!site) return res.status(404).json({ error: 'Site not found' });
+      if (site.owner_user_id !== user.id) return res.status(403).json({ error: 'Not your site' });
+      const { count: views } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', site.id);
+      const { count: upvotes } = await supabase.from('site_upvotes').select('*', { count: 'exact', head: true }).eq('site_id', site.id);
+      const { count: reviews } = await supabase.from('site_reviews').select('*', { count: 'exact', head: true }).eq('site_id', site.id);
+      const { count: comments } = await supabase.from('site_comments').select('*', { count: 'exact', head: true }).eq('site_id', site.id);
+      const { count: followers } = await supabase.from('site_followers').select('*', { count: 'exact', head: true }).eq('site_id', site.id);
+      return res.status(200).json({ stats: { views: views || 0, upvotes: upvotes || 0, reviews: reviews || 0, comments: comments || 0, followers: followers || 0, adViews: site.view_count || 0, adClicks: site.click_count || 0 } });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- get-site-data (reviews, comments, announcements — bypasses RLS) ---
+  if (action === 'get-site-data') {
+    try {
+      const slug = req.body?.slug || req.query?.slug;
+      if (!slug) return res.status(400).json({ error: 'Missing slug' });
+      const { data: site } = await supabase.from('sites').select('id').eq('slug', slug).maybeSingle();
+      if (!site) return res.status(404).json({ error: 'Site not found' });
+      const [reviews, comments, announcements] = await Promise.all([
+        supabase.from('site_reviews').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }),
+        supabase.from('site_comments').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }),
+        supabase.from('site_announcements').select('*').eq('site_id', site.id).order('created_at', { ascending: false })
+      ]);
+      return res.status(200).json({ reviews: reviews.data || [], comments: comments.data || [], announcements: announcements.data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- get-reports (admin: fetch all reports with profile info) ---
+  if (action === 'get-reports') {
+    try {
+      if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
+      const { data } = await supabase.from('site_reports').select('*, profiles(username), sites(name, slug)').order('created_at', { ascending: false }).limit(50);
+      return res.status(200).json({ reports: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- record-view (anti-spam + pay 5c per view) ---
+  if (action === 'record-view') {
+    const auth = req.headers.authorization;
+    const token = auth?.startsWith('Bearer ') ? auth.split(' ')[1] : null;
+    const { data: { user } } = token ? await supabase.auth.getUser(token) : { data: { user: null } };
+    const { siteId } = req.body;
+    if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
+    try {
+      let paid = false;
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('mc_verified, discord_id').eq('id', user.id).maybeSingle();
+        if (profile?.mc_verified && profile?.discord_id) {
+          const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+          const { count: recent } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', thirtyMinAgo);
+          if (recent === 0) {
+            const { count: daily } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', oneDayAgo);
+            if (daily < 3) {
+              await supabase.from('site_views').insert({ site_id: siteId, viewer_id: user.id });
+              paid = true;
+            }
+          }
+        }
+      }
       const { data: site } = await supabase.from('sites').select('owner_user_id, view_count').eq('id', siteId).maybeSingle();
       if (site) {
         await supabase.from('sites').update({ view_count: (site.view_count || 0) + 1 }).eq('id', siteId);
-        if (site.owner_user_id) {
+        if (paid && site.owner_user_id) {
           await supabase.rpc('increment_balance', { target_user_id: site.owner_user_id, deposit_amount: 0.05 });
         }
       }
-      return res.status(200).json({ success: true, message: 'View recorded' });
+      return res.status(200).json({ success: true, message: paid ? 'View recorded + paid' : 'View recorded' });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 

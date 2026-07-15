@@ -232,11 +232,9 @@ export default async function handler(req, res) {
       const { data: bal } = await supabase.from('balances').select('balance').eq('user_id', userId).maybeSingle();
       if (!bal || bal.balance < parseFloat(amount)) return res.status(400).json({ error: 'Insufficient balance' });
       const newBal = bal.balance - parseFloat(amount);
-      const { error: deductErr } = await supabase.from('balances').update({ balance: newBal }).eq('user_id', userId).eq('balance', bal.balance);
-      if (deductErr || !deductErr) {
-        const { data: checkBal } = await supabase.from('balances').select('balance').eq('user_id', userId).maybeSingle();
-        if (!checkBal || checkBal.balance !== newBal) return res.status(409).json({ error: 'Balance changed, try again' });
-      }
+      const { data: updData, error: deductErr } = await supabase.from('balances').update({ balance: newBal }).eq('user_id', userId).eq('balance', bal.balance).select();
+      if (deductErr) return res.status(500).json({ error: deductErr.message });
+      if (!updData || updData.length === 0) return res.status(409).json({ error: 'Balance changed, try again' });
       await supabase.from('withdrawal_requests').insert({ user_id: userId, amount: parseFloat(amount), mc_username: userName, status: 'pending', balance_before: bal.balance, balance_after: newBal });
       return res.status(200).json({ success: true, message: `Withdrawal request for $${amount} submitted` });
     }
@@ -248,7 +246,8 @@ export default async function handler(req, res) {
       if (req.body.actionType === 'approve') {
         const { error } = await supabase.from('withdrawal_requests').update({ status: 'approved', approved_at: new Date().toISOString() }).eq('id', withdrawalId);
         if (error) throw error;
-        return res.status(200).json({ success: true, message: 'Withdrawal approved' });
+        await supabase.from('transactions').insert({ txn_id: 'WD-' + Date.now(), user_id: withdrawal.user_id, amount: -parseFloat(withdrawal.amount), type: 'withdrawal', note: `Withdrawal to ${withdrawal.mc_username || 'Unknown'}` }).catch(() => {});
+        return res.status(200).json({ success: true, message: `Withdrawal approved. Pay them: /pay ${withdrawal.mc_username || 'Unknown'} ${withdrawal.amount}` });
       } else {
         const { data: currentBal } = await supabase.from('balances').select('balance').eq('user_id', withdrawal.user_id).maybeSingle();
         const refunded = (currentBal?.balance || 0) + parseFloat(withdrawal.amount);
