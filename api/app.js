@@ -169,10 +169,13 @@ export default async function handler(req, res) {
   }
 
   // --- admin-add-site ---
+  const isValidUuid = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
   if (action === 'admin-add-site') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     const { name, url, category, description, owner_id, owner_discord, plot_number, shortcut, discord_invite, keywords } = req.body;
     if (!name || !owner_id) return res.status(400).json({ error: 'Name and Owner are required' });
+    if (!isValidUuid(owner_id)) return res.status(400).json({ error: 'Owner ID must be a valid UUID. Use the Discord username lookup to find the correct ID.' });
     try {
       const { data: owner } = await supabase.from('profiles').select('username').eq('id', owner_id).maybeSingle();
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
