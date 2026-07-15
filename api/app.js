@@ -314,10 +314,11 @@ export default async function handler(req, res) {
     try {
       const user = await requireUser(req);
       const { siteId, rating, comment } = req.body;
-      if (!siteId) return res.status(400).json({ error: 'Missing data' });
-      await supabase.from('site_reviews').upsert({ site_id: siteId, user_id: user.id, rating: rating || 5, comment: comment || '' }, { onConflict: 'user_id,site_id' });
+      if (!siteId) { console.error('submit-review missing siteId', req.body); return res.status(400).json({ error: 'Missing data' }); }
+      const { error } = await supabase.from('site_reviews').upsert({ site_id: siteId, user_id: user.id, rating: rating || 5, comment: comment || '' }, { onConflict: 'user_id,site_id' });
+      if (error) { console.error('submit-review upsert error', error); throw error; }
       return res.status(200).json({ success: true });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('submit-review error', err); return res.status(500).json({ error: err.message }); }
   }
 
   // --- submit-comment ---
@@ -326,10 +327,11 @@ export default async function handler(req, res) {
     try {
       const user = await requireUser(req);
       const { siteId, comment } = req.body;
-      if (!siteId || !comment) return res.status(400).json({ error: 'Missing data' });
-      await supabase.from('site_comments').insert({ site_id: siteId, user_id: user.id, comment });
+      if (!siteId || !comment) { console.error('submit-comment missing data', req.body); return res.status(400).json({ error: 'Missing data' }); }
+      const { error } = await supabase.from('site_comments').insert({ site_id: siteId, user_id: user.id, comment });
+      if (error) { console.error('submit-comment insert error', error); throw error; }
       return res.status(200).json({ success: true });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('submit-comment error', err); return res.status(500).json({ error: err.message }); }
   }
 
   // --- toggle-upvote ---
@@ -354,10 +356,11 @@ export default async function handler(req, res) {
     try {
       const user = await requireUser(req);
       const { siteId, reason } = req.body;
-      if (!siteId || !reason) return res.status(400).json({ error: 'Missing data' });
-      await supabase.from('site_reports').insert({ site_id: siteId, user_id: user.id, reason });
+      if (!siteId || !reason) { console.error('submit-report missing data', req.body); return res.status(400).json({ error: 'Missing data' }); }
+      const { error } = await supabase.from('site_reports').insert({ site_id: siteId, user_id: user.id, reason });
+      if (error) { console.error('submit-report insert error', error); throw error; }
       return res.status(200).json({ success: true });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('submit-report error', err); return res.status(500).json({ error: err.message }); }
   }
 
   // --- approve-business (migrate business_registration → sites) ---
@@ -406,43 +409,53 @@ export default async function handler(req, res) {
   if (action === 'get-site-data') {
     try {
       const slug = req.body?.slug || req.query?.slug;
-      if (!slug) return res.status(400).json({ error: 'Missing slug' });
+      if (!slug) { console.error('get-site-data: missing slug', req.body); return res.status(400).json({ error: 'Missing slug' }); }
       const { data: site } = await supabase.from('sites').select('id').eq('slug', slug).maybeSingle();
-      if (!site) return res.status(404).json({ error: 'Site not found' });
-      const [reviews, comments, announcements] = await Promise.all([
-        supabase.from('site_reviews').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }).then(r => r?.data || []).catch(() => []),
-        supabase.from('site_comments').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }).then(r => r?.data || []).catch(() => []),
-        supabase.from('site_announcements').select('*').eq('site_id', site.id).order('created_at', { ascending: false }).then(r => r?.data || []).catch(() => [])
+      if (!site) { console.error('get-site-data: site not found for slug', slug); return res.status(404).json({ error: 'Site not found' }); }
+      const [revRes, comRes, annRes] = await Promise.allSettled([
+        supabase.from('site_reviews').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }),
+        supabase.from('site_comments').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }),
+        supabase.from('site_announcements').select('*').eq('site_id', site.id).order('created_at', { ascending: false })
       ]);
-      return res.status(200).json({ reviews: reviews || [], comments: comments || [], announcements: announcements || [] });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
+      const reviews = revRes.status === 'fulfilled' ? (revRes.value?.data || []) : (console.error('get-site-data reviews error', revRes.reason), []);
+      const comments = comRes.status === 'fulfilled' ? (comRes.value?.data || []) : (console.error('get-site-data comments error', comRes.reason), []);
+      const announcements = annRes.status === 'fulfilled' ? (annRes.value?.data || []) : (console.error('get-site-data announcements error', annRes.reason), []);
+      console.log(`get-site-data: slug=${slug}, reviews=${reviews.length}, comments=${comments.length}, announcements=${announcements.length}`);
+      return res.status(200).json({ reviews, comments, announcements });
+    } catch (err) { console.error('get-site-data error', err); return res.status(500).json({ error: err.message }); }
   }
 
   // --- get-reports (admin: fetch all reports with profile info) ---
   if (action === 'get-reports') {
     try {
-      if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
-      const { data } = await supabase.from('site_reports').select('*, profiles(username), sites(name, slug)').order('created_at', { ascending: false }).limit(50);
+      if (!await requireAdmin(req)) { console.error('get-reports: admin check failed'); return res.status(403).json({ error: 'Admin access required' }); }
+      const { data, error } = await supabase.from('site_reports').select('*, profiles(username), sites(name, slug)').order('created_at', { ascending: false }).limit(50);
+      if (error) { console.error('get-reports query error', error); throw error; }
+      console.log(`get-reports: returning ${data?.length || 0} reports`);
       return res.status(200).json({ reports: data || [] });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('get-reports error', err); return res.status(500).json({ error: err.message }); }
   }
 
   // --- get-transactions (admin: all transactions with profile info) ---
   if (action === 'get-transactions') {
     try {
       if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
-      const { data } = await supabase.from('transactions').select('*, profiles(username)').order('created_at', { ascending: false }).limit(100);
+      const { data, error } = await supabase.from('transactions').select('*, profiles(username)').order('created_at', { ascending: false }).limit(100);
+      if (error) { console.error('get-transactions error', error); throw error; }
+      console.log(`get-transactions: returning ${data?.length || 0} transactions`);
       return res.status(200).json({ transactions: data || [] });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('get-transactions error', err); return res.status(500).json({ error: err.message }); }
   }
 
   // --- get-contact-messages (admin: all contact messages) ---
   if (action === 'get-contact-messages') {
     try {
       if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
-      const { data } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false }).limit(100);
+      const { data, error } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false }).limit(100);
+      if (error) { console.error('get-contact-messages error', error); throw error; }
+      console.log(`get-contact-messages: returning ${data?.length || 0} messages`);
       return res.status(200).json({ messages: data || [] });
-    } catch (err) { return res.status(500).json({ error: err.message }); }
+    } catch (err) { console.error('get-contact-messages error', err); return res.status(500).json({ error: err.message }); }
   }
 
   // --- record-view (anti-spam + pay 10c per view) ---
