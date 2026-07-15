@@ -371,6 +371,31 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // --- record-view (anti-spam + pay 5c per view) ---
+  if (action === 'record-view') {
+    try {
+      const user = await requireUser(req);
+      const { siteId } = req.body;
+      if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
+      const { data: profile } = await supabase.from('profiles').select('mc_verified, discord_id').eq('id', user.id).maybeSingle();
+      if (!profile?.mc_verified) return res.status(403).json({ error: 'Must link Minecraft account first' });
+      if (!profile?.discord_id) return res.status(403).json({ error: 'Must have Discord linked' });
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const { count } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', fiveMinAgo);
+      if (count > 0) return res.status(429).json({ error: 'Already viewed recently. Try again later.' });
+      const { error: viewErr } = await supabase.from('site_views').insert({ site_id: siteId, viewer_id: user.id });
+      if (viewErr) throw viewErr;
+      const { data: site } = await supabase.from('sites').select('owner_user_id, view_count').eq('id', siteId).maybeSingle();
+      if (site) {
+        await supabase.from('sites').update({ view_count: (site.view_count || 0) + 1 }).eq('id', siteId);
+        if (site.owner_user_id) {
+          await supabase.rpc('increment_balance', { target_user_id: site.owner_user_id, deposit_amount: 0.05 });
+        }
+      }
+      return res.status(200).json({ success: true, message: 'View recorded' });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // --- lookup-user ---
   if (action === 'lookup-user') {
     const raw = req.query.username || req.body?.username;

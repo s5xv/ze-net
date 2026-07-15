@@ -19,6 +19,7 @@ export default function Site() {
   const [hasUpvoted, setHasUpvoted] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [comments, setComments] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
   const [newComment, setNewComment] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
@@ -45,7 +46,11 @@ export default function Site() {
       if (error || !data) { setLoading(false); return; }
       
       setSite(data);
-      await supabase.from('sites').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
+      if (user) {
+        apiAction('record-view', { siteId: data.id }).catch(() => {});
+      } else {
+        await supabase.from('sites').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id);
+      }
       
       if (user) {
         const { data: bookmark } = await supabase.from('bookmarks').select('id').eq('user_id', user.id).eq('site_id', data.id).maybeSingle();
@@ -66,6 +71,9 @@ export default function Site() {
 
       const { data: coms } = await supabase.from('site_comments').select('*, profiles(username)').eq('site_id', data.id).order('created_at', { ascending: false });
       setComments(coms || []);
+
+      const { data: anns } = await supabase.from('site_announcements').select('*').eq('site_id', data.id).order('created_at', { ascending: false });
+      setAnnouncements(anns || []);
     } catch (e) { console.error('Error fetching site:', e); }
     setLoading(false);
   };
@@ -103,24 +111,30 @@ export default function Site() {
 
   const submitReview = async () => {
     if (!user || !site?.id || !newReview.comment.trim()) return;
-    await apiAction('submit-review', { siteId: site.id, rating: newReview.rating, comment: newReview.comment });
-    setNewReview({ rating: 5, comment: '' });
-    fetchSite();
+    try {
+      await apiAction('submit-review', { siteId: site.id, rating: newReview.rating, comment: newReview.comment });
+      setNewReview({ rating: 5, comment: '' });
+      fetchSite();
+    } catch (e) { alert('Error: ' + e.message); }
   };
 
   const submitComment = async () => {
     if (!user || !site?.id || !newComment.trim()) return;
-    await apiAction('submit-comment', { siteId: site.id, comment: newComment });
-    setNewComment('');
-    fetchSite();
+    try {
+      await apiAction('submit-comment', { siteId: site.id, comment: newComment });
+      setNewComment('');
+      fetchSite();
+    } catch (e) { alert('Error: ' + e.message); }
   };
 
   const submitReport = async () => {
     if (!user || !site?.id || !reportReason.trim()) return;
-    await apiAction('submit-report', { siteId: site.id, reason: reportReason });
-    setShowReportModal(false);
-    setReportReason('');
-    alert('Report submitted');
+    try {
+      await apiAction('submit-report', { siteId: site.id, reason: reportReason });
+      setShowReportModal(false);
+      setReportReason('');
+      alert('Report submitted');
+    } catch (e) { alert('Error: ' + e.message); }
   };
 
   const submitTip = async () => {
@@ -232,6 +246,22 @@ export default function Site() {
             </div>
           </div>
         </div>
+
+        {/* Announcements */}
+        {announcements.length > 0 && (
+          <div className="mt-8 bg-[#303134] border border-gray-700 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-4">Announcements</h2>
+            <div className="space-y-3">
+              {announcements.map(a => (
+                <div key={a.id} className="bg-[#202124] p-4 rounded border-l-4 border-yellow-500">
+                  <h3 className="text-white font-bold mb-1">{a.title}</h3>
+                  <p className="text-gray-300 text-sm">{a.content}</p>
+                  <p className="text-xs text-gray-500 mt-1">{new Date(a.created_at).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Reviews */}
         <div className="mt-8 bg-[#303134] border border-gray-700 rounded-xl p-6">

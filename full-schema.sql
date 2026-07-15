@@ -672,6 +672,11 @@ CREATE POLICY "Users can update own profile" ON public.profiles
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
+CREATE POLICY "Staff can update any profile" ON public.profiles
+  FOR UPDATE TO authenticated
+  USING ((SELECT is_staff FROM public.profiles WHERE id = auth.uid()) = true)
+  WITH CHECK ((SELECT is_staff FROM public.profiles WHERE id = auth.uid()) = true);
+
 -- Balances RLS
 ALTER TABLE public.balances ENABLE ROW LEVEL SECURITY;
 
