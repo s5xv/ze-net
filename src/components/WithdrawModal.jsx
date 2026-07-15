@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { apiFetch } from '../services/api';
 
 export default function WithdrawModal({ balance, onUpdate, onClose }) {
   const { user } = useAuth();
   const [amount, setAmount] = useState('');
+  const [mcUsername, setMcUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const closeTimeout = useRef(null);
@@ -17,18 +18,15 @@ export default function WithdrawModal({ balance, onUpdate, onClose }) {
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) { setMessage('Enter a valid amount'); return; }
     if (amt > (balance || 0)) { setMessage('Insufficient balance'); return; }
+    if (!mcUsername.trim()) { setMessage('Enter your Minecraft username'); return; }
     setLoading(true);
     
     try {
-      const { error } = await supabase.from('withdrawal_requests').insert({
-        user_id: user.id,
-        amount: amt,
-        status: 'pending'
+      const data = await apiFetch('/api/economy', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'request-withdrawal', amount: amt, userName: mcUsername.trim() })
       });
-      
-      if (error) throw error;
-      
-      setMessage('Withdrawal requested! Admin will process it.');
+      setMessage(data.message || 'Withdrawal requested!');
       closeTimeout.current = setTimeout(() => {
         if (onUpdate) onUpdate();
         if (onClose) onClose();
@@ -56,6 +54,14 @@ export default function WithdrawModal({ balance, onUpdate, onClose }) {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="Amount"
+          className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white mb-4"
+          required
+        />
+        <input
+          type="text"
+          value={mcUsername}
+          onChange={(e) => setMcUsername(e.target.value)}
+          placeholder="Your Minecraft username"
           className="w-full px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white mb-4"
           required
         />

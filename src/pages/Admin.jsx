@@ -459,7 +459,7 @@ export default function Admin() {
                     <p className="text-2xl font-bold text-green-400 mb-2">${parseFloat(w.amount).toFixed(2)}</p>
                     <div className="bg-gray-900 p-3 rounded text-xs">
                       <p className="text-gray-400 mb-1">Payment Command:</p>
-                      <code className="text-yellow-400 font-mono block">/pay {w.mc_username || w.balance_before || 'Player'} {parseFloat(w.amount).toFixed(2)}</code>
+                      <code className="text-yellow-400 font-mono block">/pay {w.mc_username || 'Unknown'} {parseFloat(w.amount).toFixed(2)}</code>
                     </div>
                   </div>
                     <div className="flex flex-col gap-2">

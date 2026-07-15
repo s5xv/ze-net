@@ -409,11 +409,11 @@ export default async function handler(req, res) {
       const { data: site } = await supabase.from('sites').select('id').eq('slug', slug).maybeSingle();
       if (!site) return res.status(404).json({ error: 'Site not found' });
       const [reviews, comments, announcements] = await Promise.all([
-        supabase.from('site_reviews').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }),
-        supabase.from('site_comments').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }),
-        supabase.from('site_announcements').select('*').eq('site_id', site.id).order('created_at', { ascending: false })
+        supabase.from('site_reviews').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }).then(r => r?.data || []).catch(() => []),
+        supabase.from('site_comments').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }).then(r => r?.data || []).catch(() => []),
+        supabase.from('site_announcements').select('*').eq('site_id', site.id).order('created_at', { ascending: false }).then(r => r?.data || []).catch(() => [])
       ]);
-      return res.status(200).json({ reviews: reviews.data || [], comments: comments.data || [], announcements: announcements.data || [] });
+      return res.status(200).json({ reviews: reviews || [], comments: comments || [], announcements: announcements || [] });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
@@ -454,17 +454,14 @@ export default async function handler(req, res) {
     try {
       let paid = false;
       if (user) {
-        const { data: profile } = await supabase.from('profiles').select('mc_verified, discord_id').eq('id', user.id).maybeSingle();
-        if (profile?.mc_verified && profile?.discord_id) {
-          const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-          const { count: recent } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', thirtyMinAgo);
-          if (recent === 0) {
-            const { count: daily } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', oneDayAgo);
-            if (daily < 3) {
-              await supabase.from('site_views').insert({ site_id: siteId, viewer_id: user.id });
-              paid = true;
-            }
+        const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { count: recent } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', thirtyMinAgo);
+        if (recent === 0) {
+          const { count: daily } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', oneDayAgo);
+          if (daily < 3) {
+            await supabase.from('site_views').insert({ site_id: siteId, viewer_id: user.id });
+            paid = true;
           }
         }
       }
