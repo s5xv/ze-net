@@ -175,7 +175,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     const { name, url, category, description, owner_id, owner_discord, plot_number, shortcut, discord_invite, keywords } = req.body;
     if (!name || !owner_id) return res.status(400).json({ error: 'Name and Owner are required' });
-    if (!isValidUuid(owner_id)) return res.status(400).json({ error: 'Owner ID must be a valid UUID. Use the Discord username lookup to find the correct ID.' });
+    if (!isValidUuid(owner_id)) return res.status(400).json({ error: /^\d{17,19}$/.test(owner_id) ? 'That looks like a Discord ID, not a User ID. Type their Discord username in the field above and click a result from the dropdown.' : 'Owner ID must be a valid UUID. Use the Discord username lookup above.' });
     try {
       const { data: owner } = await supabase.from('profiles').select('username').eq('id', owner_id).maybeSingle();
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
