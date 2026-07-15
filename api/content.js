@@ -11,59 +11,57 @@ const getUser = async (req) => {
   return user;
 };
 
-async function fetchJson(url) {
-  try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ZenetBot/1.0; +https://ze-net.vercel.app)', 'Accept': 'application/json, text/html' }
-    });
-    if (!res.ok) return null;
-    const text = await res.text();
-    try { return JSON.parse(text); } catch { return text; }
-  } catch { return null; }
+const WIKI_BATCH_SIZE = 20;
+
+function toSlug(title) {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-async function fetchHtml(url) {
-  try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ZenetBot/1.0; +https://ze-net.vercel.app)', 'Accept': 'text/html' }
-    });
-    if (!res.ok) return null;
-    return await res.text();
-  } catch { return null; }
-}
+async function scrapeWikiBatch(cursor, requestedLimit) {
+  const limit = Math.min(WIKI_BATCH_SIZE, Math.max(1, requestedLimit || WIKI_BATCH_SIZE));
+  const params = new URLSearchParams({
+    action: 'query',
+    generator: 'allpages',
+    gapnamespace: '0',
+    gaplimit: String(limit),
+    prop: 'extracts|info',
+    inprop: 'url',
+    exintro: '1',
+    explaintext: '1',
+    exchars: '1200',
+    exlimit: String(limit),
+    format: 'json'
+  });
+  if (cursor) params.set('gapcontinue', cursor);
 
-function extractTitle(html) {
-  const m = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  return m ? m[1].trim() : '';
-}
-
-function extractContent(html) {
-  let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-  text = text.replace(/<[^>]+>/g, ' ');
-  text = text.replace(/\s+/g, ' ');
-  return text.trim().substring(0, 10000);
-}
-
-async function scrapeWikiViaApi() {
-  const data = await fetchJson(`${WIKI_BASE}/api.php?action=query&list=allpages&aplimit=max&format=json`);
-  if (!data?.query?.allpages) return 0;
-  let scraped = 0;
-  for (const page of data.query.allpages) {
-    const title = page.title;
-    const url = `${WIKI_BASE}/index.php/${encodeURIComponent(title.replace(/ /g, '_'))}`;
-    const html = await fetchHtml(url);
-    if (!html) continue;
-    const content = extractContent(html);
-    if (content.length > 20) {
-      let category = 'General';
-      if (title.includes(':')) category = title.split(':')[0];
-      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      await supabase.from('wiki_pages').insert({ title, url, content: content.substring(0, 10000), category, slug }).catch(() => {});
-      scraped++;
+  const response = await fetch(`${WIKI_BASE}/api.php?${params.toString()}`, {
+    headers: {
+      'User-Agent': 'Z&ENet/1.0 (Wiki sync; +https://ze-net.vercel.app)',
+      Accept: 'application/json'
     }
+  });
+  if (!response.ok) throw new Error(`Wiki API request failed (${response.status})`);
+
+  const data = await response.json();
+  const pages = Object.values(data.query?.pages || {}).filter((page) => page.title && !page.missing);
+  const rows = pages.map((page) => ({
+    title: page.title,
+    slug: toSlug(page.title),
+    url: page.fullurl || `${WIKI_BASE}/index.php?title=${encodeURIComponent(page.title.replace(/ /g, '_'))}`,
+    content: (page.extract || '').trim(),
+    category: page.title.includes(':') ? page.title.split(':')[0] : 'General',
+    source: 'wiki'
+  }));
+
+  if (rows.length > 0) {
+    const { error } = await supabase.from('wiki_pages').upsert(rows, { onConflict: 'slug' });
+    if (error) throw new Error(`Wiki storage failed: ${error.message}`);
   }
-  return scraped;
+
+  return {
+    scraped: rows.length,
+    nextCursor: data.continue?.gapcontinue || null
+  };
 }
 
 export default async function handler(req, res) {
@@ -72,7 +70,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { action, type, forumId } = req.query;
+  const { action, forumId } = req.query;
 
   if (action === 'ingest') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
@@ -93,8 +91,16 @@ export default async function handler(req, res) {
     const { data: profile } = await supabase.from('profiles').select('is_staff').eq('id', user?.id).maybeSingle();
     if (!profile?.is_staff) return res.status(403).json({ error: 'Admin access required' });
     try {
-      const result = await scrapeWikiViaApi();
-      return res.status(200).json({ success: true, message: `Synced ${result} pages`, results: { wiki: result } });
+      const rawLimit = Number.parseInt(req.query.limit, 10);
+      const limit = Number.isFinite(rawLimit) ? rawLimit : WIKI_BATCH_SIZE;
+      const result = await scrapeWikiBatch(req.query.cursor, limit);
+      return res.status(200).json({
+        success: true,
+        message: `Synced ${result.scraped} wiki pages`,
+        results: { wiki: result.scraped },
+        nextCursor: result.nextCursor,
+        done: !result.nextCursor
+      });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }

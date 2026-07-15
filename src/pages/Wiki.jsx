@@ -30,14 +30,29 @@ export default function Wiki() {
     setLoading(false);
   };
 
-  const syncWiki = async (type = 'all') => {
+  const syncWiki = async () => {
     if (!isAdmin) return;
     setSyncing(true);
     setSyncResults(null);
     try {
-      const data = await apiFetch('/api/content?action=wiki&type=' + type);
-      setSyncResults(data);
-      alert(data.message || 'Wiki synced!');
+      let cursor = null;
+      let total = 0;
+      let batches = 0;
+
+      do {
+        const params = new URLSearchParams({ action: 'wiki', limit: '20' });
+        if (cursor) params.set('cursor', cursor);
+        const data = await apiFetch('/api/content?' + params.toString());
+        total += data.results?.wiki || 0;
+        cursor = data.nextCursor || null;
+        batches += 1;
+        setSyncResults({ results: { wiki: total }, batches, done: !cursor });
+
+        if (cursor) await new Promise((resolve) => setTimeout(resolve, 100));
+      } while (cursor && batches < 500);
+
+      if (cursor) throw new Error('Wiki sync stopped after 500 batches. Run it again to continue.');
+      alert(`Synced ${total} wiki pages.`);
       await fetchWikiData();
     } catch (err) { 
       alert('Sync failed: ' + err.message); 
@@ -116,20 +131,8 @@ export default function Wiki() {
 
           {isAdmin && (
             <div className="flex flex-wrap gap-2 justify-center mb-4">
-              <button onClick={() => syncWiki('all')} disabled={syncing} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg text-sm">
-                {syncing ? 'Syncing All...' : 'Sync All'}
-              </button>
-              <button onClick={() => syncWiki('wiki')} disabled={syncing} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white font-medium rounded-lg text-sm">
-                Wiki Only
-              </button>
-              <button onClick={() => syncWiki('forums')} disabled={syncing} className="px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white font-medium rounded-lg text-sm">
-                Forums Only
-              </button>
-              <button onClick={() => syncWiki('applications')} disabled={syncing} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-white font-medium rounded-lg text-sm">
-                Applications Only
-              </button>
-              <button onClick={() => syncWiki('archives')} disabled={syncing} className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white font-medium rounded-lg text-sm">
-                Archives Only
+              <button onClick={syncWiki} disabled={syncing} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium rounded-lg text-sm">
+                {syncing ? `Syncing Wiki${syncResults?.results?.wiki ? ` (${syncResults.results.wiki})` : '...'}` : 'Sync Wiki'}
               </button>
             </div>
           )}
@@ -142,6 +145,7 @@ export default function Wiki() {
                   <span className="capitalize">{key}:</span> {value || 0} pages
                 </p>
               ))}
+              {syncResults.batches && <p className="text-sm">Batches: {syncResults.batches}</p>}
             </div>
           )}
         </div>
