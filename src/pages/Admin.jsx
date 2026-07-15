@@ -210,32 +210,45 @@ export default function Admin() {
     } catch (err) { setMessage('Error: ' + err.message); }
   };
 
-  const handleApproveVerification = async (req) => {
+  const handleApproveVerification = async (verReq) => {
     try {
-      await supabase.from('site_verification_requests').update({ status: 'approved' }).eq('id', req.id);
-      if (req.site_id) {
-        await supabase.from('sites').update({ is_verified: true, verification_paid_at: new Date().toISOString() }).eq('id', req.site_id);
+      const { error: deductErr } = await supabase.rpc('increment_balance', { target_user_id: verReq.user_id, deposit_amount: -100 });
+      if (deductErr) throw new Error('Failed to deduct balance: ' + deductErr.message);
+      await supabase.from('site_verification_requests').update({ status: 'approved' }).eq('id', verReq.id);
+      if (verReq.site_id) {
+        await supabase.from('sites').update({ is_verified: true, verification_paid_at: new Date().toISOString() }).eq('id', verReq.site_id);
       }
-      setMessage('Verification approved');
+      setMessage('Verification approved. Deducted $100 from balance.');
       fetchData(activeTab);
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
   };
 
-  const handleAdRequest = async (req, action) => {
+  const handleAdRequest = async (adReq, action) => {
     try {
       if (action === 'approve') {
-        await supabase.from('ad_requests').update({ status: 'approved' }).eq('id', req.id);
+        const { error: deductErr } = await supabase.rpc('increment_balance', { target_user_id: adReq.user_id, deposit_amount: -adReq.price });
+        if (deductErr) throw new Error('Failed to deduct balance: ' + deductErr.message);
+        await supabase.from('ad_requests').update({ status: 'approved' }).eq('id', adReq.id);
         await supabase.from('sites').update({ 
-          ad_tier: req.tier, 
-          ad_price: req.price,
-          image_url: req.image_url,
+          ad_tier: adReq.tier, 
+          ad_price: adReq.price,
+          image_url: adReq.image_url,
           ad_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        }).eq('id', req.site_id);
-        setMessage('Ad approved and activated');
+        }).eq('id', adReq.site_id);
+        const { data: site } = await supabase.from('sites').select('url').eq('id', adReq.site_id).maybeSingle();
+        await supabase.from('ads').insert({
+          title: adReq.site_name || 'Sponsored',
+          description: adReq.description || '',
+          image_url: adReq.image_url || '',
+          link_url: site?.url || '',
+          tier: adReq.tier || 'standard',
+          is_active: true
+        });
+        setMessage(`Ad approved. Deducted $${adReq.price} from user's balance.`);
       } else {
-        await supabase.from('ad_requests').update({ status: 'rejected' }).eq('id', req.id);
+        await supabase.from('ad_requests').update({ status: 'rejected' }).eq('id', adReq.id);
         setMessage('Ad rejected');
       }
       fetchData(activeTab);

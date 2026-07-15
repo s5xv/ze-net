@@ -61,7 +61,7 @@ export default function VerifySite() {
       if (error) throw error;
 
       setMessage('✅ Verification request submitted! Admin will review within 24 hours.');
-      timeoutRef.current = setTimeout(() => navigate('/profile'), 3000);
+      timeoutRef.current = setTimeout(() => navigate('/home'), 3000);
     } catch (err) {
       setMessage('❌ Error: ' + err.message);
     }
