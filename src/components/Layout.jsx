@@ -27,7 +27,7 @@ export default function Layout({ children, user }) {
 
       const pw = import.meta.env.VITE_ADMIN_PASSWORD;
       if (pw) {
-        setIsStaff(sessionStorage.getItem('admin_pw') === pw);
+        setIsStaff(localStorage.getItem('admin_pw') === pw);
       } else {
         supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => setIsStaff(data?.is_staff || false)).catch(() => {});
       }

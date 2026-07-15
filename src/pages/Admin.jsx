@@ -8,7 +8,7 @@ import { apiFetch } from '../services/api';
 const ADMIN_PW = import.meta.env.VITE_ADMIN_PASSWORD;
 
 function hasAdminPassword() {
-  return ADMIN_PW && sessionStorage.getItem('admin_pw') === ADMIN_PW;
+  return ADMIN_PW && localStorage.getItem('admin_pw') === ADMIN_PW;
 }
 
 export default function Admin() {
@@ -145,7 +145,7 @@ export default function Admin() {
 
   const handlePasswordSubmit = () => {
     if (passwordInput === ADMIN_PW) {
-      sessionStorage.setItem('admin_pw', passwordInput);
+      localStorage.setItem('admin_pw', passwordInput);
       setPasswordOk(true);
       setPasswordError('');
       checkAdminAccess();
