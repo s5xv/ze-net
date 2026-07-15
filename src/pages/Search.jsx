@@ -40,47 +40,51 @@ export default function Search() {
     setLoading(true);
     setAiSummary(null);
     setAiSources([]);
-    const rawQuery = query.toLowerCase().trim();
-    const searchTerm = extractSearchTerms(rawQuery);
-    
-    let sitesQuery = supabase.from('sites').select('*').eq('status', 'approved').eq('is_verified', true);
-    if (searchTerm) {
-      sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcuts.ilike.%${searchTerm}%`);
-    }
-    const { data: sitesData } = await sitesQuery.order('view_count', { ascending: false }).limit(15);
-    if (id === searchId.current) setSiteResults(sitesData || []);
-
-    const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
-    if (id === searchId.current) setWikiResults(wikiData || []);
-
-    let deptData = [];
     try {
-      if (searchTerm.toLowerCase().includes('department') || searchTerm.toLowerCase().includes('dept')) {
-        const { data } = await supabase.from('departments').select('*').eq('is_active', true).order('display_order', { ascending: true }).limit(50);
-        deptData = data || [];
-      } else if (searchTerm) {
-        const { data } = await supabase.from('departments').select('*').or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`).eq('is_active', true).limit(20);
-        deptData = data || [];
+      const rawQuery = query.toLowerCase().trim();
+      const searchTerm = extractSearchTerms(rawQuery);
+      
+      let sitesQuery = supabase.from('sites').select('*').eq('status', 'approved').eq('is_verified', true);
+      if (searchTerm) {
+        sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcuts.ilike.%${searchTerm}%`);
       }
-    } catch (e) { console.error('Dept search error', e); }
-    if (id === searchId.current) setDeptResults(deptData);
+      const { data: sitesData } = await sitesQuery.order('view_count', { ascending: false }).limit(15);
+      if (id === searchId.current) setSiteResults(sitesData || []);
 
-    const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
-    const isQuestion = ['who is ', 'what is ', 'what are ', 'where is ', 'how to ', 'how do i ', 'tell me about ', 'find ', 'i need '].some(p => rawQuery.startsWith(p));
-    if (allResults.length > 0 || isQuestion) {
-      generateAISummary(allResults);
-    } else {
-      setSummarizing(false);
+      const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
+      if (id === searchId.current) setWikiResults(wikiData || []);
+
+      let deptData = [];
+      try {
+        if (searchTerm.toLowerCase().includes('department') || searchTerm.toLowerCase().includes('dept')) {
+          const { data } = await supabase.from('departments').select('*').eq('is_active', true).order('display_order', { ascending: true }).limit(50);
+          deptData = data || [];
+        } else if (searchTerm) {
+          const { data } = await supabase.from('departments').select('*').or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`).eq('is_active', true).limit(20);
+          deptData = data || [];
+        }
+      } catch (e) { console.error('Dept search error', e); }
+      if (id === searchId.current) setDeptResults(deptData);
+
+      const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
+      const isQuestion = ['who is ', 'what is ', 'what are ', 'where is ', 'how to ', 'how do i ', 'tell me about ', 'find ', 'i need '].some(p => rawQuery.startsWith(p));
+      if (allResults.length > 0 || isQuestion) {
+        generateAISummary(allResults);
+      } else {
+        setSummarizing(false);
+      }
+
+      try {
+        await Promise.all([
+          user ? supabase.from('search_history').insert({ user_id: user.id, query }) : Promise.resolve(),
+          supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: allResults.length })
+        ]);
+      } catch (err) { console.error('Analytics error:', err); }
+    } catch (err) {
+      console.error('Search error:', err);
+    } finally {
+      if (id === searchId.current) setLoading(false);
     }
-
-    try {
-      await Promise.all([
-        user ? supabase.from('search_history').insert({ user_id: user.id, query }) : Promise.resolve(),
-        supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: allResults.length })
-      ]);
-    } catch (err) { console.error('Analytics error:', err); }
-    
-    if (id === searchId.current) setLoading(false);
   };
 
   const generateAISummary = async (results) => {
