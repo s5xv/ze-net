@@ -146,8 +146,8 @@ export default async function handler(req, res) {
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
       const { error } = await supabase.from('sites').insert({
         name, slug, url: website_url || '', category: category || 'Other',
-        description: description || '', owner_discord,
-        plot_number: plot_number || null, shortcuts: shortcut || null,
+        description: description || '',
+        plot_number: plot_number || null, shortcut: shortcut || null,
         discord_invite: discord_invite || null,
         owner_user_id: user_id, user_id, owner_name: owner?.username || 'Unknown',
         is_verified: false, is_active: true, status: 'pending', submitted_by: user_id
@@ -179,10 +179,10 @@ export default async function handler(req, res) {
       const { error } = await supabase.from('sites').insert({
         name, slug, url: url || '', category: category || 'Other', description: description || '',
         owner_user_id: owner_id, user_id: owner_id, owner_name: owner?.username || 'Unknown',
-        owner_discord: owner_discord || null, plot_number: plot_number || null,
+        plot_number: plot_number || null,
         discord_invite: discord_invite || null,
         is_verified: true, is_active: true, status: 'approved',
-        shortcuts: shortcut || null, keywords: keywords ? keywords.split(',').map(k => k.trim()).filter(Boolean) : null
+        shortcut: shortcut || null, keywords: keywords ? keywords.split(',').map(k => k.trim()).filter(Boolean) : null
       });
       if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site created' });

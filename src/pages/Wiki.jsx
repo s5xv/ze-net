@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
@@ -17,10 +18,15 @@ export default function Wiki() {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [syncResults, setSyncResults] = useState(null);
+  const [adminLoading, setAdminLoading] = useState(true);
 
   useEffect(() => {
-    if (user) supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => setIsAdmin(data?.is_staff || false)).catch(() => {});
-    fetchWikiData();
+    if (user) {
+      supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => { setIsAdmin(data?.is_staff || false); setAdminLoading(false); }).catch(() => setAdminLoading(false));
+      fetchWikiData();
+    } else {
+      setAdminLoading(false);
+    }
   }, [user]);
 
   const fetchWikiData = async () => {
@@ -91,7 +97,9 @@ export default function Wiki() {
     archive: pages.filter(p => p.source === 'archive').length
   };
 
-  if (authLoading) return <Layout user={null}><div className="flex-grow flex items-center justify-center"><div className="text-gray-500">Loading...</div></div></Layout>;
+  if (authLoading || adminLoading) return <Layout user={null}><div className="flex-grow flex items-center justify-center"><div className="text-gray-500">Loading...</div></div></Layout>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
 
   return (
     <Layout user={user}>

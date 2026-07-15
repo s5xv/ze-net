@@ -52,7 +52,7 @@ export default function Search() {
       if (id === searchId.current) setSiteResults(sitesData || []);
 
       const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
-      if (id === searchId.current) setWikiResults(wikiData || []);
+      if (id === searchId.current) setWikiResults((wikiData || []).filter(p => p.content && p.content.trim()));
 
       let deptData = [];
       try {

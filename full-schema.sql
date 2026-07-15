@@ -625,14 +625,14 @@ CREATE POLICY "Allow authenticated insert wiki_pages" ON public.wiki_pages
   WITH CHECK (true);
 
 CREATE POLICY "Allow anon select wiki_pages" ON public.wiki_pages
-  FOR SELECT TO anon
+  FOR SELECT TO anon, authenticated
   USING (true);
 
 -- Sites RLS — anon can read approved, authenticated can read all
 ALTER TABLE public.sites ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Anyone can read all sites" ON public.sites
-  FOR SELECT TO anon
+  FOR SELECT TO anon, authenticated
   USING (true);
 
 CREATE POLICY "Users can insert their own sites" ON public.sites
