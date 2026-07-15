@@ -29,6 +29,7 @@ export default function Admin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingStaff, setEditingStaff] = useState(null);
   const [reports, setReports] = useState([]);
+  const [managedAds, setManagedAds] = useState({ sites: [], ads: [] });
   const [messages, setMessages] = useState([]);
   const [pendingSites, setPendingSites] = useState([]);
   const [businessRegistrations, setBusinessRegistrations] = useState([]);
@@ -101,6 +102,10 @@ export default function Admin() {
         setBusinessRegistrations(data || []);
       } else if (tab === 'messages') {
         try { const d = await apiFetch('/api/app?action=get-contact-messages', { method: 'POST' }); setMessages(d.messages || []); } catch (e) { setMessage('Error: ' + e.message); }
+      } else if (tab === 'manage-ads') {
+        const { data: allSites } = await supabase.from('sites').select('id, name, slug, ad_tier, ad_expires_at, url').order('name');
+        const { data: allAds } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
+        setManagedAds({ sites: allSites || [], ads: allAds || [] });
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -228,6 +233,7 @@ export default function Admin() {
   const handleAdRequest = async (adReq, action) => {
     try {
       if (action === 'approve') {
+        if (adReq.status !== 'pending') return setMessage('Ad already processed');
         const { error: deductErr } = await supabase.rpc('increment_balance', { target_user_id: adReq.user_id, deposit_amount: -adReq.price });
         if (deductErr) throw new Error('Failed to deduct balance: ' + deductErr.message);
         await supabase.from('ad_requests').update({ status: 'approved' }).eq('id', adReq.id);
@@ -237,16 +243,16 @@ export default function Admin() {
           image_url: adReq.image_url,
           ad_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         }).eq('id', adReq.site_id);
-        const { data: site } = await supabase.from('sites').select('url').eq('id', adReq.site_id).maybeSingle();
+        const { data: site } = await supabase.from('sites').select('slug').eq('id', adReq.site_id).maybeSingle();
         await supabase.from('ads').insert({
           title: adReq.site_name || 'Sponsored',
           description: adReq.description || '',
           image_url: adReq.image_url || '',
-          link_url: site?.url || '',
+          link_url: site?.slug ? `/site/${site.slug}` : '',
           tier: adReq.tier || 'standard',
           is_active: true
         });
-        setMessage(`Ad approved. Deducted $${adReq.price} from user's balance.`);
+        setMessage(`Ad approved. Deducted $${adReq.price} from balance.`);
       } else {
         await supabase.from('ad_requests').update({ status: 'rejected' }).eq('id', adReq.id);
         setMessage('Ad rejected');
@@ -439,6 +445,7 @@ export default function Admin() {
           <TabButton id="businesses" label="Businesses" />
           <TabButton id="moderation" label="Moderation" badge={reports.length} />
           <TabButton id="messages" label="Messages" />
+          <TabButton id="manage-ads" label="Manage Ads" />
         </div>
 
         {loading && <p className="text-center text-gray-400 py-10">Loading...</p>}
@@ -819,6 +826,74 @@ export default function Admin() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {!loading && activeTab === 'manage-ads' && (
+          <div className="space-y-6">
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-4">
+              <h3 className="text-white font-bold mb-4">Add Ad to Site</h3>
+              <div className="flex gap-2">
+                <select id="ad-site-select" className="flex-1 px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white text-sm">
+                  <option value="">Select site...</option>
+                  {Array.isArray(managedAds?.sites) && managedAds.sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <select id="ad-tier-select" className="px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white text-sm">
+                  <option value="standard">Standard ($110)</option>
+                  <option value="featured">Featured ($160)</option>
+                  <option value="premium">Premium ($400)</option>
+                  <option value="elite">Elite ($600)</option>
+                </select>
+                <button onClick={async () => {
+                  const siteId = document.getElementById('ad-site-select').value;
+                  const tier = document.getElementById('ad-tier-select').value;
+                  if (!siteId) return setMessage('Select a site');
+                  const site = managedAds.sites.find(s => s.id === siteId);
+                  await supabase.from('ads').insert({ title: site.name, link_url: `/site/${site.slug}`, tier, is_active: true, description: '', image_url: '' });
+                  await supabase.from('sites').update({ ad_tier: tier, ad_expires_at: new Date(Date.now() + 30*24*60*60*1000).toISOString() }).eq('id', siteId);
+                  setMessage('Ad added to site');
+                  fetchData(activeTab);
+                }} className="px-4 py-2 bg-green-600 text-white rounded text-sm">Add</button>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-white font-bold mb-3">Active Ads ({Array.isArray(managedAds?.ads) ? managedAds.ads.filter(a => a.is_active).length : 0})</h3>
+              {(!managedAds?.ads || managedAds.ads.length === 0) ? (
+                <p className="text-gray-500">No ads</p>
+              ) : managedAds.ads.filter(a => a.is_active).map(ad => (
+                <div key={ad.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4 mb-2 flex justify-between items-center">
+                  <div>
+                    <p className="text-white font-bold">{ad.title}</p>
+                    <p className="text-sm text-gray-400">{ad.tier} — {ad.link_url}</p>
+                  </div>
+                  <button onClick={async () => {
+                    await supabase.from('ads').update({ is_active: false }).eq('id', ad.id);
+                    setMessage('Ad revoked');
+                    fetchData(activeTab);
+                  }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Revoke</button>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <h3 className="text-white font-bold mb-3">Sites with Ads</h3>
+              {(!managedAds?.sites || managedAds.sites.length === 0) ? <p className="text-gray-500">No sites</p> : 
+                managedAds.sites.filter(s => s.ad_tier).map(s => (
+                  <div key={s.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4 mb-2 flex justify-between items-center">
+                    <div>
+                      <p className="text-white font-bold">{s.name}</p>
+                      <p className="text-sm text-gray-400">{s.ad_tier} — expires {s.ad_expires_at ? new Date(s.ad_expires_at).toLocaleDateString() : 'N/A'}</p>
+                    </div>
+                    <button onClick={async () => {
+                      await supabase.from('sites').update({ ad_tier: null, ad_expires_at: null }).eq('id', s.id);
+                      setMessage('Ad removed from site');
+                      fetchData(activeTab);
+                    }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Remove</button>
+                  </div>
+                ))
+              }
+            </div>
           </div>
         )}
 
