@@ -181,7 +181,7 @@ export default async function handler(req, res) {
         owner_user_id: owner_id, user_id: owner_id, owner_name: owner?.username || 'Unknown',
         plot_number: plot_number || null,
         discord_invite: discord_invite || null,
-        is_verified: true, is_active: true, status: 'approved',
+        is_verified: false, is_active: true, status: 'approved',
         shortcut: shortcut || null, keywords: keywords ? keywords.split(',').map(k => k.trim()).filter(Boolean) : null
       });
       if (error) throw error;
@@ -196,9 +196,9 @@ export default async function handler(req, res) {
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
-      const { error } = await supabase.from('sites').update({ status: 'approved', is_verified: true, is_active: true, reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      const { error } = await supabase.from('sites').update({ status: 'approved', is_active: true, reviewed_at: new Date().toISOString() }).eq('id', siteId);
       if (error) throw error;
-      return res.status(200).json({ success: true, message: 'Site approved' });
+      return res.status(200).json({ success: true, message: 'Site approved. They still need to pay for verification before appearing in search.' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
