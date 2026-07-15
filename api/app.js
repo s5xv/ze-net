@@ -412,14 +412,19 @@ export default async function handler(req, res) {
       if (!slug) { console.error('get-site-data: missing slug', req.body); return res.status(400).json({ error: 'Missing slug' }); }
       const { data: site } = await supabase.from('sites').select('id').eq('slug', slug).maybeSingle();
       if (!site) { console.error('get-site-data: site not found for slug', slug); return res.status(404).json({ error: 'Site not found' }); }
-      const [revRes, comRes, annRes] = await Promise.allSettled([
-        supabase.from('site_reviews').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }),
-        supabase.from('site_comments').select('*, profiles(username)').eq('site_id', site.id).order('created_at', { ascending: false }),
-        supabase.from('site_announcements').select('*').eq('site_id', site.id).order('created_at', { ascending: false })
+      const [revRes, comRes, annRes, profRes] = await Promise.allSettled([
+        supabase.from('site_reviews').select('*').eq('site_id', site.id).order('created_at', { ascending: false }),
+        supabase.from('site_comments').select('*').eq('site_id', site.id).order('created_at', { ascending: false }),
+        supabase.from('site_announcements').select('*').eq('site_id', site.id).order('created_at', { ascending: false }),
+        supabase.from('profiles').select('id, username')
       ]);
       const reviews = revRes.status === 'fulfilled' ? (revRes.value?.data || []) : (console.error('get-site-data reviews error', revRes.reason), []);
       const comments = comRes.status === 'fulfilled' ? (comRes.value?.data || []) : (console.error('get-site-data comments error', comRes.reason), []);
       const announcements = annRes.status === 'fulfilled' ? (annRes.value?.data || []) : (console.error('get-site-data announcements error', annRes.reason), []);
+      const allProfiles = profRes.status === 'fulfilled' ? (profRes.value?.data || []) : [];
+      const profileMap = Object.fromEntries(allProfiles.map(p => [p.id, p.username]));
+      reviews.forEach(r => r.profiles = r.profiles || { username: profileMap[r.user_id] || 'Unknown' });
+      comments.forEach(c => c.profiles = c.profiles || { username: profileMap[c.user_id] || 'Unknown' });
       console.log(`get-site-data: slug=${slug}, reviews=${reviews.length}, comments=${comments.length}, announcements=${announcements.length}`);
       return res.status(200).json({ reviews, comments, announcements });
     } catch (err) { console.error('get-site-data error', err); return res.status(500).json({ error: err.message }); }
@@ -429,10 +434,18 @@ export default async function handler(req, res) {
   if (action === 'get-reports') {
     try {
       if (!await requireAdmin(req)) { console.error('get-reports: admin check failed'); return res.status(403).json({ error: 'Admin access required' }); }
-      const { data, error } = await supabase.from('site_reports').select('*, profiles(username), sites(name, slug)').order('created_at', { ascending: false }).limit(50);
-      if (error) { console.error('get-reports query error', error); throw error; }
-      console.log(`get-reports: returning ${data?.length || 0} reports`);
-      return res.status(200).json({ reports: data || [] });
+      const [repRes, profRes, siteRes] = await Promise.allSettled([
+        supabase.from('site_reports').select('*').order('created_at', { ascending: false }).limit(50),
+        supabase.from('profiles').select('id, username'),
+        supabase.from('sites').select('id, name, slug')
+      ]);
+      const reports = repRes.status === 'fulfilled' ? (repRes.value?.data || []) : [];
+      const profiles = profRes.status === 'fulfilled' ? (profRes.value?.data || []) : [];
+      const sites = siteRes.status === 'fulfilled' ? (siteRes.value?.data || []) : [];
+      const profileMap = Object.fromEntries(profiles.map(p => [p.id, p.username]));
+      const siteMap = Object.fromEntries(sites.map(s => [s.id, s]));
+      reports.forEach(r => { r.profiles = { username: profileMap[r.user_id] || 'Unknown' }; r.sites = siteMap[r.site_id] || null; });
+      return res.status(200).json({ reports: reports || [] });
     } catch (err) { console.error('get-reports error', err); return res.status(500).json({ error: err.message }); }
   }
 
@@ -440,10 +453,15 @@ export default async function handler(req, res) {
   if (action === 'get-transactions') {
     try {
       if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
-      const { data, error } = await supabase.from('transactions').select('*, profiles(username)').order('created_at', { ascending: false }).limit(100);
-      if (error) { console.error('get-transactions error', error); throw error; }
-      console.log(`get-transactions: returning ${data?.length || 0} transactions`);
-      return res.status(200).json({ transactions: data || [] });
+      const [txRes, profRes] = await Promise.allSettled([
+        supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase.from('profiles').select('id, username')
+      ]);
+      const transactions = txRes.status === 'fulfilled' ? (txRes.value?.data || []) : [];
+      const profiles = profRes.status === 'fulfilled' ? (profRes.value?.data || []) : [];
+      const profileMap = Object.fromEntries(profiles.map(p => [p.id, p.username]));
+      transactions.forEach(t => t.profiles = { username: profileMap[t.user_id] || 'Unknown' });
+      return res.status(200).json({ transactions });
     } catch (err) { console.error('get-transactions error', err); return res.status(500).json({ error: err.message }); }
   }
 
@@ -453,7 +471,6 @@ export default async function handler(req, res) {
       if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
       const { data, error } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false }).limit(100);
       if (error) { console.error('get-contact-messages error', error); throw error; }
-      console.log(`get-contact-messages: returning ${data?.length || 0} messages`);
       return res.status(200).json({ messages: data || [] });
     } catch (err) { console.error('get-contact-messages error', err); return res.status(500).json({ error: err.message }); }
   }
