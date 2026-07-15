@@ -46,7 +46,7 @@ export default function Search() {
       
       let sitesQuery = supabase.from('sites').select('*').eq('status', 'approved').eq('is_verified', true);
       if (searchTerm) {
-        sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcut.ilike.%${searchTerm}%`);
+        sitesQuery = sitesQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,shortcut.ilike.%${searchTerm}%,keywords::text.ilike.%${searchTerm}%`);
       }
       const { data: sitesData } = await sitesQuery.order('view_count', { ascending: false }).limit(15);
       if (id === searchId.current) setSiteResults(sitesData || []);
