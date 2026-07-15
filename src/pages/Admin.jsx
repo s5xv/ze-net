@@ -36,6 +36,8 @@ export default function Admin() {
   const [depositNote, setDepositNote] = useState('');
   const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
   const [lookupResults, setLookupResults] = useState([]);
+  const [editingSite, setEditingSite] = useState(null);
+  const [editForm, setEditForm] = useState({});
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordOk, setPasswordOk] = useState(hasAdminPassword());
@@ -249,6 +251,21 @@ export default function Admin() {
     } catch (err) {
       setMessage('Error: ' + err.message);
     }
+  };
+
+  const startEditSite = (site) => {
+    setEditingSite(site.id);
+    setEditForm({ name: site.name, url: site.url, category: site.category, description: site.description, plot_number: site.plot_number, shortcut: site.shortcut, discord_invite: site.discord_invite, keywords: site.keywords ? site.keywords.join(', ') : '' });
+  };
+
+  const saveEditSite = async (siteId) => {
+    try {
+      const keywords = editForm.keywords ? editForm.keywords.split(',').map(k => k.trim()).filter(Boolean) : null;
+      await supabase.from('sites').update({ name: editForm.name, url: editForm.url, category: editForm.category, description: editForm.description, plot_number: editForm.plot_number, shortcut: editForm.shortcut, discord_invite: editForm.discord_invite, keywords }).eq('id', siteId);
+      setEditingSite(null);
+      setMessage('Site updated');
+      fetchData(activeTab);
+    } catch (err) { setMessage('Error: ' + err.message); }
   };
 
   const callAdmin = async (action, body) => {
@@ -564,20 +581,44 @@ export default function Admin() {
                 </thead>
                 <tbody>
                   {filteredSites.map(site => (
-                    <tr key={site.id} className="border-t border-gray-700">
-                      <td className="p-3"><p className="text-white">{site.name}</p><p className="text-xs text-gray-500">{site.url}</p></td>
-                      <td className="p-3 text-gray-300">{site.owner_name || '-'}</td>
-                      <td className="p-3 capitalize text-gray-300">{site.category}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-1 text-xs rounded ${site.status === 'pending' ? 'bg-yellow-600 text-white' : site.status === 'rejected' ? 'bg-red-600 text-white' : site.is_verified ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
-                          {site.status === 'pending' ? 'Pending' : site.status === 'rejected' ? 'Rejected' : site.is_verified ? 'Verified' : 'Active'}
-                        </span>
-                        <button onClick={() => toggleVerified(site.id, site.is_verified)} className="ml-2 px-2 py-1 text-xs rounded bg-gray-700 text-gray-300">Toggle V</button>
-                      </td>
-                      <td className="p-3">
-                        <button onClick={() => deleteSite(site.id)} className="px-2 py-1 bg-red-600 text-white text-xs rounded">Delete</button>
-                      </td>
-                    </tr>
+                    editingSite === site.id ? (
+                      <tr key={site.id} className="border-t border-gray-700 bg-gray-800/50">
+                        <td className="p-3" colSpan={5}>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="px-2 py-1 bg-[#202124] border border-gray-700 rounded text-white text-sm" placeholder="Name" />
+                            <input value={editForm.url} onChange={e => setEditForm({...editForm, url: e.target.value})} className="px-2 py-1 bg-[#202124] border border-gray-700 rounded text-white text-sm" placeholder="URL" />
+                            <select value={editForm.category} onChange={e => setEditForm({...editForm, category: e.target.value})} className="px-2 py-1 bg-[#202124] border border-gray-700 rounded text-white text-sm">
+                              {['Retail Shop','Restaurant / Food','Real Estate','Bank / Finance','Legal Services','Service (Building, Mining, etc)','Farm / Agriculture','Entertainment / Casino','Government / Public Service','Technology / Redstone','Transportation','Hotel / Accommodation','Other'].map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <input value={editForm.shortcut} onChange={e => setEditForm({...editForm, shortcut: e.target.value})} className="px-2 py-1 bg-[#202124] border border-gray-700 rounded text-white text-sm" placeholder="Shortcut" />
+                            <input value={editForm.plot_number} onChange={e => setEditForm({...editForm, plot_number: e.target.value})} className="px-2 py-1 bg-[#202124] border border-gray-700 rounded text-white text-sm" placeholder="Plot" />
+                            <input value={editForm.discord_invite} onChange={e => setEditForm({...editForm, discord_invite: e.target.value})} className="px-2 py-1 bg-[#202124] border border-gray-700 rounded text-white text-sm" placeholder="Discord invite" />
+                            <input value={editForm.keywords} onChange={e => setEditForm({...editForm, keywords: e.target.value})} className="px-2 py-1 bg-[#202124] border border-gray-700 rounded text-white text-sm col-span-2" placeholder="Keywords (comma separated)" />
+                            <textarea value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} className="px-2 py-1 bg-[#202124] border border-gray-700 rounded text-white text-sm col-span-2" placeholder="Description" rows={2} />
+                            <div className="col-span-2 flex gap-2">
+                              <button onClick={() => saveEditSite(site.id)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded font-bold">Save</button>
+                              <button onClick={() => setEditingSite(null)} className="px-3 py-1 bg-gray-600 text-white text-xs rounded">Cancel</button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={site.id} className="border-t border-gray-700">
+                        <td className="p-3"><p className="text-white">{site.name}</p><p className="text-xs text-gray-500">{site.url}</p></td>
+                        <td className="p-3 text-gray-300">{site.owner_name || '-'}</td>
+                        <td className="p-3 capitalize text-gray-300">{site.category}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-1 text-xs rounded ${site.status === 'pending' ? 'bg-yellow-600 text-white' : site.status === 'rejected' ? 'bg-red-600 text-white' : site.is_verified ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                            {site.status === 'pending' ? 'Pending' : site.status === 'rejected' ? 'Rejected' : site.is_verified ? 'Verified' : 'Active'}
+                          </span>
+                          <button onClick={() => toggleVerified(site.id, site.is_verified)} className="ml-2 px-2 py-1 text-xs rounded bg-gray-700 text-gray-300">Toggle V</button>
+                        </td>
+                        <td className="p-3 flex gap-1">
+                          <button onClick={() => startEditSite(site)} className="px-2 py-1 bg-blue-600 text-white text-xs rounded">Edit</button>
+                          <button onClick={() => deleteSite(site.id)} className="px-2 py-1 bg-red-600 text-white text-xs rounded">Delete</button>
+                        </td>
+                      </tr>
+                    )
                   ))}
                 </tbody>
               </table>
