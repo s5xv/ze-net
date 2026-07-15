@@ -41,6 +41,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  try { if (typeof req.body === 'string') req.body = JSON.parse(req.body); } catch (_) {}
   const { action } = req.query;
 
   // --- get-ads ---
@@ -444,7 +445,7 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
-  // --- record-view (anti-spam + pay 5c per view) ---
+  // --- record-view (anti-spam + pay 10c per view) ---
   if (action === 'record-view') {
     const auth = req.headers.authorization;
     const token = auth?.startsWith('Bearer ') ? auth.split(' ')[1] : null;
@@ -457,22 +458,20 @@ export default async function handler(req, res) {
         const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { count: recent } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', thirtyMinAgo);
-        if (recent === 0) {
-          const { count: daily } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', oneDayAgo);
-          if (daily < 3) {
-            await supabase.from('site_views').insert({ site_id: siteId, viewer_id: user.id });
-            paid = true;
+        if (recent > 0) return res.status(429).json({ success: false, message: 'View already counted (30-min cooldown)' });
+        const { count: daily } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', oneDayAgo);
+        if (daily >= 3) return res.status(429).json({ success: false, message: 'Max 3 views/day on this site' });
+        await supabase.from('site_views').insert({ site_id: siteId, viewer_id: user.id });
+        const { data: site } = await supabase.from('sites').select('owner_user_id, view_count').eq('id', siteId).maybeSingle();
+        if (site) {
+          await supabase.from('sites').update({ view_count: (site.view_count || 0) + 1 }).eq('id', siteId);
+          if (site.owner_user_id) {
+            await supabase.rpc('increment_balance', { target_user_id: site.owner_user_id, deposit_amount: 0.10 });
           }
         }
+        return res.status(200).json({ success: true, message: 'View recorded + paid $0.10' });
       }
-      const { data: site } = await supabase.from('sites').select('owner_user_id, view_count').eq('id', siteId).maybeSingle();
-      if (site) {
-        await supabase.from('sites').update({ view_count: (site.view_count || 0) + 1 }).eq('id', siteId);
-        if (paid && site.owner_user_id) {
-          await supabase.rpc('increment_balance', { target_user_id: site.owner_user_id, deposit_amount: 0.05 });
-        }
-      }
-      return res.status(200).json({ success: true, message: paid ? 'View recorded + paid' : 'View recorded' });
+      return res.status(403).json({ success: false, message: 'Login required to count views' });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
