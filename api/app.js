@@ -173,15 +173,21 @@ export default async function handler(req, res) {
 
   if (action === 'admin-add-site') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-    const { name, url, category, description, owner_id, owner_discord, plot_number, shortcut, discord_invite, keywords } = req.body;
-    if (!name || !owner_id) return res.status(400).json({ error: 'Name and Owner are required' });
-    if (!isValidUuid(owner_id)) return res.status(400).json({ error: /^\d{17,19}$/.test(owner_id) ? 'That looks like a Discord ID, not a User ID. Type their Discord username in the field above and click a result from the dropdown.' : 'Owner ID must be a valid UUID. Use the Discord username lookup above.' });
+    const { name, url, category, description, owner_id, discord_id, owner_discord, plot_number, shortcut, discord_invite, keywords } = req.body;
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    if (!owner_id && !discord_id) return res.status(400).json({ error: 'Either Owner UUID or Discord ID is required' });
+    if (owner_id && !isValidUuid(owner_id)) return res.status(400).json({ error: /^\d{17,19}$/.test(owner_id) ? 'That looks like a Discord ID, not a User ID. Type their Discord username in the field above and click a result from the dropdown.' : 'Owner ID must be a valid UUID. Use the Discord username lookup above.' });
     try {
-      const { data: owner } = await supabase.from('profiles').select('username').eq('id', owner_id).maybeSingle();
+      let ownerName = 'Unknown';
+      if (owner_id) {
+        const { data: owner } = await supabase.from('profiles').select('username').eq('id', owner_id).maybeSingle();
+        if (owner) ownerName = owner.username;
+      }
       const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
       const { error } = await supabase.from('sites').insert({
         name, slug, url: url || '', category: category || 'Other', description: description || '',
-        owner_user_id: owner_id, user_id: owner_id, owner_name: owner?.username || 'Unknown',
+        owner_user_id: owner_id || null, user_id: owner_id || null, owner_name: ownerName,
+        discord_id: discord_id || null,
         plot_number: plot_number || null,
         discord_invite: discord_invite || null,
         is_verified: false, is_active: true, status: 'approved',
@@ -350,11 +356,12 @@ export default async function handler(req, res) {
       if (!biz) return res.status(404).json({ error: 'Business registration not found' });
       const { data: profile } = await supabase.from('profiles').select('username').eq('id', biz.user_id).maybeSingle();
       const keywords = biz.keywords ? biz.keywords.split(',').map(k => k.trim()).filter(Boolean) : null;
-      const slug = biz.business_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|$/g, '') + '-' + Date.now().toString(36);
+      const slug = biz.business_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
       const { error: insertErr } = await supabase.from('sites').insert({
         name: biz.business_name, slug, url: biz.website_url || '', category: biz.category || 'Other',
         description: biz.description || '', plot_number: biz.plot_number, shortcut: biz.shortcut,
         discord_invite: biz.discord_invite, owner_user_id: biz.user_id, user_id: biz.user_id,
+        discord_id: biz.discord_id || null,
         owner_name: profile?.username || 'Unknown', submitted_by: biz.user_id, keywords,
         is_verified: false, is_active: true, status: 'approved'
       });

@@ -61,6 +61,7 @@ CREATE TABLE public.profiles (
   is_staff boolean DEFAULT false,
   staff_permissions jsonb DEFAULT '[]'::jsonb,
   xp integer DEFAULT 0,
+  discord_id text,
   created_at timestamptz DEFAULT now()
 );
 
@@ -103,6 +104,7 @@ CREATE TABLE public.sites (
   submitted_by uuid REFERENCES auth.users(id),
   reviewed_at timestamptz,
   reviewed_by uuid REFERENCES auth.users(id),
+  discord_id text,
   created_at timestamptz DEFAULT now()
 );
 
@@ -512,6 +514,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 DECLARE
   fallback_name text;
+  discord_id text;
 BEGIN
   fallback_name := COALESCE(
     NEW.raw_user_meta_data->>'name',
@@ -520,9 +523,14 @@ BEGIN
     NEW.raw_user_meta_data->>'login',
     split_part(COALESCE(NEW.email, NEW.id::text), '@', 1)
   );
-  INSERT INTO public.profiles (id, username, avatar_url)
-  VALUES (NEW.id, fallback_name, COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'avatar'))
-  ON CONFLICT (id) DO NOTHING;
+  discord_id := NEW.raw_user_meta_data->>'provider_id';
+  INSERT INTO public.profiles (id, username, avatar_url, discord_id)
+  VALUES (NEW.id, fallback_name, COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'avatar'), discord_id)
+  ON CONFLICT (id) DO UPDATE SET discord_id = EXCLUDED.discord_id;
+  IF discord_id IS NOT NULL THEN
+    UPDATE public.sites SET owner_user_id = NEW.id, user_id = NEW.id, submitted_by = COALESCE(submitted_by, NEW.id)
+    WHERE discord_id = discord_id AND owner_user_id IS NULL;
+  END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

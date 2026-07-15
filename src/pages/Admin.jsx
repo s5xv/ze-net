@@ -34,7 +34,7 @@ export default function Admin() {
   const [depositUserId, setDepositUserId] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositNote, setDepositNote] = useState('');
-  const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
+  const [newSite, setNewSite] = useState({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', discord_id: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
   const [lookupResults, setLookupResults] = useState([]);
   const [editingSite, setEditingSite] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -303,9 +303,9 @@ export default function Admin() {
         else if (data.users?.length > 1) { setMessage('Multiple users found, select one from the dropdown'); return; }
       } catch {}
     }
-    if (!ownerId) { setMessage('Owner is required - type Discord username above and click a result'); return; }
-    callAdmin('admin-add-site', { name: newSite.name, url: newSite.url, category: newSite.category, description: newSite.description, owner_id: ownerId, owner_discord: newSite.owner_discord, plot_number: newSite.plot_number, shortcut: newSite.shortcut, discord_invite: newSite.discord_invite, keywords: newSite.keywords });
-    setNewSite({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
+    if (!ownerId && !newSite.discord_id) { setMessage('Enter Owner UUID, Discord ID, or type a Discord username'); return; }
+    callAdmin('admin-add-site', { name: newSite.name, url: newSite.url, category: newSite.category, description: newSite.description, owner_id: ownerId, discord_id: newSite.discord_id || null, owner_discord: newSite.owner_discord, plot_number: newSite.plot_number, shortcut: newSite.shortcut, discord_invite: newSite.discord_invite, keywords: newSite.keywords });
+    setNewSite({ name: '', url: '', category: 'Other', description: '', owner_id: '', owner_discord: '', discord_id: '', plot_number: '', shortcut: '', discord_invite: '', keywords: '' });
   };
 
   const deleteSite = (siteId) => {
@@ -563,6 +563,7 @@ export default function Admin() {
                   <input type="text" placeholder="Owner Discord Username" value={newSite.owner_discord} onChange={(e) => { setNewSite({...newSite, owner_discord: e.target.value}); if (e.target.value.length > 2) lookupOwner(e.target.value); }} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white w-full" />
                   {lookupResults.length > 0 && <div className="absolute z-10 top-full left-0 right-0 bg-[#202124] border border-gray-700 rounded mt-1 max-h-32 overflow-y-auto">{lookupResults.map(u => <button key={u.id} type="button" onClick={() => { setNewSite({...newSite, owner_id: u.id, owner_discord: u.username}); setLookupResults([]); }} className="w-full text-left px-3 py-2 text-white text-sm hover:bg-gray-700 border-b border-gray-700 last:border-0">{u.username} {u.mc_username && `(MC: ${u.mc_username})`}</button>)}</div>}
                 </div>
+                <input type="text" placeholder="Or Discord ID (for users not signed up yet)" value={newSite.discord_id} onChange={(e) => setNewSite({...newSite, discord_id: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" />
                 <select value={newSite.category} onChange={(e) => setNewSite({...newSite, category: e.target.value})} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white">
                   {['Retail Shop','Restaurant / Food','Real Estate','Bank / Finance','Legal Services','Service (Building, Mining, etc)','Farm / Agriculture','Entertainment / Casino','Government / Public Service','Technology / Redstone','Transportation','Hotel / Accommodation','Other'].map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
