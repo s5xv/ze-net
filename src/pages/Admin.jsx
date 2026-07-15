@@ -873,9 +873,11 @@ export default function Admin() {
                     <p className="text-sm text-gray-400">{ad.tier} — {ad.link_url}</p>
                   </div>
                   <button onClick={async () => {
-                    await supabase.from('ads').update({ is_active: false }).eq('id', ad.id);
-                    setMessage('Ad revoked');
-                    fetchData(activeTab);
+                    try {
+                      await apiFetch('/api/app?action=revoke-ad', { method: 'POST', body: JSON.stringify({ adId: ad.id }) });
+                      setMessage('Ad revoked');
+                      fetchData(activeTab);
+                    } catch (e) { setMessage('Revoke failed: ' + e.message); }
                   }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Revoke</button>
                 </div>
               ))}
@@ -891,9 +893,11 @@ export default function Admin() {
                       <p className="text-sm text-gray-400">{s.ad_tier} — expires {s.ad_expires_at ? new Date(s.ad_expires_at).toLocaleDateString() : 'N/A'}</p>
                     </div>
                     <button onClick={async () => {
-                      await supabase.from('sites').update({ ad_tier: null, ad_expires_at: null }).eq('id', s.id);
-                      setMessage('Ad removed from site');
-                      fetchData(activeTab);
+                      try {
+                        await apiFetch('/api/app?action=revoke-site-ad', { method: 'POST', body: JSON.stringify({ siteId: s.id }) });
+                        setMessage('Ad removed from site');
+                        fetchData(activeTab);
+                      } catch (e) { setMessage('Remove failed: ' + e.message); }
                     }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Remove</button>
                   </div>
                 ))
