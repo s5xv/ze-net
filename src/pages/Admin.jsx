@@ -71,14 +71,8 @@ export default function Admin() {
         const { data } = await supabase.from('ad_requests').select('*').order('created_at', { ascending: false });
         setAdRequests(data || []);
       } else if (tab === 'pending') {
-        try {
-          const d = await apiFetch('/api/app?action=admin-get-pending-sites');
-          console.log('Pending sites response:', d);
-          setPendingSites(d.sites || []);
-        } catch (e) { 
-          console.error('Pending fetch error:', e);
-          setMessage('API Error: ' + e.message); 
-        }
+        const { data } = await supabase.from('sites').select('*').eq('status', 'pending').order('created_at', { ascending: false });
+        setPendingSites(data || []);
       } else if (tab === 'sites') {
         try {
           const { data, error } = await supabase.from('sites').select('*').order('created_at', { ascending: false });
@@ -91,17 +85,31 @@ export default function Admin() {
         const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
         setProfiles(data || []);
       } else if (tab === 'transactions') {
-        try { const d = await apiFetch('/api/app?action=get-transactions', { method: 'POST' }); setTransactions(d.transactions || []); } catch (e) { setMessage('Error: ' + e.message); }
+        const { data: tx } = await supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(100);
+        const { data: txProfiles } = await supabase.from('profiles').select('id, username');
+        const txProfileMap = Object.fromEntries((txProfiles || []).map(p => [p.id, p.username]));
+        (tx || []).forEach(t => t.profiles = { username: txProfileMap[t.user_id] || 'Unknown' });
+        setTransactions(tx || []);
       } else if (tab === 'staff') {
         const { data } = await supabase.from('profiles').select('*').eq('is_staff', true);
         setStaff(data || []);
       } else if (tab === 'moderation') {
-        try { const d = await apiFetch('/api/app?action=get-reports', { method: 'POST' }); setReports(d.reports || []); } catch (e) { setMessage('Error: ' + e.message); }
+        const [repRes, profRes, siteRes] = await Promise.all([
+          supabase.from('site_reports').select('*').order('created_at', { ascending: false }).limit(50),
+          supabase.from('profiles').select('id, username'),
+          supabase.from('sites').select('id, name, slug')
+        ]);
+        const reports = repRes.data || [];
+        const profiles = Object.fromEntries((profRes.data || []).map(p => [p.id, p.username]));
+        const sites = Object.fromEntries((siteRes.data || []).map(s => [s.id, s]));
+        reports.forEach(r => { r.profiles = { username: profiles[r.user_id] || 'Unknown' }; r.sites = sites[r.site_id] || null; });
+        setReports(reports);
       } else if (tab === 'businesses') {
         const { data } = await supabase.from('business_registrations').select('*').order('created_at', { ascending: false });
         setBusinessRegistrations(data || []);
       } else if (tab === 'messages') {
-        try { const d = await apiFetch('/api/app?action=get-contact-messages', { method: 'POST' }); setMessages(d.messages || []); } catch (e) { setMessage('Error: ' + e.message); }
+        const { data } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false }).limit(100);
+        setMessages(data || []);
       } else if (tab === 'manage-ads') {
         const { data: allSites } = await supabase.from('sites').select('id, name, slug, ad_tier, ad_expires_at, url').order('name');
         const { data: allAds } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
