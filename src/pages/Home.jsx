@@ -172,12 +172,15 @@ const fetchAds = async (id) => {
     return url.startsWith('http') ? url : `https://${url}`;
   };
 
-  const fixImgUrl = (url) => {
+  const SUPABASE_PROJECT = 'ujribfbwibqlbkhszqno';
+
+  const fixImgUrl = (url, w = 300, h = 250) => {
     if (!url) return '';
     if (url.match(/\/a\//) || url.match(/\/gallery\//)) return '';
     const m = url.match(/imgur\.com\/([a-zA-Z0-9]{5,})(?:\.[a-z]+)?(?:\?.*)?$/);
-    if (m) return `https://wsrv.nl/?url=https://i.imgur.com/${m[1]}.png`;
-    if (url.match(/^https?:\/\/i\.imgur\.com\//)) return `https://wsrv.nl/?url=${url}`;
+    if (m) return `https://wsrv.nl/?url=https://i.imgur.com/${m[1]}.png&w=${w}&h=${h}`;
+    if (url.match(/^https?:\/\/i\.imgur\.com\//)) return `https://wsrv.nl/?url=${url}&w=${w}&h=${h}`;
+    if (url.includes(`${SUPABASE_PROJECT}.supabase.co/storage`)) return `${url}?width=${w}&height=${h}&resize=contain`;
     if (url.startsWith('http')) return url;
     return '';
   };
@@ -247,8 +250,8 @@ const fetchAds = async (id) => {
 
             <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
               <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700 overflow-hidden">
-                {featuredContent?.image_url ? (
-                  <img src={fixImgUrl(featuredContent.image_url)} alt={featuredContent.highlight} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                  {featuredContent?.image_url ? (
+                  <img src={fixImgUrl(featuredContent.image_url, 400, 320)} alt={featuredContent.highlight} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }} />
                 ) : (
                   <div className="text-center">
                     <div className="text-8xl sm:text-9xl mb-2"></div>
@@ -348,7 +351,7 @@ const fetchAds = async (id) => {
           {ads.filter(ad => ad.tier === 'elite').slice(0, 1).map(ad => (
             <a key={`elite-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="block bg-gradient-to-r from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border border-yellow-500/50 rounded-xl p-3 hover:shadow-lg transition-all group">
               <div className="flex items-center gap-2">
-                {ad.image_url && <img src={fixImgUrl(ad.image_url)} alt="" className="w-10 h-10 rounded-lg object-cover border border-yellow-500/30" onError={(e) => { e.target.style.display = 'none' }} />}
+                {ad.image_url && <img src={fixImgUrl(ad.image_url)} alt="" className="w-10 h-10 rounded-lg object-cover border border-yellow-500/30" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
                 <div className="flex-1 min-w-0">
                   <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-wider">👑 Elite Sponsor</span>
                   <h4 className="font-semibold text-sm group-hover:underline truncate text-yellow-600 dark:text-yellow-400">{ad.title}</h4>
@@ -363,7 +366,7 @@ const fetchAds = async (id) => {
               <div className="space-y-2">
                 {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium').map(ad => (
                   <a key={`fa-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors group">
-                    {ad.image_url && <img src={fixImgUrl(ad.image_url)} alt="" className="w-8 h-8 rounded object-cover" onError={(e) => { e.target.style.display = 'none' }} />}
+                    {ad.image_url && <img src={fixImgUrl(ad.image_url, 80, 80)} alt="" className="w-8 h-8 rounded object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
                     <div className="flex-1 min-w-0">
                       <h4 className="text-xs font-semibold group-hover:underline truncate">{ad.title}</h4>
                       <span className="text-[10px] text-gray-500">{ad.tier === 'premium' ? '⭐ Premium' : '🥈 Featured'}</span>
@@ -381,7 +384,7 @@ const fetchAds = async (id) => {
             <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
               <div className="w-full aspect-[4/3] mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center">
                 {ad.image_url ? (
-                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }} />
                 ) : (
                   <span className="text-gray-400 text-xs">Sponsored</span>
                 )}
