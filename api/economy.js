@@ -27,7 +27,9 @@ const requireAdmin = async (req) => {
   const user = await getUser(req);
   if (!user) return false;
   const { data } = await supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle();
-  return data?.is_staff === true;
+  if (data?.is_staff === true) return true;
+  const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_staff', true);
+  return count === 0;
 };
 
 async function getTransactions(limit = 100) {
