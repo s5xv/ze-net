@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import ImageUpload from '../components/ImageUpload';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
 import { apiFetch } from '../services/api';
@@ -42,6 +43,8 @@ export default function Admin() {
   const [lookupResults, setLookupResults] = useState([]);
   const [editingSite, setEditingSite] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [adImageUrl, setAdImageUrl] = useState('');
+  const [editingAdImage, setEditingAdImage] = useState(null);
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordOk, setPasswordOk] = useState(hasAdminPassword());
@@ -582,7 +585,7 @@ export default function Admin() {
                       {req.image_url && (
                         <div className="mt-2">
                           <p className="text-gray-400 text-xs mb-1">Ad Image:</p>
-                          <img src={req.image_url} alt="Ad" className="max-w-xs rounded border border-gray-700" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />
+                          <img src={req.image_url.replace(/^https?:\/\/i\.imgur\.com\//, 'https://wsrv.nl/?url=https://i.imgur.com/')} alt="Ad" className="max-w-xs rounded border border-gray-700" onError={(e) => { e.currentTarget.onerror = null; if (e.currentTarget.src !== req.image_url) e.currentTarget.src = req.image_url; }} />
                         </div>
                       )}
                       {req.description && <p className="text-gray-300 text-sm mt-2">{req.description}</p>}
@@ -884,12 +887,12 @@ export default function Admin() {
           </div>
         )}
 
-        {!loading && activeTab === 'manage-ads' && (
+          {!loading && activeTab === 'manage-ads' && (
           <div className="space-y-6">
             <div className="bg-[#303134] border border-gray-700 rounded-xl p-4">
               <h3 className="text-white font-bold mb-4">Add Ad to Site</h3>
-              <div className="flex gap-2">
-                <select id="ad-site-select" className="flex-1 px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white text-sm">
+              <div className="flex flex-wrap gap-2 items-end">
+                <select id="ad-site-select" className="flex-1 min-w-[200px] px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white text-sm">
                   <option value="">Select site...</option>
                   {Array.isArray(managedAds?.sites) && managedAds.sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -899,16 +902,19 @@ export default function Admin() {
                   <option value="premium">Premium ($400)</option>
                   <option value="elite">Elite ($600)</option>
                 </select>
+                <ImageUpload bucket="ad-images" path="admin" onUpload={(url) => setAdImageUrl(url)} label="Upload Ad Image" />
                 <button onClick={async () => {
                   const siteId = document.getElementById('ad-site-select').value;
                   const tier = document.getElementById('ad-tier-select').value;
                   if (!siteId) return setMessage('Select a site');
                   const site = managedAds.sites.find(s => s.id === siteId);
-                  await supabase.from('ads').insert({ title: site.name, link_url: `/site/${site.slug}`, tier, is_active: true, description: '', image_url: '' });
+                  await supabase.from('ads').insert({ title: site.name, link_url: `/site/${site.slug}`, tier, is_active: true, description: '', image_url: adImageUrl || '' });
                   await supabase.from('sites').update({ ad_tier: tier, ad_expires_at: getAdExpiry(tier, {}) }).eq('id', siteId);
+                  setAdImageUrl('');
                   setMessage('Ad added to site');
                   fetchData(activeTab);
                 }} className="px-4 py-2 bg-green-600 text-white rounded text-sm">Add</button>
+                {adImageUrl && <img src={adImageUrl} alt="" className="w-12 h-12 rounded object-cover border border-gray-700" />}
               </div>
             </div>
 
@@ -917,18 +923,37 @@ export default function Admin() {
               {(!managedAds?.ads || managedAds.ads.length === 0) ? (
                 <p className="text-gray-500">No ads</p>
               ) : managedAds.ads.filter(a => a.is_active).map(ad => (
-                <div key={ad.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4 mb-2 flex justify-between items-center">
-                  <div>
-                    <p className="text-white font-bold">{ad.title}</p>
-                    <p className="text-sm text-gray-400">{ad.tier} — {ad.link_url}</p>
+                <div key={ad.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4 mb-2">
+                  <div className="flex items-center gap-4">
+                    {ad.image_url && <img src={ad.image_url} alt="" className="w-16 h-16 rounded object-cover border border-gray-700" onError={(e) => { e.target.style.display = 'none' }} />}
+                    <div className="flex-1">
+                      <p className="text-white font-bold">{ad.title}</p>
+                      <p className="text-sm text-gray-400">{ad.tier} — {ad.link_url}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      {editingAdImage === ad.id ? (
+                        <>
+                          <ImageUpload bucket="ad-images" path={`ad-${ad.id}`} onUpload={async (url) => {
+                            await supabase.from('ads').update({ image_url: url }).eq('id', ad.id);
+                            setEditingAdImage(null);
+                            fetchData(activeTab);
+                          }} label="Upload" />
+                          <button onClick={() => setEditingAdImage(null)} className="px-2 py-1 bg-gray-600 text-white text-xs rounded">Cancel</button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => setEditingAdImage(ad.id)} className="px-3 py-1 bg-blue-600 text-white text-xs rounded">Change Image</button>
+                          <button onClick={async () => {
+                            try {
+                              await apiFetch('/api/app?action=revoke-ad', { method: 'POST', body: JSON.stringify({ adId: ad.id }) });
+                              setMessage('Ad revoked');
+                              fetchData(activeTab);
+                            } catch (e) { setMessage('Revoke failed: ' + e.message); }
+                          }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Revoke</button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <button onClick={async () => {
-                    try {
-                      await apiFetch('/api/app?action=revoke-ad', { method: 'POST', body: JSON.stringify({ adId: ad.id }) });
-                      setMessage('Ad revoked');
-                      fetchData(activeTab);
-                    } catch (e) { setMessage('Revoke failed: ' + e.message); }
-                  }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Revoke</button>
                 </div>
               ))}
             </div>

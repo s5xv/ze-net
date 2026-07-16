@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import ImageUpload from '../components/ImageUpload';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
 
@@ -135,15 +136,12 @@ export default function SubmitAd() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Ad Image URL (Imgur)</label>
-                <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://i.imgur.com/..." className="w-full px-4 py-3 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500" />
-                <p className="text-xs text-gray-500 mt-1">Upload to Imgur → right-click the image → <strong className="text-gray-300">Copy Image Address</strong> → paste here (use direct <code className="text-blue-400">i.imgur.com</code> link, not album URL)</p>
-                {imageUrl && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-400 mb-1">Preview:</p>
-                    <img src={imageUrl} alt="Preview" className="max-w-xs rounded border border-gray-700" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />
-                  </div>
-                )}
+                <label className="block text-sm font-medium text-gray-400 mb-2">Ad Image</label>
+                <div className="flex items-center gap-4">
+                  {imageUrl && <img src={imageUrl} alt="Preview" className="w-24 h-24 rounded-lg object-cover border border-gray-700" />}
+                  <ImageUpload bucket="ad-images" path={user?.id || 'anonymous'} onUpload={(url) => setImageUrl(url)} label="Upload Image" />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Upload a 300x250 banner image (PNG/JPG)</p>
               </div>
 
               <div>

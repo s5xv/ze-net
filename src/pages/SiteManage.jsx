@@ -115,12 +115,7 @@ export default function SiteManage() {
                 <div>
                   <label className="block text-sm font-medium mb-2">Category *</label>
                   <select required value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg">
-                    <option value="Retail Shop">Retail Shop</option>
-                    <option value="Restaurant / Food">Restaurant / Food</option>
-                    <option value="Bank / Finance">Bank / Finance</option>
-                    <option value="Legal Services">Legal Services</option>
-                    <option value="Government / Public Service">Government / Public Service</option>
-                    <option value="Other">Other</option>
+                    {['Retail Shop','Restaurant / Food','Real Estate','Bank / Finance','Legal Services','Service (Building, Mining, etc)','Farm / Agriculture','Entertainment / Casino','Government / Public Service','Technology / Redstone','Transportation','Hotel / Accommodation','Other'].map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
