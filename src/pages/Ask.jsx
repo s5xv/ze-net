@@ -33,12 +33,24 @@ export default function Ask() {
   const [history, setHistory] = useState([]);
   const askId = useRef(0);
 
+  const categoryKeywords = ['game', 'entertain', 'fun', 'play', 'casino', 'bank', 'shop', 'banking', 'finance', 'real estate', 'service', 'food', 'restaurant'];
+
   const searchDatabase = async (rawQuery) => {
     const searchTerm = extractSearchTerms(rawQuery.toLowerCase().trim());
     const results = [];
     try {
       const siteData = await apiFetch('/api/app?action=search-sites', { method: 'POST', body: JSON.stringify({ q: searchTerm }) });
       results.push(...(siteData.sites || []));
+      if (results.length < 3 && categoryKeywords.some(k => searchTerm.includes(k))) {
+        const catMatch = categoryKeywords.find(k => searchTerm.includes(k));
+        if (catMatch) {
+          const catSiteData = await apiFetch('/api/app?action=search-sites', { method: 'POST', body: JSON.stringify({ q: catMatch }) });
+          const existingSlugs = new Set(results.map(s => s.slug));
+          for (const s of (catSiteData.sites || [])) {
+            if (!existingSlugs.has(s.slug)) results.push(s);
+          }
+        }
+      }
     } catch (_) {}
     try {
       const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
