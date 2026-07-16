@@ -84,10 +84,10 @@ export default function SubmitAd() {
     setSubmitting(false);
   };
 
-  if (!user) return <Layout><div className="p-8 text-center text-white">Please sign in</div></Layout>;
+  if (!user) return <Layout user={null}><div className="p-8 text-center text-white">Please sign in</div></Layout>;
 
   return (
-    <Layout>
+    <Layout user={user}>
       <main className="flex-grow max-w-2xl mx-auto px-4 py-12">
         <div className="bg-[#303134] border border-gray-700 rounded-xl p-8">
           <h1 className="text-3xl font-bold text-white mb-6">Submit Ad Request</h1>

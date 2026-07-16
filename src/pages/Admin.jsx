@@ -453,7 +453,7 @@ export default function Admin() {
   if (!authorized) return <div className="min-h-screen flex items-center justify-center text-gray-400">Checking permissions...</div>;
 
   return (
-    <Layout>
+    <Layout user={user}>
       <main className="flex-grow max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-white mb-6">Admin Dashboard</h1>
 
