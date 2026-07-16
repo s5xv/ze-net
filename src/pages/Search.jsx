@@ -66,8 +66,13 @@ export default function Search() {
       if (id === searchId.current) setDeptResults(deptData);
 
       const searchTerm2 = searchTerm.replace(/[%_]/g, '\\$&');
-      const { data: adData } = await supabase.from('ads').select('*').eq('is_active', true).in('tier', ['premium', 'elite']).or(`title.ilike.%${searchTerm2}%,description.ilike.%${searchTerm2}%`).limit(5);
-      if (id === searchId.current) setPromotedAds(adData || []);
+      const { data: adData } = await supabase.from('ads').select('*, sites(name)').eq('is_active', true).in('tier', ['premium', 'elite']).or(`title.ilike.%${searchTerm2}%,description.ilike.%${searchTerm2}%`).limit(10);
+      const filteredAds = (adData || []).filter(ad => {
+        if (ad.title?.toLowerCase().includes(searchTerm) || ad.description?.toLowerCase().includes(searchTerm)) return true;
+        if (ad.sites?.name?.toLowerCase().includes(searchTerm)) return true;
+        return false;
+      }).slice(0, 5);
+      if (id === searchId.current) setPromotedAds(filteredAds);
 
       const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
       generateAISummary(allResults);
