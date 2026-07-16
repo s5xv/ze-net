@@ -378,11 +378,11 @@ const fetchAds = async (id) => {
             const tierStyle = tierMap[ad.tier] || 'bronze';
             return (
             <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
-              <div className="w-full h-36 mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 relative">
+              <div style={{ height: '160px' }} className="w-full mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 relative flex items-center justify-center">
                 {ad.image_url ? (
-                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover object-center" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }} />
+                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" style={{ maxWidth: '100%', maxHeight: '160px', width: 'auto', height: 'auto' }} className="rounded" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }} />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center"><span className="text-gray-400 text-xs">Sponsored</span></div>
+                  <span className="text-gray-400 text-xs">Sponsored</span>
                 )}
               </div>
               <h4 className={`font-bold mb-1 group-hover:underline ${tierStyle === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : tierStyle === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
