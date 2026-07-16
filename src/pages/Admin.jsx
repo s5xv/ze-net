@@ -91,8 +91,12 @@ export default function Admin() {
         (tx || []).forEach(t => t.profiles = { username: txProfileMap[t.user_id] || 'Unknown' });
         setTransactions(tx || []);
       } else if (tab === 'staff') {
-        const { data } = await supabase.from('profiles').select('*').eq('is_staff', true);
-        setStaff(data || []);
+        const [staffRes, allProfilesRes] = await Promise.all([
+          supabase.from('profiles').select('*').eq('is_staff', true),
+          supabase.from('profiles').select('*').order('username')
+        ]);
+        setStaff(staffRes.data || []);
+        setProfiles(allProfilesRes.data || []);
       } else if (tab === 'moderation') {
         const [repRes, profRes, siteRes] = await Promise.all([
           supabase.from('site_reports').select('*').order('created_at', { ascending: false }).limit(50),
@@ -214,10 +218,9 @@ export default function Admin() {
   const handleModAction = async (report, action) => {
     try {
       if (action === 'remove') {
-        await supabase.from('site_reports').delete().eq('id', report.id);
-        await supabase.from('sites').update({ is_verified: false, is_active: false }).eq('id', report.site_id);
+        await apiFetch('/api/app?action=admin-mod-action', { method: 'POST', body: JSON.stringify({ reportId: report.id, siteId: report.site_id, action: 'remove' }) });
       } else {
-        await supabase.from('site_reports').update({ status: 'dismissed' }).eq('id', report.id);
+        await apiFetch('/api/app?action=admin-mod-action', { method: 'POST', body: JSON.stringify({ reportId: report.id, action: 'dismiss' }) });
       }
       fetchData(activeTab);
     } catch (err) { setMessage('Error: ' + err.message); }
@@ -349,7 +352,7 @@ export default function Admin() {
 
   const updateStaffPermissions = async (userId, permissions) => {
     try {
-      await supabase.from('profiles').update({ staff_permissions: permissions }).eq('id', userId);
+      await apiFetch('/api/app?action=admin-update-staff-perms', { method: 'POST', body: JSON.stringify({ userId, permissions }) });
       setMessage('Permissions updated');
       fetchData(activeTab);
     } catch (err) {
@@ -359,7 +362,7 @@ export default function Admin() {
 
   const addStaff = async (userId) => {
     try {
-      await supabase.from('profiles').update({ is_staff: true, staff_permissions: [] }).eq('id', userId);
+      await apiFetch('/api/app?action=admin-add-staff', { method: 'POST', body: JSON.stringify({ userId }) });
       setMessage('User promoted to staff');
       fetchData(activeTab);
     } catch (err) {
@@ -369,7 +372,7 @@ export default function Admin() {
 
   const removeStaff = async (userId) => {
     try {
-      await supabase.from('profiles').update({ is_staff: false, staff_permissions: null }).eq('id', userId);
+      await apiFetch('/api/app?action=admin-remove-staff', { method: 'POST', body: JSON.stringify({ userId }) });
       setMessage('Staff role removed');
       fetchData(activeTab);
     } catch (err) {

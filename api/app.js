@@ -78,6 +78,47 @@ export default async function handler(req, res) {
     }
   }
 
+  // --- admin-mod-action ---
+  if (action === 'admin-mod-action') {
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
+    const { reportId, siteId, action: modAction } = req.body;
+    try {
+      if (modAction === 'remove') {
+        await supabase.from('site_reports').delete().eq('id', reportId);
+        await supabase.from('sites').update({ is_verified: false, is_active: false }).eq('id', siteId);
+      } else {
+        await supabase.from('site_reports').update({ status: 'dismissed' }).eq('id', reportId);
+      }
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  }
+
+  // --- admin staff management ---
+  for (const [actionName, updateFields] of Object.entries({
+    'admin-add-staff': { is_staff: true, staff_permissions: [] },
+    'admin-remove-staff': { is_staff: false, staff_permissions: null }
+  })) {
+    if (action === actionName) {
+      if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
+      const { userId } = req.body;
+      if (!userId) return res.status(400).json({ error: 'userId required' });
+      try {
+        await supabase.from('profiles').update(updateFields).eq('id', userId);
+        res.json({ success: true });
+      } catch (err) { res.status(500).json({ error: err.message }); }
+      break;
+    }
+  }
+
+  if (action === 'admin-update-staff-perms') {
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
+    const { userId, permissions } = req.body;
+    try {
+      await supabase.from('profiles').update({ staff_permissions: permissions }).eq('id', userId);
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  }
+
   // --- revoke-ad ---
   if (action === 'revoke-ad') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
