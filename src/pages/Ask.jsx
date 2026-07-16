@@ -45,8 +45,9 @@ export default function Ask() {
       if (wikiData) results.push(...wikiData.filter(p => p.content && p.content.trim()));
     } catch (_) {}
     try {
-      const { data: allDepts } = await supabase.from('departments').select('*').eq('is_active', true).order('display_order', { ascending: true }).limit(50);
-      if (allDepts) {
+      const deptData = await apiFetch('/api/app?action=get-departments');
+      const allDepts = deptData.departments || [];
+      if (allDepts.length > 0) {
         const isDeptQuery = ['department', 'dept', 'government', 'ministry', 'agency', 'office'].some(w => searchTerm.includes(w));
         const filtered = isDeptQuery ? allDepts : allDepts.filter(d =>
           d.name.toLowerCase().includes(searchTerm) ||

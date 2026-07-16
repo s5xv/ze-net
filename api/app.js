@@ -46,6 +46,14 @@ export default async function handler(req, res) {
   try { if (typeof req.body === 'string') req.body = JSON.parse(req.body); } catch (_) {}
   const { action } = req.query;
 
+  // --- get-departments ---
+  if (action === 'get-departments') {
+    try {
+      const { data } = await supabase.from('departments').select('*').eq('is_active', true).order('display_order', { ascending: true }).limit(50);
+      return res.status(200).json({ departments: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // --- get-ads ---
   if (action === 'get-ads') {
     if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
@@ -214,7 +222,7 @@ export default async function handler(req, res) {
       const q = (req.body?.q || req.query?.q || '').toLowerCase().trim();
       if (!q) return res.status(400).json({ error: 'Missing query' });
       const { data: sites } = await supabase.from('sites').select('*').eq('status', 'approved')
-        .or(`name.ilike.%${q}%,description.ilike.%${q}%,shortcut.ilike.%${q}%`)
+        .or(`name.ilike.%${q}%,description.ilike.%${q}%,shortcut.ilike.%${q}%,category.ilike.%${q}%`)
         .order('view_count', { ascending: false }).limit(15);
       return res.status(200).json({ sites: sites || [] });
     } catch (err) { return res.status(500).json({ error: err.message }); }
