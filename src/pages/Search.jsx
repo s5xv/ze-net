@@ -65,10 +65,10 @@ export default function Search() {
       } catch (e) { console.error('Dept search error', e); }
       if (id === searchId.current) setDeptResults(deptData);
 
-      const searchTerm2 = searchTerm.replace(/[%_]/g, '\\$&');
-      const { data: adData } = await supabase.from('ads').select('*, sites(name)').eq('is_active', true).in('tier', ['premium', 'elite']).or(`title.ilike.%${searchTerm2}%,description.ilike.%${searchTerm2}%`).limit(10);
+      const { data: adData } = await supabase.from('ads').select('*, sites(name)').eq('is_active', true).in('tier', ['premium', 'elite']).limit(20);
       const filteredAds = (adData || []).filter(ad => {
-        if (ad.title?.toLowerCase().includes(searchTerm) || ad.description?.toLowerCase().includes(searchTerm)) return true;
+        if (ad.title?.toLowerCase().includes(searchTerm)) return true;
+        if (ad.description?.toLowerCase().includes(searchTerm)) return true;
         if (ad.sites?.name?.toLowerCase().includes(searchTerm)) return true;
         return false;
       }).slice(0, 5);
