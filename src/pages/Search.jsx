@@ -65,7 +65,8 @@ export default function Search() {
       } catch (e) { console.error('Dept search error', e); }
       if (id === searchId.current) setDeptResults(deptData);
 
-      const { data: adData } = await supabase.from('ads').select('*').eq('is_active', true).in('tier', ['premium', 'elite']);
+      const searchTerm2 = searchTerm.replace(/[%_]/g, '\\$&');
+      const { data: adData } = await supabase.from('ads').select('*').eq('is_active', true).in('tier', ['premium', 'elite']).or(`title.ilike.%${searchTerm2}%,description.ilike.%${searchTerm2}%`).limit(5);
       if (id === searchId.current) setPromotedAds(adData || []);
 
       const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
