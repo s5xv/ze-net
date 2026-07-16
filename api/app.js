@@ -114,9 +114,8 @@ export default async function handler(req, res) {
       if (!userId) return res.status(400).json({ error: 'userId required' });
       try {
         await supabase.from('profiles').update(updateFields).eq('id', userId);
-        res.json({ success: true });
-      } catch (err) { res.status(500).json({ error: err.message }); }
-      break;
+        return res.json({ success: true });
+      } catch (err) { return res.status(500).json({ error: err.message }); }
     }
   }
 
@@ -125,8 +124,8 @@ export default async function handler(req, res) {
     const { userId, permissions } = req.body;
     try {
       await supabase.from('profiles').update({ staff_permissions: permissions }).eq('id', userId);
-      res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+      return res.json({ success: true });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
   // --- revoke-ad ---

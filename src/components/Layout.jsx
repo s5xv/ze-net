@@ -30,7 +30,9 @@ export default function Layout({ children, user }) {
       if (pw) {
         setIsStaff(localStorage.getItem('admin_pw') === pw);
       } else {
-        supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => setIsStaff(data?.is_staff || false)).catch(() => {});
+        supabase.from('profiles').select('is_staff, staff_permissions').eq('id', user.id).maybeSingle().then(({ data }) => {
+          setIsStaff(data?.is_staff === true || (Array.isArray(data?.staff_permissions) && data.staff_permissions.length > 0));
+        }).catch(() => {});
       }
       supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle().then(({ data }) => {
         setProfileAvatar(data?.avatar_url || null);
