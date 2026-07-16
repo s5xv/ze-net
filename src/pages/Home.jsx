@@ -192,32 +192,7 @@ const fetchAds = async (id) => {
   return (
     <Layout user={user}>
       <main className="flex-grow px-4 py-8 sm:py-12 min-h-screen">
-        <div className="max-w-7xl mx-auto flex gap-6 justify-center">
-          <div className="hidden xl:block w-72 space-y-4 flex-shrink-0 self-start sticky top-8">
-            {ads.map(ad => {
-              const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
-              const tierStyle = tierMap[ad.tier] || 'bronze';
-              return (
-              <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
-                <div style={{ height: '160px' }} className="w-full mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 relative flex items-center justify-center">
-                  {ad.image_url ? (
-                    <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" style={{ maxWidth: '100%', maxHeight: '160px', width: 'auto', height: 'auto' }} className="rounded" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }} />
-                  ) : (
-                    <span className="text-gray-400 text-xs">Sponsored</span>
-                  )}
-                </div>
-                <h4 className={`font-bold mb-1 group-hover:underline ${tierStyle === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : tierStyle === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
-                  {ad.title}
-                </h4>
-                {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
-                <span className={`text-xs mt-2 block ${tierStyle === 'gold' ? 'text-yellow-500' : tierStyle === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {ad.tier === 'elite' ? '👑 Elite Sponsor' : tierStyle === 'gold' ? '⭐ Gold Sponsor' : tierStyle === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}
-                </span>
-              </a>
-            );
-            })}
-          </div>
-          <div className="flex-1 min-w-0 max-w-4xl space-y-8">
+        <div className="max-w-4xl mx-auto space-y-8">
             <div className="text-center mb-6">
               <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight">
                 Z&E <span className="text-blue-600 dark:text-blue-400">NET</span>
@@ -400,6 +375,79 @@ const fetchAds = async (id) => {
 
 
         </div>
+
+        <div className="hidden xl:block fixed top-20 left-4 xl:left-8 w-64 space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 7rem)' }}>
+          {ads.map(ad => {
+            const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
+            const tierStyle = tierMap[ad.tier] || 'bronze';
+            return (
+            <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
+              <div style={{ height: '160px' }} className="w-full mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 relative flex items-center justify-center">
+                {ad.image_url ? (
+                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" style={{ maxWidth: '100%', maxHeight: '160px', width: 'auto', height: 'auto' }} className="rounded" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }} />
+                ) : (
+                  <span className="text-gray-400 text-xs">Sponsored</span>
+                )}
+              </div>
+              <h4 className={`font-bold mb-1 group-hover:underline ${tierStyle === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : tierStyle === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
+                {ad.title}
+              </h4>
+              {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
+              <span className={`text-xs mt-2 block ${tierStyle === 'gold' ? 'text-yellow-500' : tierStyle === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>
+                {ad.tier === 'elite' ? '👑 Elite Sponsor' : tierStyle === 'gold' ? '⭐ Gold Sponsor' : tierStyle === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}
+              </span>
+            </a>
+          );
+          })}
+        </div>
+
+        <div className="hidden lg:block fixed top-20 right-4 xl:right-8 w-64 space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 7rem)' }}>
+          {user && bookmarks.length > 0 && (
+            <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
+              <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                </svg>
+                Bookmarks
+              </h3>
+              <div className="space-y-2">
+                {bookmarks.slice(0, 5).map((bm) => (
+                  <a key={bm.id} href={`/site/${bm.sites?.slug}`} className="block p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors">
+                    <h4 className="font-semibold text-xs text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {ads.filter(ad => ad.tier === 'elite').slice(0, 1).map(ad => (
+            <a key={`elite-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="block bg-gradient-to-r from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border border-yellow-500/50 rounded-xl p-3 hover:shadow-lg transition-all group">
+              <div className="flex items-center gap-2">
+                {ad.image_url && <img src={fixImgUrl(ad.image_url)} alt="" className="w-10 h-10 rounded-lg object-cover border border-yellow-500/30" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
+                <div className="flex-1 min-w-0">
+                  <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-wider">👑 Elite Sponsor</span>
+                  <h4 className="font-semibold text-sm group-hover:underline truncate text-yellow-600 dark:text-yellow-400">{ad.title}</h4>
+                </div>
+              </div>
+            </a>
+          ))}
+
+          {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium' || ad.tier === 'elite').length > 0 && (
+            <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-3">
+              <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Featured Ads</h3>
+              <div className="space-y-2">
+                {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium' || ad.tier === 'elite').map(ad => (
+                  <a key={`fa-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors group">
+                    {ad.image_url && <img src={fixImgUrl(ad.image_url, 80, 80)} alt="" className="w-8 h-8 rounded object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-semibold group-hover:underline truncate">{ad.title}</h4>
+                      <span className="text-[10px] text-gray-500">{ad.tier === 'elite' ? '👑 Elite' : ad.tier === 'premium' ? '⭐ Premium' : '🥈 Featured'}</span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </Layout>
