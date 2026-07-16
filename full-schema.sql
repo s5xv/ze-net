@@ -645,6 +645,15 @@ INSERT INTO public.forum_categories (name, description, slug, sort_order) VALUES
   ('Showcase', 'Show off your site listing', 'showcase', 5)
 ON CONFLICT (slug) DO NOTHING;
 
+INSERT INTO public.departments (name, slug, description, display_order) VALUES
+  ('Department of Education', 'education', 'Oversees the University, DemocracyCraft Wiki, and trades/professions.', 1),
+  ('Department of the Interior', 'interior', 'Preserves wildlife/urban areas and manages intergovernmental affairs.', 2),
+  ('Department of Construction and Transport', 'dct', 'Enforces building regulations and develops infrastructure.', 3),
+  ('Department of Commerce', 'commerce', 'Supports Redmont''s economy and businesses.', 4),
+  ('Department of State', 'state', 'Publishes monthly State of the Commonwealth reports and handles cabinet transparency.', 5),
+  ('Department of Justice', 'justice', 'Oversees the legal system, courts, and law enforcement.', 6)
+ON CONFLICT (slug) DO NOTHING;
+
 -- ============================================================
 -- 6. ROW LEVEL SECURITY (from fix-rls.sql)
 -- ============================================================
@@ -709,6 +718,17 @@ CREATE POLICY "Users can read own balance" ON public.balances
   USING (auth.uid() = user_id);
 
 CREATE POLICY "Service role manages balances" ON public.balances
+  FOR ALL TO service_role
+  USING (true);
+
+-- Departments RLS
+ALTER TABLE public.departments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read departments" ON public.departments
+  FOR SELECT TO anon, authenticated
+  USING (true);
+
+CREATE POLICY "Service role manages departments" ON public.departments
   FOR ALL TO service_role
   USING (true);
 
