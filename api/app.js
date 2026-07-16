@@ -379,6 +379,46 @@ export default async function handler(req, res) {
     }
   }
 
+  // --- tip ---
+  if (action === 'tip') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    try {
+      const user = await requireUser(req);
+      const { targetUserId, amount } = req.body;
+      if (!targetUserId || !amount || amount <= 0) return res.status(400).json({ error: 'Invalid target or amount' });
+
+      // Check balance
+      const { data: balRow } = await supabase.from('balances').select('balance').eq('user_id', user.id).maybeSingle();
+      const balance = balRow?.balance ?? 0;
+      if (balance < amount) return res.status(400).json({ error: 'Insufficient balance' });
+
+      // Deduct from sender
+      const { error: deductErr } = await supabase.rpc('increment_balance', { target_user_id: user.id, deposit_amount: -amount });
+      if (deductErr) { console.error('tip deduct error', deductErr); return res.status(500).json({ error: 'Deduction failed' }); }
+
+      // Add to recipient
+      const { error: addErr } = await supabase.rpc('increment_balance', { target_user_id: targetUserId, deposit_amount: amount });
+      if (addErr) {
+        // Refund sender
+        await supabase.rpc('increment_balance', { target_user_id: user.id, deposit_amount: amount });
+        console.error('tip add error', addErr);
+        return res.status(500).json({ error: 'Failed to credit recipient' });
+      }
+
+      // Record transaction for sender
+      await supabase.from('transactions').insert({
+        txn_id: 'TIP-' + Date.now(),
+        user_id: user.id,
+        amount: -amount,
+        type: 'tip',
+        ref_id: 'tip-' + Date.now(),
+        note: `Tip to ${targetUserId}`
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (err) { console.error('tip error', err); return res.status(500).json({ error: err.message }); }
+  }
+
   // --- submit-review ---
   if (action === 'submit-review') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });

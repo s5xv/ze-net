@@ -517,21 +517,43 @@ RETURNS trigger AS $$
 DECLARE
   fallback_name text;
   discord_id text;
+  meta jsonb;
 BEGIN
+  meta := COALESCE(NEW.raw_user_meta_data, NEW.raw_app_meta_data, '{}'::jsonb);
   fallback_name := COALESCE(
-    NEW.raw_user_meta_data->>'name',
-    NEW.raw_user_meta_data->>'full_name',
-    NEW.raw_user_meta_data->>'preferred_username',
-    NEW.raw_user_meta_data->>'login',
+    meta->>'name',
+    meta->>'full_name',
+    meta->>'preferred_username',
+    meta->>'login',
     split_part(COALESCE(NEW.email, NEW.id::text), '@', 1)
   );
-  discord_id := NEW.raw_user_meta_data->>'provider_id';
-  INSERT INTO public.profiles (id, username, avatar_url, discord_id)
-  VALUES (NEW.id, fallback_name, COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'avatar'), discord_id)
-  ON CONFLICT (id) DO UPDATE SET discord_id = EXCLUDED.discord_id;
+  discord_id := COALESCE(
+    meta->>'provider_id',
+    meta->>'sub'
+  );
+  BEGIN
+    INSERT INTO public.profiles (id, username, avatar_url, discord_id)
+    VALUES (
+      NEW.id,
+      fallback_name,
+      COALESCE(meta->>'avatar_url', meta->>'avatar'),
+      discord_id
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      username = COALESCE(EXCLUDED.username, profiles.username),
+      avatar_url = COALESCE(EXCLUDED.avatar_url, profiles.avatar_url),
+      discord_id = COALESCE(EXCLUDED.discord_id, profiles.discord_id);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'handle_new_user: profile insert failed for %: %', NEW.id, SQLERRM;
+  END;
   IF discord_id IS NOT NULL THEN
-    UPDATE public.sites SET owner_user_id = NEW.id, user_id = NEW.id, submitted_by = COALESCE(submitted_by, NEW.id)
-    WHERE discord_id = discord_id AND owner_user_id IS NULL;
+    BEGIN
+      UPDATE public.sites
+      SET owner_user_id = NEW.id, user_id = NEW.id, submitted_by = COALESCE(submitted_by, NEW.id)
+      WHERE discord_id = discord_id AND owner_user_id IS NULL;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'handle_new_user: site update failed for %: %', NEW.id, SQLERRM;
+    END;
   END IF;
   RETURN NEW;
 END;

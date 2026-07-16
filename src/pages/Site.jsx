@@ -134,27 +134,17 @@ export default function Site() {
       alert('Insufficient balance');
       return;
     }
-    const { error: deductErr } = await supabase.rpc('increment_balance', { target_user_id: user.id, deposit_amount: -tipAmount });
-    if (deductErr) { alert('Failed to process tip'); return; }
-    const { error: addErr } = await supabase.rpc('increment_balance', { target_user_id: site.user_id, deposit_amount: tipAmount });
-    if (addErr) {
-      await supabase.rpc('increment_balance', { target_user_id: user.id, deposit_amount: tipAmount });
-      alert('Failed to process tip');
-      return;
+    try {
+      const data = await apiFetch('/api/app?action=tip', {
+        method: 'POST', body: JSON.stringify({ targetUserId: site.user_id, amount: tipAmount })
+      });
+      if (data.error) throw new Error(data.error);
+      setUserBalance(prev => prev - tipAmount);
+      setShowTipModal(false);
+      alert('Tip sent!');
+    } catch (err) {
+      alert('Error: ' + err.message);
     }
-    
-    await supabase.from('transactions').insert({
-      txn_id: 'TIP-' + Date.now(),
-      user_id: user.id,
-      amount: -tipAmount,
-      type: 'tip',
-      ref_id: 'tip-' + Date.now(),
-      note: `Tip to ${site.name}`
-    });
-    
-    setUserBalance(prev => prev - tipAmount);
-    setShowTipModal(false);
-    alert('Tip sent!');
   };
 
   if (loading) {
