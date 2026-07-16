@@ -9,11 +9,17 @@ export default function Login() {
 
   const handleLogin = async () => {
     setError('');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'discord',
-      options: { redirectTo: window.location.origin + '/account' }
-    });
-    if (error) setError(error.message);
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'discord',
+        options: { redirectTo: window.location.origin + '/account' }
+      });
+      console.log('OAuth result:', data, error);
+      if (error) setError(error.message);
+    } catch (e) {
+      console.error('OAuth error:', e);
+      setError('Login failed: ' + e.message);
+    }
   };
 
   return (
