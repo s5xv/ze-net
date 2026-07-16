@@ -356,16 +356,16 @@ const fetchAds = async (id) => {
             </a>
           ))}
 
-          {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium').length > 0 && (
+          {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium' || ad.tier === 'elite').length > 0 && (
             <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-3">
               <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Featured Ads</h3>
               <div className="space-y-2">
-                {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium').map(ad => (
+                {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium' || ad.tier === 'elite').map(ad => (
                   <a key={`fa-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors group">
                     {ad.image_url && <img src={fixImgUrl(ad.image_url, 80, 80)} alt="" className="w-8 h-8 rounded object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
                     <div className="flex-1 min-w-0">
                       <h4 className="text-xs font-semibold group-hover:underline truncate">{ad.title}</h4>
-                      <span className="text-[10px] text-gray-500">{ad.tier === 'premium' ? '⭐ Premium' : '🥈 Featured'}</span>
+                      <span className="text-[10px] text-gray-500">{ad.tier === 'elite' ? '👑 Elite' : ad.tier === 'premium' ? '⭐ Premium' : '🥈 Featured'}</span>
                     </div>
                   </a>
                 ))}
