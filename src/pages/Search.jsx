@@ -17,6 +17,7 @@ export default function Search() {
   const [aiSources, setAiSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [summarizing, setSummarizing] = useState(false);
+  const [promotedAds, setPromotedAds] = useState([]);
   const navigate = useNavigate();
   const searchId = useRef(0);
 
@@ -63,6 +64,9 @@ export default function Search() {
         }
       } catch (e) { console.error('Dept search error', e); }
       if (id === searchId.current) setDeptResults(deptData);
+
+      const { data: adData } = await supabase.from('ads').select('*').eq('is_active', true).in('tier', ['premium', 'elite']);
+      if (id === searchId.current) setPromotedAds(adData || []);
 
       const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
       generateAISummary(allResults);
@@ -185,6 +189,28 @@ export default function Search() {
                 <div className="px-6 py-3 bg-gray-50 dark:bg-[#171717] border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
                   <span className="text-xs text-gray-500 dark:text-gray-400">Powered by Mistral AI</span>
                   <span className="text-xs text-gray-400 dark:text-gray-500 italic">Based on Z&E Net data</span>
+                </div>
+              </div>
+            )}
+
+            {promotedAds.length > 0 && (
+              <div>
+                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Sponsored</h2>
+                <div className="space-y-3">
+                  {promotedAds.map(ad => (
+                    <a key={ad.id} href={ad.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block bg-gradient-to-r from-yellow-500/5 to-orange-500/5 dark:from-yellow-500/10 dark:to-orange-500/10 border border-yellow-500/30 rounded-xl p-4 hover:shadow-md transition-all">
+                      <div className="flex items-center gap-3">
+                        {ad.image_url && <img src={ad.image_url} alt="" className="w-14 h-14 rounded-lg object-cover border border-gray-700" onError={(e) => { e.target.style.display = 'none' }} />}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-yellow-600 dark:text-yellow-400">{ad.title}</h3>
+                            <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded-full font-medium">{ad.tier === 'elite' ? '👑 Elite' : '⭐ Premium'}</span>
+                          </div>
+                          {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{ad.description}</p>}
+                        </div>
+                      </div>
+                    </a>
+                  ))}
                 </div>
               </div>
             )}

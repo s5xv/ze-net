@@ -245,6 +245,45 @@ const fetchAds = async (id) => {
               <a href="/achievements" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Achievements</a>
             </div>
 
+            {ads.filter(ad => ad.tier === 'elite').slice(0, 1).map(ad => (
+              <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="block w-full bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-yellow-500/10 dark:from-yellow-500/20 dark:via-orange-500/20 dark:to-yellow-500/20 border-2 border-yellow-500/50 rounded-xl overflow-hidden hover:shadow-xl transition-all group">
+                <div className="flex items-center gap-4 p-4">
+                  {ad.image_url && <img src={fixImgUrl(ad.image_url)} alt="" className="w-20 h-20 rounded-lg object-cover border border-yellow-500/30" onError={(e) => { e.target.style.display = 'none' }} />}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-yellow-500 uppercase tracking-wider">👑 Elite Sponsor</span>
+                    </div>
+                    <h3 className="text-xl font-bold group-hover:underline text-yellow-600 dark:text-yellow-400">{ad.title}</h3>
+                    {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{ad.description}</p>}
+                  </div>
+                  <span className="text-yellow-500 text-2xl opacity-50 group-hover:opacity-100 transition-opacity">→</span>
+                </div>
+              </a>
+            ))}
+
+            {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium').length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Featured Ads</h3>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                  {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium').map(ad => (
+                    <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 w-48 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-3 hover:shadow-lg transition-all group">
+                      <div className="w-full aspect-[4/3] mb-2 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center">
+                        {ad.image_url ? (
+                          <img src={fixImgUrl(ad.image_url)} alt={ad.title} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none' }} />
+                        ) : (
+                          <span className="text-gray-400 text-xs">Sponsored</span>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-sm group-hover:underline truncate">{ad.title}</h4>
+                      <span className={`text-xs ${ad.tier === 'premium' ? 'text-yellow-500' : 'text-gray-500'}`}>
+                        {ad.tier === 'premium' ? '⭐ Premium' : '🥈 Featured'}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
               <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700 overflow-hidden">
                 {featuredContent?.image_url ? (
@@ -345,14 +384,14 @@ const fetchAds = async (id) => {
             </div>
           )}
 
-          {ads.map((ad) => {
+          {ads.map(ad => {
             const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
             const tierStyle = tierMap[ad.tier] || 'bronze';
             return (
             <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
               <div className="w-full aspect-[4/3] mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center">
                 {ad.image_url ? (
-                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<span class=\"text-gray-400 text-xs\">Sponsored</span>'; }} />
+                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
                 ) : (
                   <span className="text-gray-400 text-xs">Sponsored</span>
                 )}
