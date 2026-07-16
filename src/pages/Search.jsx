@@ -64,12 +64,7 @@ export default function Search() {
       if (id === searchId.current) setDeptResults(deptData);
 
       const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
-      const isQuestion = ['who is ', 'what is ', 'what are ', 'where is ', 'how to ', 'how do i ', 'tell me about ', 'find ', 'i need '].some(p => rawQuery.startsWith(p));
-      if (allResults.length > 0 || isQuestion) {
-        generateAISummary(allResults);
-      } else {
-        setSummarizing(false);
-      }
+      generateAISummary(allResults);
 
       try {
         await Promise.all([

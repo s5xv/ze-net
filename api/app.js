@@ -179,16 +179,19 @@ export default async function handler(req, res) {
     try {
       const apiKey = process.env.MISTRAL_API_KEY;
       if (!apiKey) return res.status(200).json({ summary: "⚠️ AI is ready, but the MISTRAL_API_KEY is missing! Go to Vercel Dashboard > Settings > Environment Variables and add it." });
-      const resultsText = Array.isArray(results) && results.length > 0
+      const hasResults = Array.isArray(results) && results.length > 0;
+      const resultsText = hasResults
         ? results.slice(0, 30).filter(Boolean).map((r, i) => {
             const name = r?.name || r?.title || 'Unknown';
             const desc = r?.description || r?.content || 'No description';
             const type = r?.category ? 'Site' : (r?.content ? 'Wiki' : 'Department');
             return `${i+1}. [${type}] **${name}**: ${desc.substring(0, 200)}`;
           }).join('\n')
-        : 'No results found in the directory for your query.';
+        : 'No results found in the directory for this query.';
 
-      const prompt = `You are the 'Z&E Net AI Search Assistant', an expert navigation tool for the DemocracyCraft Minecraft server directory.\n\nUser Query: "${query}"\n\nDatabase Results:\n${resultsText}\n\nInstructions:\n1. STRICT RELEVANCE: Analyze the query. Discard results where the query word only appears as a substring in an unrelated word.\n2. COMPREHENSIVE LISTING: If the user is searching for a category (like "departments", "shops", "banks"), you MUST list ALL relevant items found in the database results. Do not just pick two.\n3. SYNTHESIS: Write a highly engaging summary. Start directly with the answer. Mention the specific names of the best matching sites, wiki pages, or departments.\n4. FORMATTING: Use bold text (markdown) for the names of the sites/departments to make them pop.\n5. ZERO HALLUCINATION: ONLY use the provided database results. Never invent information.\n6. NO RESULTS: If the database has no matching results but the user is asking a question, try to answer based on what you know about DemocracyCraft, or suggest they refine their search.\n\nOutput ONLY the final summary text. Do not include any introductory phrases.`;
+      const prompt = hasResults
+        ? `You are the 'Z&E Net AI Search Assistant', an expert navigation tool for the DemocracyCraft Minecraft server directory.\n\nUser Query: "${query}"\n\nDatabase Results:\n${resultsText}\n\nInstructions:\n1. STRICT RELEVANCE: Analyze the query. Discard results where the query word only appears as a substring in an unrelated word.\n2. COMPREHENSIVE LISTING: If the user is searching for a category (like "departments", "shops", "banks"), you MUST list ALL relevant items found in the database results. Do not just pick two.\n3. SYNTHESIS: Write a highly engaging summary. Start directly with the answer. Mention the specific names of the best matching sites, wiki pages, or departments.\n4. FORMATTING: Use bold text (markdown) for the names of the sites/departments to make them pop.\n5. ZERO HALLUCINATION: ONLY use the provided database results. Never invent information.\n6. NO RESULTS: If the database has no matching results but the user is asking a question, try to answer based on what you know about DemocracyCraft, or suggest they refine their search.\n\nOutput ONLY the final summary text. Do not include any introductory phrases.`
+        : `You are a knowledgeable assistant for the DemocracyCraft Minecraft server. Answer the user's question clearly and helpfully. If you don't know something, say so.\n\nUser Question: "${query}"\n\nKeep the answer concise (2-4 paragraphs). Use markdown bold for key terms.`;
       const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },

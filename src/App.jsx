@@ -9,6 +9,7 @@ import Admin from './pages/Admin';
 
 const Home = lazy(() => import('./pages/Home'));
 const Search = lazy(() => import('./pages/Search'));
+const Ask = lazy(() => import('./pages/Ask'));
 const Site = lazy(() => import('./pages/Site'));
 const SiteManage = lazy(() => import('./pages/SiteManage'));
 const Profile = lazy(() => import('./pages/Profile'));
@@ -74,6 +75,7 @@ function App() {
           <Routes>
           <Route path="/" element={<Home user={user} />} />
           <Route path="/search" element={<Search user={user} />} />
+          <Route path="/ask" element={<Ask user={user} />} />
           <Route path="/site/:slug" element={<Site user={user} />} />
           <Route path="/site/:slug/manage" element={<SiteManage user={user} />} />
           <Route path="/profile/:userId" element={<Profile user={user} />} />
