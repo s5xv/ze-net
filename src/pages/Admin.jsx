@@ -138,9 +138,12 @@ export default function Admin() {
     setLoading(false);
   };
 
+  const [dbStaffChecked, setDbStaffChecked] = useState(false);
+
   const checkStaffAccess = useCallback(async () => {
     const { data: profile } = await supabase.from('profiles').select('is_staff, staff_permissions').eq('id', user.id).maybeSingle();
-    if (profile?.is_staff) {
+    setDbStaffChecked(true);
+    if (profile?.is_staff === true || (Array.isArray(profile?.staff_permissions) && profile.staff_permissions.length > 0)) {
       setAuthorized(true);
       setUserPermissions(profile.staff_permissions || []);
       return;
@@ -151,13 +154,8 @@ export default function Admin() {
       setUserPermissions([]);
       return;
     }
-    navigate('/');
+    if (!ADMIN_PW) navigate('/');
   }, [user, navigate]);
-
-  const checkAdminAccess = useCallback(async () => {
-    if (!user || !hasAdminPassword()) return;
-    setAuthorized(true);
-  }, [user]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -165,16 +163,13 @@ export default function Admin() {
       navigate('/login', { replace: true });
       return;
     }
-    if (!ADMIN_PW) {
-      checkStaffAccess();
+    if (hasAdminPassword()) {
+      setAuthorized(true);
+      setUserPermissions([]);
       return;
     }
-    if (!hasAdminPassword()) {
-      setLoading(false);
-      return;
-    }
-    checkAdminAccess();
-  }, [user, authLoading, checkAdminAccess, navigate]);
+    checkStaffAccess();
+  }, [user, authLoading, navigate, checkStaffAccess]);
 
   useEffect(() => {
     if (authorized) fetchData(activeTab);
@@ -185,7 +180,8 @@ export default function Admin() {
       localStorage.setItem('admin_pw', passwordInput);
       setPasswordOk(true);
       setPasswordError('');
-      checkAdminAccess();
+      setAuthorized(true);
+      setUserPermissions([]);
     } else {
       setPasswordError('Wrong password');
     }
@@ -195,14 +191,19 @@ export default function Admin() {
     return <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>;
   }
 
-  if (ADMIN_PW && !passwordOk && !hasAdminPassword()) {
+  if (ADMIN_PW && !authorized && !dbStaffChecked) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-400">Checking...</div>;
+  }
+
+  if (ADMIN_PW && !authorized && dbStaffChecked && !passwordOk && !hasAdminPassword()) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#1a1a2e]">
         <div className="bg-[#303134] border border-gray-700 rounded-xl p-8 w-full max-w-sm">
-          <h1 className="text-2xl font-bold text-white mb-4 text-center">Admin Access</h1>
+          <h1 className="text-2xl font-bold text-white mb-4 text-center">Staff Access</h1>
+          <p className="text-gray-400 text-sm mb-4 text-center">You don't have staff permissions on this site.</p>
           <input
             type="password"
-            placeholder="Enter admin password"
+            placeholder="Enter admin password (if you have one)"
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
