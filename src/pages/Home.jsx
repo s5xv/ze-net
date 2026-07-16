@@ -345,24 +345,28 @@ const fetchAds = async (id) => {
             </div>
           )}
 
-          {ads.map((ad) => (
-            <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${ad.tier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : ad.tier === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
+          {ads.map((ad) => {
+            const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
+            const tierStyle = tierMap[ad.tier] || 'bronze';
+            return (
+            <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
               <div className="w-full aspect-[4/3] mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center">
                 {ad.image_url ? (
-                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<span class=\"text-gray-400 text-xs\">Sponsored</span>'; }} />
                 ) : (
                   <span className="text-gray-400 text-xs">Sponsored</span>
                 )}
               </div>
-              <h4 className={`font-bold mb-1 group-hover:underline ${ad.tier === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : ad.tier === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
+              <h4 className={`font-bold mb-1 group-hover:underline ${tierStyle === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : tierStyle === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
                 {ad.title}
               </h4>
               {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
-              <span className={`text-xs mt-2 block ${ad.tier === 'gold' ? 'text-yellow-500' : ad.tier === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>
-                {ad.tier === 'gold' ? '⭐ Gold Sponsor' : ad.tier === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}
+              <span className={`text-xs mt-2 block ${tierStyle === 'gold' ? 'text-yellow-500' : tierStyle === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>
+                {ad.tier === 'elite' ? '👑 Elite Sponsor' : tierStyle === 'gold' ? '⭐ Gold Sponsor' : tierStyle === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}
               </span>
             </a>
-          ))}
+          );
+          })}
         </div>
       </main>
     </Layout>
