@@ -136,9 +136,9 @@ export default async function handler(req, res) {
       if (!adId) return res.status(400).json({ error: 'adId required' });
       const { error } = await supabase.from('ads').update({ image_url: imageUrl || '' }).eq('id', adId);
       if (error) throw error;
-      res.json({ success: true });
+      return res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: err.message });
     }
   }
 
@@ -150,9 +150,9 @@ export default async function handler(req, res) {
       if (!adId) return res.status(400).json({ error: 'adId required' });
       const { error } = await supabase.from('ads').update({ is_active: false }).eq('id', adId);
       if (error) throw error;
-      res.json({ success: true });
+      return res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: err.message });
     }
   }
 
@@ -164,9 +164,9 @@ export default async function handler(req, res) {
       if (!siteId) return res.status(400).json({ error: 'siteId required' });
       const { error } = await supabase.from('sites').update({ ad_tier: null, ad_expires_at: null }).eq('id', siteId);
       if (error) throw error;
-      res.json({ success: true });
+      return res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: err.message });
     }
   }
 
