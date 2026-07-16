@@ -53,12 +53,13 @@ export default function Search() {
 
       let deptData = [];
       try {
-        if (searchTerm.toLowerCase().includes('department') || searchTerm.toLowerCase().includes('dept')) {
-          const { data } = await supabase.from('departments').select('*').eq('is_active', true).order('display_order', { ascending: true }).limit(50);
-          deptData = data || [];
-        } else if (searchTerm) {
-          const { data } = await supabase.from('departments').select('*').or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`).eq('is_active', true).limit(20);
-          deptData = data || [];
+        const { data: allDepts } = await supabase.from('departments').select('*').eq('is_active', true).order('display_order', { ascending: true }).limit(50);
+        if (allDepts) {
+          const isDeptQuery = ['department', 'dept', 'government', 'ministry', 'agency', 'office'].some(w => searchTerm.includes(w));
+          deptData = isDeptQuery ? allDepts : allDepts.filter(d =>
+            d.name.toLowerCase().includes(searchTerm) ||
+            (d.description || '').toLowerCase().includes(searchTerm)
+          );
         }
       } catch (e) { console.error('Dept search error', e); }
       if (id === searchId.current) setDeptResults(deptData);

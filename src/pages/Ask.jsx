@@ -4,6 +4,15 @@ import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 import { apiFetch } from '../services/api';
 
+function extractSearchTerms(q) {
+  const questionWords = ['who is ', 'what is ', 'what are ', 'where is ', 'how to ', 'how do i ', 'tell me about ', 'find ', 'search for ', 'i need ', 'looking for ', 'show me '];
+  let term = q;
+  for (const prefix of questionWords) {
+    if (term.startsWith(prefix)) { term = term.slice(prefix.length); break; }
+  }
+  return term.trim() || q;
+}
+
 export default function Ask() {
   const { user } = useAuth();
   const [q, setQ] = useState('');
@@ -13,6 +22,31 @@ export default function Ask() {
   const [history, setHistory] = useState([]);
   const askId = useRef(0);
 
+  const searchDatabase = async (rawQuery) => {
+    const searchTerm = extractSearchTerms(rawQuery.toLowerCase().trim());
+    const results = [];
+    try {
+      const siteData = await apiFetch('/api/app?action=search-sites', { method: 'POST', body: JSON.stringify({ q: searchTerm }) });
+      results.push(...(siteData.sites || []));
+    } catch (_) {}
+    try {
+      const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
+      if (wikiData) results.push(...wikiData.filter(p => p.content && p.content.trim()));
+    } catch (_) {}
+    try {
+      const { data: allDepts } = await supabase.from('departments').select('*').eq('is_active', true).order('display_order', { ascending: true }).limit(50);
+      if (allDepts) {
+        const isDeptQuery = ['department', 'dept', 'government', 'ministry', 'agency', 'office'].some(w => searchTerm.includes(w));
+        const filtered = isDeptQuery ? allDepts : allDepts.filter(d =>
+          d.name.toLowerCase().includes(searchTerm) ||
+          (d.description || '').toLowerCase().includes(searchTerm)
+        );
+        results.push(...filtered);
+      }
+    } catch (_) {}
+    return results;
+  };
+
   const handleAsk = async (e) => {
     e.preventDefault();
     if (!q.trim()) return;
@@ -21,9 +55,10 @@ export default function Ask() {
     setAnswer(null);
     setSources([]);
     try {
+      const results = await searchDatabase(q);
       const data = await apiFetch('/api/app?action=summarize', {
         method: 'POST',
-        body: JSON.stringify({ query: q, results: [] })
+        body: JSON.stringify({ query: q, results })
       });
       if (id === askId.current) {
         setAnswer(data.summary || 'No answer generated.');
@@ -85,6 +120,17 @@ export default function Ask() {
             </div>
             <div className="p-6">
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[15px] whitespace-pre-wrap">{answer}</p>
+              {sources.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <span className="text-xs text-gray-500 font-medium">Sources:</span>
+                  {sources.slice(0, 6).map((s, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="px-6 py-3 bg-gray-50 dark:bg-[#171717] border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
               <span className="text-xs text-gray-500 dark:text-gray-400">Powered by Mistral AI</span>
@@ -100,6 +146,13 @@ export default function Ask() {
               <div key={i} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                 <p className="font-medium text-blue-600 dark:text-blue-400 mb-1">{item.q}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{item.a}</p>
+                {item.sources?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {item.sources.slice(0, 3).map((s, j) => (
+                      <span key={j} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500">{s}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
