@@ -729,5 +729,70 @@ CREATE POLICY "Service role manages views" ON public.site_views
 -- CREATE OR REPLACE FUNCTION public.link_mc_account... (see above)
 
 -- ============================================================
+-- Storage (avatars, site-images buckets) RLS
+-- ============================================================
+
+DO $$
+BEGIN
+  -- Create buckets if they don't exist
+  INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true)
+  ON CONFLICT (id) DO UPDATE SET public = true;
+  INSERT INTO storage.buckets (id, name, public) VALUES ('site-images', 'site-images', true)
+  ON CONFLICT (id) DO UPDATE SET public = true;
+END $$;
+
+-- Avatar: anyone can view
+CREATE POLICY "Anyone can view avatars"
+ON storage.objects FOR SELECT TO public
+USING (bucket_id = 'avatars');
+
+-- Avatar: authenticated users can upload (restricted to their own user folder)
+CREATE POLICY "Users can upload own avatar"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'avatars' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Avatar: users can update/delete own files
+CREATE POLICY "Users can update own avatar"
+ON storage.objects FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'avatars' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+)
+WITH CHECK (
+  bucket_id = 'avatars' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "Users can delete own avatar"
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'avatars' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Site images: anyone can view
+CREATE POLICY "Anyone can view site images"
+ON storage.objects FOR SELECT TO public
+USING (bucket_id = 'site-images');
+
+-- Site images: any authenticated user can upload
+CREATE POLICY "Users can upload site images"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'site-images');
+
+-- Site images: any authenticated user can update/delete
+CREATE POLICY "Users can update site images"
+ON storage.objects FOR UPDATE TO authenticated
+USING (bucket_id = 'site-images')
+WITH CHECK (bucket_id = 'site-images');
+
+CREATE POLICY "Users can delete site images"
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'site-images');
+
+-- ============================================================
 -- DONE!
 -- ============================================================
