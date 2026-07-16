@@ -178,6 +178,7 @@ const fetchAds = async (id) => {
     const m = url.match(/imgur\.com\/([a-zA-Z0-9]{5,})(?:\.[a-z]+)?(?:\?.*)?$/);
     if (m) return `https://wsrv.nl/?url=https://i.imgur.com/${m[1]}.png`;
     if (url.match(/^https?:\/\/i\.imgur\.com\//)) return `https://wsrv.nl/?url=${url}`;
+    if (url.startsWith('http')) return url;
     return '';
   };
 
