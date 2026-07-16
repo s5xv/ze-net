@@ -43,6 +43,7 @@ export default function Admin() {
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordOk, setPasswordOk] = useState(hasAdminPassword());
+  const [userPermissions, setUserPermissions] = useState(null);
 
   const fetchData = async (tab) => {
     setLoading(true);
@@ -127,14 +128,16 @@ export default function Admin() {
   };
 
   const checkStaffAccess = useCallback(async () => {
-    const { data: profile } = await supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle();
+    const { data: profile } = await supabase.from('profiles').select('is_staff, staff_permissions').eq('id', user.id).maybeSingle();
     if (profile?.is_staff) {
       setAuthorized(true);
+      setUserPermissions(profile.staff_permissions || []);
       return;
     }
     const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_staff', true);
     if (count === 0) {
       setAuthorized(true);
+      setUserPermissions([]);
       return;
     }
     navigate('/');
@@ -414,8 +417,11 @@ export default function Admin() {
     { id: 'manage_ads', label: 'Manage Ads' },
     { id: 'manage_sites', label: 'Manage Sites' },
     { id: 'manage_users', label: 'Manage Users' },
-    { id: 'manage_staff', label: 'Manage Staff' }
+    { id: 'manage_staff', label: 'Manage Staff' },
+    { id: 'manage_businesses', label: 'Manage Businesses' }
   ];
+
+  const hasPerm = (perm) => !userPermissions || userPermissions.length === 0 || userPermissions.includes(perm);
 
   if (!authorized) return <div className="min-h-screen flex items-center justify-center text-gray-400">Checking permissions...</div>;
 
@@ -450,19 +456,19 @@ export default function Admin() {
         {message && <div className="mb-4 p-3 bg-blue-900/30 border border-blue-800 rounded-lg text-blue-300">{message}</div>}
 
         <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-3 overflow-x-auto">
-          <TabButton id="overview" label="Overview" />
-          <TabButton id="withdrawals" label="Withdrawals" badge={stats.pendingWithdrawals} />
-          <TabButton id="verifications" label="Verifications" badge={stats.pendingVerifications} />
-          <TabButton id="ads" label="Ad Requests" badge={stats.pendingAds} />
-          <TabButton id="pending" label="Pending" />
-          <TabButton id="sites" label="Sites" />
-          <TabButton id="users" label="Users" />
-          <TabButton id="transactions" label="Transactions" />
-          <TabButton id="staff" label="Staff" />
-          <TabButton id="businesses" label="Businesses" />
-          <TabButton id="moderation" label="Moderation" badge={reports.length} />
-          <TabButton id="messages" label="Messages" />
-          <TabButton id="manage-ads" label="Manage Ads" />
+          {hasPerm('manage_staff') && <TabButton id="overview" label="Overview" />}
+          {hasPerm('manage_withdrawals') && <TabButton id="withdrawals" label="Withdrawals" badge={stats.pendingWithdrawals} />}
+          {hasPerm('manage_verifications') && <TabButton id="verifications" label="Verifications" badge={stats.pendingVerifications} />}
+          {hasPerm('manage_ads') && <TabButton id="ads" label="Ad Requests" badge={stats.pendingAds} />}
+          {hasPerm('manage_sites') && <TabButton id="pending" label="Pending" />}
+          {hasPerm('manage_sites') && <TabButton id="sites" label="Sites" />}
+          {hasPerm('manage_users') && <TabButton id="users" label="Users" />}
+          {hasPerm('manage_staff') && <TabButton id="transactions" label="Transactions" />}
+          {hasPerm('manage_staff') && <TabButton id="staff" label="Staff" />}
+          {hasPerm('manage_businesses') && <TabButton id="businesses" label="Businesses" />}
+          {hasPerm('manage_staff') && <TabButton id="moderation" label="Moderation" badge={reports.length} />}
+          {hasPerm('manage_staff') && <TabButton id="messages" label="Messages" />}
+          {hasPerm('manage_ads') && <TabButton id="manage-ads" label="Manage Ads" />}
         </div>
 
         {loading && <p className="text-center text-gray-400 py-10">Loading...</p>}
@@ -743,7 +749,11 @@ export default function Admin() {
                       <p className="text-white text-sm">{p.username || 'No username'}</p>
                       <p className="text-xs text-gray-500 font-mono">{p.id}</p>
                     </div>
-                    <button onClick={() => addStaff(p.id)} className="px-3 py-1 bg-green-600 text-white text-xs rounded">Add as Staff</button>
+                    <div className="flex gap-1">
+                      <button onClick={() => addStaff(p.id)} className="px-3 py-1 bg-green-600 text-white text-xs rounded">Full Staff</button>
+                      <button onClick={async () => { await apiFetch('/api/app?action=admin-add-staff', { method: 'POST', body: JSON.stringify({ userId: p.id }) }); await updateStaffPermissions(p.id, ['manage_ads']); }} className="px-3 py-1 bg-purple-600 text-white text-xs rounded">Ad Manager</button>
+                      <button onClick={async () => { await apiFetch('/api/app?action=admin-add-staff', { method: 'POST', body: JSON.stringify({ userId: p.id }) }); await updateStaffPermissions(p.id, ['manage_verifications', 'manage_businesses']); }} className="px-3 py-1 bg-yellow-600 text-white text-xs rounded">Trust & Safety</button>
+                    </div>
                   </div>
                 ))}
               </div>
