@@ -783,6 +783,8 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET public = true;
   INSERT INTO storage.buckets (id, name, public) VALUES ('site-images', 'site-images', true)
   ON CONFLICT (id) DO UPDATE SET public = true;
+  INSERT INTO storage.buckets (id, name, public) VALUES ('ad-images', 'ad-images', true)
+  ON CONFLICT (id) DO UPDATE SET public = true;
 END $$;
 
 -- Avatar: anyone can view
@@ -836,6 +838,24 @@ WITH CHECK (bucket_id = 'site-images');
 CREATE POLICY "Users can delete site images"
 ON storage.objects FOR DELETE TO authenticated
 USING (bucket_id = 'site-images');
+
+-- Ad images
+CREATE POLICY "Anyone can view ad images"
+ON storage.objects FOR SELECT TO public
+USING (bucket_id = 'ad-images');
+
+CREATE POLICY "Users can upload ad images"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'ad-images');
+
+CREATE POLICY "Users can update ad images"
+ON storage.objects FOR UPDATE TO authenticated
+USING (bucket_id = 'ad-images')
+WITH CHECK (bucket_id = 'ad-images');
+
+CREATE POLICY "Users can delete ad images"
+ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'ad-images');
 
 -- ============================================================
 -- DONE!
