@@ -172,13 +172,12 @@ const fetchAds = async (id) => {
     return url.startsWith('http') ? url : `https://${url}`;
   };
 
-  const fixImgUrl = (url, w = 300, h = 250) => {
+  const fixImgUrl = (url) => {
     if (!url) return '';
     if (url.match(/\/a\//) || url.match(/\/gallery\//)) return '';
-    let src = url;
     const m = url.match(/imgur\.com\/([a-zA-Z0-9]{5,})(?:\.[a-z]+)?(?:\?.*)?$/);
-    if (m) src = `https://i.imgur.com/${m[1]}.png`;
-    if (src.startsWith('http')) return `https://wsrv.nl/?url=${encodeURIComponent(src)}&w=${w}&h=${h}&fit=cover`;
+    if (m) return `https://i.imgur.com/${m[1]}.png`;
+    if (url.startsWith('http')) return url;
     return '';
   };
 
