@@ -233,6 +233,9 @@ const fetchAds = async (id) => {
               <button onClick={() => navigate('/ask')} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
                 Ask AI
               </button>
+              <button onClick={() => navigate('/utilities')} className="px-6 py-2.5 bg-gray-100 dark:bg-[#303134] hover:bg-gray-200 dark:hover:bg-[#3c4043] border border-transparent hover:border-gray-300 dark:hover:border-gray-600 rounded text-sm font-medium transition-colors">
+                More...
+              </button>
             </div>
 
             <div className="flex flex-wrap gap-3 justify-center">

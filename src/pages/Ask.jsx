@@ -13,6 +13,17 @@ function extractSearchTerms(q) {
   return term.trim() || q;
 }
 
+const renderMarkdownBold = (text) => {
+  if (!text) return null;
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="text-blue-600 dark:text-blue-400 font-bold">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+};
+
 export default function Ask() {
   const { user } = useAuth();
   const [q, setQ] = useState('');
@@ -119,7 +130,7 @@ export default function Ask() {
               <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-lg">Answer</h3>
             </div>
             <div className="p-6">
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[15px] whitespace-pre-wrap">{answer}</p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[15px] whitespace-pre-wrap">{renderMarkdownBold(answer)}</p>
               {sources.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                   <span className="text-xs text-gray-500 font-medium">Sources:</span>
@@ -145,7 +156,7 @@ export default function Ask() {
             {history.map((item, i) => (
               <div key={i} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                 <p className="font-medium text-blue-600 dark:text-blue-400 mb-1">{item.q}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{item.a}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{renderMarkdownBold(item.a)}</p>
                 {item.sources?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {item.sources.slice(0, 3).map((s, j) => (
