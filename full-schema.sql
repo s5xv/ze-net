@@ -646,12 +646,15 @@ INSERT INTO public.forum_categories (name, description, slug, sort_order) VALUES
 ON CONFLICT (slug) DO NOTHING;
 
 INSERT INTO public.departments (name, slug, description, display_order) VALUES
-  ('Department of Education', 'education', 'Oversees the University, DemocracyCraft Wiki, and trades/professions.', 1),
-  ('Department of the Interior', 'interior', 'Preserves wildlife/urban areas and manages intergovernmental affairs.', 2),
-  ('Department of Construction and Transport', 'dct', 'Enforces building regulations and develops infrastructure.', 3),
-  ('Department of Commerce', 'commerce', 'Supports Redmont''s economy and businesses.', 4),
-  ('Department of State', 'state', 'Publishes monthly State of the Commonwealth reports and handles cabinet transparency.', 5),
-  ('Department of Justice', 'justice', 'Oversees the legal system, courts, and law enforcement.', 6)
+  ('Department of State', 'state', 'Facilitates elections, executes audits and reports, and ensures cabinet transparency.', 1),
+  ('Department of Justice', 'justice', 'Defends the national legal interest and investigates/prosecutes crimes.', 2),
+  ('Department of Commerce', 'commerce', 'Supports and oversees the economy of Redmont, providing support to businesses.', 3),
+  ('Department of Construction and Transport', 'dct', 'Enforces building regulations and develops Redmont''s infrastructure.', 4),
+  ('Department of Education', 'education', 'Oversees the University, DemocracyCraft Wiki, and trades/professions.', 5),
+  ('Department of Health', 'health', 'Maintains the health of the people of Redmont and oversees medical facilities.', 6),
+  ('Department of Homeland Security', 'homeland-security', 'Enforces Redmont''s laws, maintains criminal records, and manages border control.', 7),
+  ('Department of the Interior', 'interior', 'Preserves wildlife and urban areas and manages intergovernmental affairs.', 8),
+  ('Department of Public Affairs', 'public-affairs', 'Organizes and hosts server community events and contests.', 9)
 ON CONFLICT (slug) DO NOTHING;
 
 -- ============================================================
@@ -731,6 +734,27 @@ CREATE POLICY "Anyone can read departments" ON public.departments
 CREATE POLICY "Service role manages departments" ON public.departments
   FOR ALL TO service_role
   USING (true);
+
+-- Staff actions (payout tracking)
+CREATE TABLE public.staff_actions (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  staff_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  action_type text NOT NULL CHECK (action_type IN ('ad_commission', 'free_site', 'site_verify')),
+  reference_id text,
+  description text,
+  amount numeric NOT NULL DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.staff_actions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Staff can read staff_actions" ON public.staff_actions
+  FOR SELECT TO authenticated
+  USING ((SELECT is_staff FROM public.profiles WHERE id = auth.uid()) = true);
+
+CREATE POLICY "Staff can insert staff_actions" ON public.staff_actions
+  FOR INSERT TO authenticated
+  WITH CHECK ((SELECT is_staff FROM public.profiles WHERE id = auth.uid()) = true);
 
 -- Site views RLS
 ALTER TABLE public.site_views ENABLE ROW LEVEL SECURITY;

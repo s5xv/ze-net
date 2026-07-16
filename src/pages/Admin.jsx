@@ -33,6 +33,8 @@ export default function Admin() {
   const [messages, setMessages] = useState([]);
   const [pendingSites, setPendingSites] = useState([]);
   const [businessRegistrations, setBusinessRegistrations] = useState([]);
+  const [staffActions, setStaffActions] = useState([]);
+  const [profilesMap, setProfilesMap] = useState({});
   const [depositUserId, setDepositUserId] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositNote, setDepositNote] = useState('');
@@ -119,6 +121,15 @@ export default function Admin() {
         const { data: allSites } = await supabase.from('sites').select('id, name, slug, ad_tier, ad_expires_at, url').order('name');
         const { data: allAds } = await supabase.from('ads').select('*').order('created_at', { ascending: false });
         setManagedAds({ sites: allSites || [], ads: allAds || [] });
+      } else if (tab === 'payouts') {
+        const [saRes, pfRes] = await Promise.all([
+          supabase.from('staff_actions').select('*').order('created_at', { ascending: false }).limit(200),
+          supabase.from('profiles').select('id, username')
+        ]);
+        setStaffActions(saRes.data || []);
+        const pm = {};
+        (pfRes.data || []).forEach(p => pm[p.id] = p.username);
+        setProfilesMap(pm);
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -237,7 +248,14 @@ export default function Admin() {
       if (verReq.site_id) {
         await supabase.from('sites').update({ is_verified: true, verification_paid_at: new Date().toISOString() }).eq('id', verReq.site_id);
       }
-      setMessage('Verification approved. Deducted $100 from balance.');
+      await supabase.from('staff_actions').insert({
+        staff_id: user.id,
+        action_type: 'site_verify',
+        reference_id: verReq.id?.toString(),
+        description: `Verified site "${verReq.site_name || verReq.sites?.name}" — $40 commission`,
+        amount: 40
+      });
+      setMessage('Verification approved. Deducted $100 from balance. Commission: $40');
       fetchData(activeTab);
     } catch (err) {
       setMessage('Error: ' + err.message);
@@ -272,7 +290,15 @@ export default function Admin() {
           tier: adReq.tier || 'standard',
           is_active: true
         });
-        setMessage(`Ad approved. Deducted $${adReq.price} from balance.`);
+        const commission = Math.round((adReq.price || 0) * 0.1 * 100) / 100;
+        await supabase.from('staff_actions').insert({
+          staff_id: user.id,
+          action_type: 'ad_commission',
+          reference_id: adReq.id?.toString(),
+          description: `Approved ad for "${adReq.site_name}" ($${adReq.price} ${adReq.tier}) — 10% = $${commission}`,
+          amount: commission
+        });
+        setMessage(`Ad approved. Deducted $${adReq.price} from balance. Commission: $${commission}`);
       } else {
         await supabase.from('ad_requests').update({ status: 'rejected' }).eq('id', adReq.id);
         setMessage('Ad rejected');
@@ -460,7 +486,8 @@ export default function Admin() {
           {hasPerm('manage_withdrawals') && <TabButton id="withdrawals" label="Withdrawals" badge={stats.pendingWithdrawals} />}
           {hasPerm('manage_verifications') && <TabButton id="verifications" label="Verifications" badge={stats.pendingVerifications} />}
           {hasPerm('manage_ads') && <TabButton id="ads" label="Ad Requests" badge={stats.pendingAds} />}
-          {hasPerm('manage_sites') && <TabButton id="pending" label="Pending" />}
+          {hasPerm('manage_staff') && <TabButton id="pending" label="Pending" />}
+          {hasPerm('manage_staff') && <TabButton id="payouts" label="Payouts" />}
           {hasPerm('manage_sites') && <TabButton id="sites" label="Sites" />}
           {hasPerm('manage_users') && <TabButton id="users" label="Users" />}
           {hasPerm('manage_staff') && <TabButton id="transactions" label="Transactions" />}
@@ -818,7 +845,7 @@ export default function Admin() {
                       </div>
                       {b.status === 'pending' && (
                         <div className="flex flex-col gap-2 shrink-0">
-                          <button onClick={async () => { try { await apiFetch('/api/app?action=approve-business', { method: 'POST', body: JSON.stringify({ id: b.id }) }); } catch (e) { setMessage('Error: ' + e.message); } fetchData(activeTab); }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
+                          <button onClick={async () => { try { await apiFetch('/api/app?action=approve-business', { method: 'POST', body: JSON.stringify({ id: b.id }) }); await supabase.from('staff_actions').insert({ staff_id: user.id, action_type: 'free_site', reference_id: b.id?.toString(), description: `Approved free site "${b.business_name}" (${b.category}) — $40 commission`, amount: 40 }); } catch (e) { setMessage('Error: ' + e.message); } fetchData(activeTab); }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
                           <button onClick={async () => { await supabase.from('business_registrations').update({ status: 'rejected' }).eq('id', b.id); fetchData(activeTab); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
                         </div>
                       )}
@@ -924,6 +951,69 @@ export default function Admin() {
                   </div>
                 ))
               }
+            </div>
+          </div>
+        )}
+
+        {!loading && activeTab === 'payouts' && (
+          <div>
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-5 mb-6">
+              <h3 className="text-lg font-bold text-white mb-4">Staff Payouts Summary</h3>
+              {staffActions.length === 0 ? (
+                <p className="text-gray-500">No actions recorded yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[#202124]">
+                      <tr>
+                        <th className="text-left p-3 text-gray-400">Staff Member</th>
+                        <th className="text-left p-3 text-gray-400">Ad Commissions</th>
+                        <th className="text-left p-3 text-gray-400">Free Sites</th>
+                        <th className="text-left p-3 text-gray-400">Verifications</th>
+                        <th className="text-left p-3 text-gray-400">Total Due</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(
+                        staffActions.reduce((acc, a) => {
+                          acc[a.staff_id] = acc[a.staff_id] || { ad: 0, free: 0, verify: 0 };
+                          if (a.action_type === 'ad_commission') acc[a.staff_id].ad += a.amount;
+                          else if (a.action_type === 'free_site') acc[a.staff_id].free += a.amount;
+                          else if (a.action_type === 'site_verify') acc[a.staff_id].verify += a.amount;
+                          return acc;
+                        }, {})
+                      ).map(([staffId, totals]) => (
+                        <tr key={staffId} className="border-t border-gray-700">
+                          <td className="p-3 text-white font-bold">{profilesMap[staffId] || staffId.slice(0, 8)}</td>
+                          <td className="p-3 text-green-400">${totals.ad.toFixed(2)}</td>
+                          <td className="p-3 text-purple-400">${totals.free.toFixed(2)}</td>
+                          <td className="p-3 text-blue-400">${totals.verify.toFixed(2)}</td>
+                          <td className="p-3 text-yellow-400 font-bold">${(totals.ad + totals.free + totals.verify).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
+              <h3 className="text-lg font-bold text-white mb-4">Recent Actions</h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {staffActions.slice(0, 50).map(a => (
+                  <div key={a.id} className="bg-[#202124] p-3 rounded flex justify-between items-center">
+                    <div>
+                      <p className="text-white text-sm font-medium">{profilesMap[a.staff_id] || a.staff_id.slice(0, 8)}</p>
+                      <p className="text-xs text-gray-400">{a.description}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-green-400 font-bold">${a.amount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-500">{new Date(a.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+                {staffActions.length === 0 && <p className="text-gray-500 text-center py-4">No actions yet</p>}
+              </div>
             </div>
           </div>
         )}
