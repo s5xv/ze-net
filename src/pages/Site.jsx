@@ -179,6 +179,7 @@ export default function Site() {
         <div className="bg-[#303134] border border-gray-700 rounded-xl p-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
+              {site.image_url && <img src={site.image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-600" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
               <h1 className="text-3xl font-bold text-white">{site.name}</h1>
               {site.is_verified && <span className="px-3 py-1 bg-blue-600 text-white text-xs rounded-full">VERIFIED</span>}
             </div>

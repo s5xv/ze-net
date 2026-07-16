@@ -174,13 +174,12 @@ const fetchAds = async (id) => {
 
   const SUPABASE_PROJECT = 'ujribfbwibqlbkhszqno';
 
-  const fixImgUrl = (url, w = 300, h = 250) => {
+  const fixImgUrl = (url) => {
     if (!url) return '';
     if (url.match(/\/a\//) || url.match(/\/gallery\//)) return '';
     const m = url.match(/imgur\.com\/([a-zA-Z0-9]{5,})(?:\.[a-z]+)?(?:\?.*)?$/);
-    if (m) return `https://wsrv.nl/?url=https://i.imgur.com/${m[1]}.png&w=${w}&h=${h}`;
-    if (url.match(/^https?:\/\/i\.imgur\.com\//)) return `https://wsrv.nl/?url=${url}&w=${w}&h=${h}`;
-    if (url.includes(`${SUPABASE_PROJECT}.supabase.co/storage`)) return `${url}?width=${w}&height=${h}&resize=contain`;
+    if (m) return `https://wsrv.nl/?url=https://i.imgur.com/${m[1]}.png`;
+    if (url.match(/^https?:\/\/i\.imgur\.com\//)) return `https://wsrv.nl/?url=${url}`;
     if (url.startsWith('http')) return url;
     return '';
   };
