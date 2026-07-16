@@ -135,6 +135,11 @@ export default function Site() {
       return;
     }
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Please sign in again before tipping.');
+        return;
+      }
       const data = await apiFetch('/api/app?action=tip', {
         method: 'POST', body: JSON.stringify({ targetUserId: site.user_id, amount: tipAmount })
       });
@@ -143,7 +148,7 @@ export default function Site() {
       setShowTipModal(false);
       alert('Tip sent!');
     } catch (err) {
-      alert('Error: ' + err.message);
+      alert('Tip failed: ' + err.message + (err.message === 'Authentication required' ? ' — please sign out and back in.' : ''));
     }
   };
 
