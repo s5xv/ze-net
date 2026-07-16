@@ -935,8 +935,10 @@ export default function Admin() {
                         <>
                           <ImageUpload bucket="ad-images" path={`ad-${ad.id}`} onUpload={async (url) => {
                             try {
-                              const { error } = await supabase.from('ads').update({ image_url: url }).eq('id', ad.id);
-                              if (error) throw error;
+                              await apiFetch('/api/app?action=update-ad-image', {
+                                method: 'POST',
+                                body: JSON.stringify({ adId: ad.id, imageUrl: url })
+                              });
                               setEditingAdImage(null);
                               fetchData(activeTab);
                             } catch (e) {

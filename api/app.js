@@ -128,6 +128,20 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // --- update-ad-image ---
+  if (action === 'update-ad-image') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    try {
+      const { adId, imageUrl } = req.body;
+      if (!adId) return res.status(400).json({ error: 'adId required' });
+      const { error } = await supabase.from('ads').update({ image_url: imageUrl || '' }).eq('id', adId);
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+
   // --- revoke-ad ---
   if (action === 'revoke-ad') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
