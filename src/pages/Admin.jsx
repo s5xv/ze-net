@@ -934,9 +934,14 @@ export default function Admin() {
                       {editingAdImage === ad.id ? (
                         <>
                           <ImageUpload bucket="ad-images" path={`ad-${ad.id}`} onUpload={async (url) => {
-                            await supabase.from('ads').update({ image_url: url }).eq('id', ad.id);
-                            setEditingAdImage(null);
-                            fetchData(activeTab);
+                            try {
+                              const { error } = await supabase.from('ads').update({ image_url: url }).eq('id', ad.id);
+                              if (error) throw error;
+                              setEditingAdImage(null);
+                              fetchData(activeTab);
+                            } catch (e) {
+                              alert('Failed to update ad image: ' + e.message);
+                            }
                           }} label="Upload" />
                           <button onClick={() => setEditingAdImage(null)} className="px-2 py-1 bg-gray-600 text-white text-xs rounded">Cancel</button>
                         </>
