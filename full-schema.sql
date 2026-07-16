@@ -516,7 +516,7 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 DECLARE
   fallback_name text;
-  discord_id text;
+  v_discord_id text;
   meta jsonb;
 BEGIN
   meta := COALESCE(NEW.raw_user_meta_data, NEW.raw_app_meta_data, '{}'::jsonb);
@@ -527,7 +527,7 @@ BEGIN
     meta->>'login',
     split_part(COALESCE(NEW.email, NEW.id::text), '@', 1)
   );
-  discord_id := COALESCE(
+  v_discord_id := COALESCE(
     meta->>'provider_id',
     meta->>'sub'
   );
@@ -537,7 +537,7 @@ BEGIN
       NEW.id,
       fallback_name,
       COALESCE(meta->>'avatar_url', meta->>'avatar'),
-      discord_id
+      v_discord_id
     )
     ON CONFLICT (id) DO UPDATE SET
       username = COALESCE(EXCLUDED.username, profiles.username),
@@ -546,11 +546,11 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
     RAISE WARNING 'handle_new_user: profile insert failed for %: %', NEW.id, SQLERRM;
   END;
-  IF discord_id IS NOT NULL THEN
+  IF v_discord_id IS NOT NULL THEN
     BEGIN
       UPDATE public.sites
       SET owner_user_id = NEW.id, user_id = NEW.id, submitted_by = COALESCE(submitted_by, NEW.id)
-      WHERE discord_id = discord_id AND owner_user_id IS NULL;
+      WHERE discord_id = v_discord_id AND owner_user_id IS NULL;
     EXCEPTION WHEN OTHERS THEN
       RAISE WARNING 'handle_new_user: site update failed for %: %', NEW.id, SQLERRM;
     END;
