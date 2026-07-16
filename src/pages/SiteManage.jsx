@@ -50,7 +50,7 @@ export default function SiteManage() {
     const { error } = await supabase.from('sites').update({
       name: formData.name, description: formData.description, category: formData.category,
       url: formData.url, shortcuts: shortcutsArray.join(', '), keywords: keywordsArray,
-      is_verified: formData.is_verified
+      is_verified: formData.is_verified, image_url: formData.image_url
     }).eq('id', site.id);
 
     if (error) alert('Error saving: ' + error.message);
