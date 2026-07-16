@@ -72,7 +72,7 @@ export default function Home() {
     try {
       const { data: topSite, error } = await supabase
         .from('sites')
-        .select('name, slug, view_count')
+        .select('name, slug, view_count, image_url')
         .eq('status', 'approved')
         .order('view_count', { ascending: false })
         .limit(1)
@@ -93,7 +93,8 @@ export default function Home() {
               ? `Visited ${topSite.view_count} times by the community!`
               : "The community's top-rated site!",
             actionText: 'Visit Site',
-            actionLink: `/site/${topSite.slug}`
+            actionLink: `/site/${topSite.slug}`,
+            image_url: topSite.image_url
           });
         } else {
           setFeaturedContent({
@@ -241,11 +242,15 @@ const fetchAds = async (id) => {
             </div>
 
             <div className="border-2 border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden h-64 sm:h-80 flex bg-white dark:bg-[#303134] shadow-lg">
-              <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700">
-                <div className="text-center">
-                  <div className="text-8xl sm:text-9xl mb-2"></div>
-                  <p className="text-xs text-gray-500">{featuredContent ? featuredContent.leftLabel : 'Character'}</p>
-                </div>
+              <div className="w-1/2 sm:w-2/5 bg-gray-100 dark:bg-[#202124] flex items-center justify-center p-4 border-r border-gray-300 dark:border-gray-700 overflow-hidden">
+                {featuredContent?.image_url ? (
+                  <img src={fixImgUrl(featuredContent.image_url)} alt={featuredContent.highlight} className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                ) : (
+                  <div className="text-center">
+                    <div className="text-8xl sm:text-9xl mb-2"></div>
+                    <p className="text-xs text-gray-500">{featuredContent ? featuredContent.leftLabel : 'Character'}</p>
+                  </div>
+                )}
               </div>
               <div className="w-1/2 sm:w-3/5 p-6 sm:p-8 flex flex-col justify-center overflow-y-auto">
                 <h2 className="text-3xl sm:text-4xl font-bold mb-2 leading-tight">Are they simply the best?!</h2>

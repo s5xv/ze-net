@@ -45,7 +45,10 @@ export default function Settings() {
               <label className="block text-sm font-medium mb-1">Avatar</label>
               <div className="flex items-center gap-4">
                 {avatarUrl && <img src={avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
-                <ImageUpload bucket="avatars" path={user?.id} onUpload={setAvatarUrl} label="Upload Avatar" />
+                <div className="flex gap-2">
+                  <ImageUpload bucket="avatars" path={user?.id} onUpload={setAvatarUrl} label="Upload Avatar" />
+                  {avatarUrl && <button type="button" onClick={() => setAvatarUrl('')} className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg">Reset</button>}
+                </div>
               </div>
             </div>
             <div>

@@ -10,6 +10,7 @@ export default function Layout({ children, user }) {
   const [balance, setBalance] = useState(0);
   const [serverStatus, setServerStatus] = useState({ online: false, players: 0 });
   const [isStaff, setIsStaff] = useState(false);
+  const [profileAvatar, setProfileAvatar] = useState(null);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -31,6 +32,9 @@ export default function Layout({ children, user }) {
       } else {
         supabase.from('profiles').select('is_staff').eq('id', user.id).maybeSingle().then(({ data }) => setIsStaff(data?.is_staff || false)).catch(() => {});
       }
+      supabase.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle().then(({ data }) => {
+        setProfileAvatar(data?.avatar_url || null);
+      }).catch(() => {});
 
       const fetchBalance = async () => {
         const { data, error } = await supabase.from('balances').select('balance').eq('user_id', user.id).maybeSingle();
@@ -64,8 +68,9 @@ export default function Layout({ children, user }) {
   }, [showMenu]);
 
   const displayName = mcName || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
-  const userAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.avatar;
-  const fullAvatarUrl = userAvatar ? (userAvatar.startsWith('http') ? userAvatar : `https://cdn.discordapp.com/avatars/${user.id}/${userAvatar}.png?size=128`) : null;
+  const discordAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.avatar;
+  const discordAvatarUrl = discordAvatar ? (discordAvatar.startsWith('http') ? discordAvatar : `https://cdn.discordapp.com/avatars/${user.id}/${discordAvatar}.png?size=128`) : null;
+  const fullAvatarUrl = profileAvatar || discordAvatarUrl;
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#202124] text-gray-900 dark:text-gray-100 flex flex-col font-sans">
