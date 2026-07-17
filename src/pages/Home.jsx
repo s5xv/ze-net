@@ -191,8 +191,33 @@ const fetchAds = async (id) => {
 
   return (
     <Layout user={user}>
-      <main className="flex-grow px-4 py-8 sm:py-12 min-h-screen">
-        <div className="max-w-4xl mx-auto space-y-8">
+      <div className="flex-grow grid grid-cols-1 lg:grid-cols-[256px_1fr_256px] gap-6 xl:gap-12 justify-center px-4 py-8 sm:py-12 min-h-screen max-w-7xl mx-auto">
+        <div className="hidden xl:block space-y-4 sticky top-24 self-start" style={{ maxHeight: 'calc(100vh - 8rem)', overflowY: 'auto' }}>
+          {ads.map(ad => {
+            const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
+            const tierStyle = tierMap[ad.tier] || 'bronze';
+            return (
+            <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
+              <div style={{ height: '160px' }} className="w-full mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 relative flex items-center justify-center">
+                {ad.image_url ? (
+                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" style={{ maxWidth: '100%', maxHeight: '160px', width: 'auto', height: 'auto' }} className="rounded" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }} />
+                ) : (
+                  <span className="text-gray-400 text-xs">Sponsored</span>
+                )}
+              </div>
+              <h4 className={`font-bold mb-1 group-hover:underline ${tierStyle === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : tierStyle === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
+                {ad.title}
+              </h4>
+              {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
+              <span className={`text-xs mt-2 block ${tierStyle === 'gold' ? 'text-yellow-500' : tierStyle === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>
+                {ad.tier === 'elite' ? '👑 Elite Sponsor' : tierStyle === 'gold' ? '⭐ Gold Sponsor' : tierStyle === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}
+              </span>
+            </a>
+          );
+          })}
+        </div>
+
+        <main className="min-w-0 max-w-4xl mx-auto w-full space-y-8">
             <div className="text-center mb-6">
               <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight">
                 Z&E <span className="text-blue-600 dark:text-blue-400">NET</span>
@@ -323,35 +348,9 @@ const fetchAds = async (id) => {
                 </div>
               </div>
             </div>
-        </div>
-      </main>
+        </main>
 
-        <div className="hidden xl:block fixed top-20 left-4 xl:left-8 w-64 space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 7rem)' }}>
-          {ads.map(ad => {
-            const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
-            const tierStyle = tierMap[ad.tier] || 'bronze';
-            return (
-            <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
-              <div style={{ height: '160px' }} className="w-full mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 relative flex items-center justify-center">
-                {ad.image_url ? (
-                  <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" style={{ maxWidth: '100%', maxHeight: '160px', width: 'auto', height: 'auto' }} className="rounded" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }} />
-                ) : (
-                  <span className="text-gray-400 text-xs">Sponsored</span>
-                )}
-              </div>
-              <h4 className={`font-bold mb-1 group-hover:underline ${tierStyle === 'gold' ? 'text-yellow-600 dark:text-yellow-400' : tierStyle === 'silver' ? 'text-gray-600 dark:text-gray-300' : 'text-blue-600 dark:text-blue-400'}`}>
-                {ad.title}
-              </h4>
-              {ad.description && <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{ad.description}</p>}
-              <span className={`text-xs mt-2 block ${tierStyle === 'gold' ? 'text-yellow-500' : tierStyle === 'silver' ? 'text-gray-500' : 'text-gray-400'}`}>
-                {ad.tier === 'elite' ? '👑 Elite Sponsor' : tierStyle === 'gold' ? '⭐ Gold Sponsor' : tierStyle === 'silver' ? '🥈 Silver Sponsor' : '🥉 Bronze'}
-              </span>
-            </a>
-          );
-          })}
-        </div>
-
-        <div className="hidden lg:block fixed top-20 right-4 xl:right-8 w-64 space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 7rem)' }}>
+        <div className="hidden lg:block space-y-4 sticky top-24 self-start" style={{ maxHeight: 'calc(100vh - 8rem)', overflowY: 'auto' }}>
           {user && bookmarks.length > 0 && (
             <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
               <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
@@ -399,6 +398,7 @@ const fetchAds = async (id) => {
             </div>
           )}
         </div>
+      </div>
     </Layout>
   );
 }
