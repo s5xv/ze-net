@@ -13,6 +13,7 @@ export default function Search() {
   const [siteResults, setSiteResults] = useState([]);
   const [wikiResults, setWikiResults] = useState([]);
   const [deptResults, setDeptResults] = useState([]);
+  const [threadResults, setThreadResults] = useState([]);
   const [aiSummary, setAiSummary] = useState(null);
   const [aiSources, setAiSources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,9 @@ export default function Search() {
       const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
       if (id === searchId.current) setWikiResults((wikiData || []).filter(p => p.content && p.content.trim()));
 
+      const { data: threadData } = await supabase.from('threads').select('*').or(`title.ilike.%${searchTerm}%,body.ilike.%${searchTerm}%`).order('last_post_date', { ascending: false }).limit(15);
+      if (id === searchId.current) setThreadResults(threadData || []);
+
       let deptData = [];
       try {
         const { data: allDepts } = await supabase.from('departments').select('*').eq('is_active', true).order('display_order', { ascending: true }).limit(50);
@@ -74,7 +78,7 @@ export default function Search() {
       }).slice(0, 5);
       if (id === searchId.current) setPromotedAds(filteredAds);
 
-      const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData];
+      const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData, ...(threadData || [])];
       generateAISummary(allResults);
 
       try {
@@ -256,6 +260,32 @@ export default function Search() {
               </div>
             )}
 
+            {threadResults.length > 0 && (
+              <div>
+                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Forum Threads ({threadResults.length})</h2>
+                <div className="space-y-3">
+                  {threadResults.map((thread) => (
+                    <a key={thread.thread_id} href={thread.url} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all hover:border-green-500/30">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-green-600 dark:text-green-400 truncate">{thread.title}</h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {thread.forum_title} <span className="mx-1">·</span> {thread.category} <span className="mx-1">·</span> by {thread.username}
+                          </p>
+                        </div>
+                        <div className="text-right text-xs text-gray-500 flex-shrink-0 ml-4 whitespace-nowrap">
+                          <p>{thread.reply_count || 0} replies</p>
+                        </div>
+                      </div>
+                      {thread.body && thread.body.length > 10 && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">{thread.body.substring(0, 200)}</p>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {siteResults.length > 0 && (
               <div>
                 <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Sites</h2>
@@ -279,7 +309,7 @@ export default function Search() {
               </div>
             )}
 
-            {siteResults.length === 0 && wikiResults.length === 0 && deptResults.length === 0 && !loading && (
+            {siteResults.length === 0 && wikiResults.length === 0 && deptResults.length === 0 && threadResults.length === 0 && !loading && (
               <div className="text-center py-12 text-gray-500">No results found for "{query}"</div>
             )}
           </div>

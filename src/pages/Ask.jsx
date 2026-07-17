@@ -57,6 +57,10 @@ export default function Ask() {
       if (wikiData) results.push(...wikiData.filter(p => p.content && p.content.trim()));
     } catch (_) {}
     try {
+      const { data: threadData } = await supabase.from('threads').select('*').or(`title.ilike.%${searchTerm}%,body.ilike.%${searchTerm}%`).order('last_post_date', { ascending: false }).limit(15);
+      if (threadData) results.push(...threadData);
+    } catch (_) {}
+    try {
       const deptData = await apiFetch('/api/app?action=get-departments');
       const allDepts = deptData.departments || [];
       if (allDepts.length > 0) {
