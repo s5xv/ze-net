@@ -48,7 +48,7 @@ const isSpam = (text) => {
   return false;
 };
 
-const DISCORD_BOT_URL = 'https://discord.com/api/webhooks/1527804037674569879/v772W_-v4uiw7SurYxaB0-fomKDSPHkRg8sbhlFf7jJoZvFBEp0cNl7bQk9Id5pFm7sb';
+const DISCORD_BOT_URL = 'https://discord.com/api/webhooks/1527818173213315245/Pp77iAVJ-Z-CMhVzqMIvJl3CoHCYIhph9M2lHHKE1lI3qwsmJuE-jKNp8F6yNgdYKBVE';
 const sendDiscordAlert = async (msg) => {
   try { await fetch(DISCORD_BOT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: msg }) }); } catch(e) {}
 };
