@@ -76,8 +76,9 @@ export default function Layout({ children, user }) {
   const fullAvatarUrl = profileAvatar || discordAvatarUrl;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#202124] text-gray-900 dark:text-gray-100 flex flex-col font-sans">
-      <header className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#303134]">
+    <div className="bg-white dark:bg-[#202124] text-gray-900 dark:text-gray-100 font-sans"
+         style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column' }}>
+      <header className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-[#303134] flex-shrink-0">
         <div className="flex items-center gap-3">
           <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <img src="/assets/logo.png" alt="Z&E Net" className="h-12 w-12 sm:h-14 sm:w-14 md:h-16 md:w-16 object-contain" style={{ imageRendering: 'pixelated', filter: 'contrast(1.2) brightness(1.1)' }} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />
@@ -140,8 +141,10 @@ export default function Layout({ children, user }) {
           )}
         </div>
       </header>
-      {children}
-      <footer className="bg-gray-100 dark:bg-[#171717] border-t border-gray-200 dark:border-gray-800 py-3 text-center text-xs text-gray-500 mt-auto">
+      <div className="flex-1 overflow-y-auto flex justify-center">
+        {children}
+      </div>
+      <footer className="bg-gray-100 dark:bg-[#171717] border-t border-gray-200 dark:border-gray-800 py-3 text-center text-xs text-gray-500 mt-auto flex-shrink-0">
         <p>Z&E Net is an independent search directory not affiliated with DemocracyCraft.</p>
         <p className="mt-1">© {new Date().getFullYear()} Z&E Net</p>
       </footer>
