@@ -79,7 +79,11 @@ export default function Home() {
 
   const fetchFeaturedContent = async (id) => {
     try {
-      let { data: featured, error } = await supabase
+      let featured = null;
+      let error = null;
+      let isActuallyFeatured = false;
+
+      const featResult = await supabase
         .from('sites')
         .select('name, slug, view_count, image_url')
         .eq('is_featured', true)
@@ -88,7 +92,10 @@ export default function Home() {
         .limit(1)
         .maybeSingle();
 
-      if (!featured) {
+      if (featResult.data) {
+        featured = featResult.data;
+        isActuallyFeatured = true;
+      } else {
         const result = await supabase
           .from('sites')
           .select('name, slug, view_count, image_url')
@@ -109,7 +116,7 @@ export default function Home() {
         if (featured) {
           setFeaturedContent({
             type: 'site',
-            leftLabel: 'Featured Site',
+            leftLabel: isActuallyFeatured ? 'Featured Site' : 'Top Site',
             highlight: featured.name,
             subtitle: featured.view_count > 0
               ? `Visited ${featured.view_count} times by the community!`
