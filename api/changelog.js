@@ -35,8 +35,8 @@ export default async function handler(req, res) {
   if (error) return res.status(500).json({ error: error.message });
 
   const discordBody = {
-    content: `<@&${ROLE_ID}> **Z&E Net Update — ${date}**\n\n${content.trim()}`,
-    allowed_mentions: { roles: [ROLE_ID] },
+    content: `**Z&E Net Update — ${date}**\n\n${content.trim()}\n\n<@&${ROLE_ID}>`,
+    allowed_mentions: { parse: [], roles: [ROLE_ID] },
   };
 
   try {
