@@ -18,6 +18,8 @@ export default function Search() {
   const [loading, setLoading] = useState(true);
   const [summarizing, setSummarizing] = useState(false);
   const [aiCollapsed, setAiCollapsed] = useState(false);
+  const [sitesCollapsed, setSitesCollapsed] = useState(false);
+  const [wikiCollapsed, setWikiCollapsed] = useState(false);
   const [promotedAds, setPromotedAds] = useState([]);
   const navigate = useNavigate();
   const searchId = useRef(0);
@@ -53,7 +55,7 @@ export default function Search() {
 
       const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
       const filteredWiki = (wikiData || []).filter(p => p.content && p.content.trim());
-      const { data: threadData } = await supabase.from('threads').select('*').or(`title.ilike.%${searchTerm}%,body.ilike.%${searchTerm}%`).order('last_post_date', { ascending: false }).limit(15);
+      const { data: threadData } = await supabase.from('threads').select('*').or(`title.ilike.%${searchTerm}%,body.ilike.%${searchTerm}%,forum_title.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`).order('last_post_date', { ascending: false }).limit(20);
       const mappedThreads = (threadData || []).map(t => ({
         id: `thread-${t.thread_id}`,
         title: t.title,
@@ -257,54 +259,64 @@ export default function Search() {
               </div>
             )}
 
-            {wikiResults.length > 0 && (
+            {siteResults.length > 0 && (
               <div>
-                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Wiki & Forum</h2>
-                <div className="space-y-3">
-                  {wikiResults.map((page) => {
-                    const wikiText = getWikiText(page);
-                    const isThread = page._type === 'thread';
-                    return (
-                      <a key={page.id} href={page.url || '#'} target="_blank" rel="noopener noreferrer" className={`block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all ${isThread ? 'hover:border-green-500/30' : 'hover:border-blue-500/30'}`}>
-                        <div className="flex items-start gap-2">
-                          <h4 className={`font-semibold flex-1 min-w-0 ${isThread ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>{page.title}</h4>
-                          {isThread && <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded font-medium flex-shrink-0 mt-0.5">Forum</span>}
+                <button onClick={() => setSitesCollapsed(!sitesCollapsed)} className="w-full text-left flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Sites ({siteResults.length})</h2>
+                  <svg className={`w-4 h-4 text-gray-500 transition-transform mb-3 ${sitesCollapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+                </button>
+                {!sitesCollapsed && (
+                  <div className="space-y-3">
+                    {siteResults.map((site) => (
+                      <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/site/${site.slug}`); } }} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md cursor-pointer transition-all hover:border-blue-500/30">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                              {site.name} {site.is_verified && <span className="text-blue-500 text-sm ml-1">✓</span>}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{site.description}</p>
+                          </div>
+                          <div className="text-right text-xs text-gray-500 flex-shrink-0 ml-4">
+                            <p>{site.view_count || 0} views</p>
+                          </div>
                         </div>
-                        {isThread && page.forum_title && (
-                          <p className="text-xs text-gray-500 mt-0.5">{page.forum_title} · by {page.username}</p>
-                        )}
-                        {wikiText && wikiText.length > 10 ? (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{wikiText.substring(0, 150)}...</p>
-                        ) : (
-                          <p className="text-sm text-gray-500 italic mt-1">{isThread ? 'Forum thread found (click to view)' : 'Wiki page found (click to view)'}</p>
-                        )}
-                      </a>
-                    );
-                  })}
-                </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {siteResults.length > 0 && (
+            {wikiResults.length > 0 && (
               <div>
-                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Sites</h2>
-                <div className="space-y-3">
-                  {siteResults.map((site) => (
-                    <div key={site.id} onClick={() => navigate(`/site/${site.slug}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/site/${site.slug}`); } }} className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md cursor-pointer transition-all hover:border-blue-500/30">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-                            {site.name} {site.is_verified && <span className="text-blue-500 text-sm ml-1">✓</span>}
-                          </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{site.description}</p>
-                        </div>
-                        <div className="text-right text-xs text-gray-500 flex-shrink-0 ml-4">
-                          <p>{site.view_count || 0} views</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <button onClick={() => setWikiCollapsed(!wikiCollapsed)} className="w-full text-left flex items-center justify-between">
+                  <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Wiki & Forum ({wikiResults.length})</h2>
+                  <svg className={`w-4 h-4 text-gray-500 transition-transform mb-3 ${wikiCollapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+                </button>
+                {!wikiCollapsed && (
+                  <div className="space-y-3">
+                    {wikiResults.map((page) => {
+                      const wikiText = getWikiText(page);
+                      const isThread = page._type === 'thread';
+                      return (
+                        <a key={page.id} href={page.url || '#'} target="_blank" rel="noopener noreferrer" className={`block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all ${isThread ? 'hover:border-green-500/30' : 'hover:border-blue-500/30'}`}>
+                          <div className="flex items-start gap-2">
+                            <h4 className={`font-semibold flex-1 min-w-0 ${isThread ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>{page.title}</h4>
+                            {isThread && <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded font-medium flex-shrink-0 mt-0.5">Forum</span>}
+                          </div>
+                          {isThread && page.forum_title && (
+                            <p className="text-xs text-gray-500 mt-0.5">{page.forum_title} · by {page.username}</p>
+                          )}
+                          {wikiText && wikiText.length > 10 ? (
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{wikiText.substring(0, 150)}...</p>
+                          ) : (
+                            <p className="text-sm text-gray-500 italic mt-1">{isThread ? 'Forum thread found (click to view)' : 'Wiki page found (click to view)'}</p>
+                          )}
+                        </a>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
