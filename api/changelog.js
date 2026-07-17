@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 const WEBHOOK_URL = 'https://discord.com/api/webhooks/1527804037674569879/v772W_-v4uiw7SurYxaB0-fomKDSPHkRg8sbhlFf7jJoZvFBEp0cNl7bQk9Id5pFm7sb';
-const ROLE_ID = '1527803322197741740';
+const ROLE_ID = '1524727719605043232';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });

@@ -49,6 +49,14 @@ export default function Admin() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordOk, setPasswordOk] = useState(hasAdminPassword());
   const [userPermissions, setUserPermissions] = useState(null);
+  const [mergeRequests, setMergeRequests] = useState([]);
+  const [claimDisputes, setClaimDisputes] = useState([]);
+  const [staffNotes, setStaffNotes] = useState([]);
+  const [newNoteSiteSlug, setNewNoteSiteSlug] = useState('');
+  const [newNoteText, setNewNoteText] = useState('');
+  const [sitesForNotes, setSitesForNotes] = useState([]);
+  const [reviewMedia, setReviewMedia] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
 
   const fetchData = async (tab) => {
     setLoading(true);
@@ -133,6 +141,37 @@ export default function Admin() {
         const pm = {};
         (pfRes.data || []).forEach(p => pm[p.id] = p.username);
         setProfilesMap(pm);
+      } else if (tab === 'merge_requests') {
+        const { data } = await supabase
+          .from('merge_requests')
+          .select('*, from_site:sites!from_site_id(name, slug), to_site:sites!to_site_id(name, slug)')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+        setMergeRequests(data || []);
+      } else if (tab === 'claim_disputes') {
+        const { data } = await supabase
+          .from('claim_disputes')
+          .select('*, profiles:user_id(username)')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+        setClaimDisputes(data || []);
+      } else if (tab === 'staff_notes') {
+        const [notesRes, sitesRes] = await Promise.all([
+          supabase.from('staff_notes').select('*, sites(name, slug), admin:admin_id(username)').order('created_at', { ascending: false }),
+          supabase.from('sites').select('slug, name')
+        ]);
+        setStaffNotes(notesRes.data || []);
+        setSitesForNotes(sitesRes.data || []);
+      } else if (tab === 'image_moderation') {
+        const { data } = await supabase
+          .from('review_media')
+          .select('*, reviews!inner(*, sites(name, slug))')
+          .order('created_at', { ascending: false })
+          .limit(100);
+        setReviewMedia(data || []);
+      } else if (tab === 'audit_log') {
+        const { data } = await supabase.from('admin_audit_logs').select('*').order('created_at', { ascending: false }).limit(200);
+        setAuditLogs(data || []);
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -500,6 +539,11 @@ export default function Admin() {
           {hasPerm('manage_staff') && <TabButton id="moderation" label="Moderation" badge={reports.length} />}
           {hasPerm('manage_staff') && <TabButton id="messages" label="Messages" />}
           {hasPerm('manage_ads') && <TabButton id="manage-ads" label="Manage Ads" />}
+          {hasPerm('manage_staff') && <TabButton id="merge_requests" label="Merge Requests" />}
+          {hasPerm('manage_staff') && <TabButton id="claim_disputes" label="Claim Disputes" />}
+          {hasPerm('manage_staff') && <TabButton id="staff_notes" label="Staff Notes" />}
+          {hasPerm('manage_staff') && <TabButton id="image_moderation" label="Image Moderation" />}
+          {hasPerm('manage_staff') && <TabButton id="audit_log" label="Audit Log" />}
         </div>
 
         {loading && <p className="text-center text-gray-400 py-10">Loading...</p>}
@@ -1072,6 +1116,178 @@ export default function Admin() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {!loading && activeTab === 'merge_requests' && (
+          <div className="space-y-3">
+            {mergeRequests.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No pending merge requests</p>
+            ) : mergeRequests.map(mr => (
+              <div key={mr.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <p className="text-white font-bold">Merge Request</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      From: <span className="text-yellow-400">{mr.from_site?.name || mr.from_site_id}</span>
+                      {' → '}
+                      To: <span className="text-blue-400">{mr.to_site?.name || mr.to_site_id}</span>
+                    </p>
+                    {mr.reason && <p className="text-xs text-gray-500 mt-1">Reason: {mr.reason}</p>}
+                    <p className="text-xs text-gray-500 mt-1">{new Date(mr.created_at).toLocaleString()}</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button onClick={async () => {
+                      try {
+                        const relatedTables = ['ads', 'ad_requests', 'site_verification_requests', 'site_reports', 'reviews', 'staff_notes', 'site_media'];
+                        for (const table of relatedTables) {
+                          const { data: records } = await supabase.from(table).select('id').eq('site_id', mr.from_site_id);
+                          if (records && records.length > 0) {
+                            await supabase.from(table).update({ site_id: mr.to_site_id }).eq('site_id', mr.from_site_id);
+                          }
+                        }
+                        await supabase.from('sites').delete().eq('id', mr.from_site_id);
+                        await supabase.from('merge_requests').update({ status: 'merged' }).eq('id', mr.id);
+                        await supabase.from('staff_actions').insert({
+                          staff_id: user.id,
+                          action_type: 'merge_sites',
+                          reference_id: mr.id?.toString(),
+                          description: `Merged "${mr.from_site?.name}" into "${mr.to_site?.name}"`,
+                          amount: 0
+                        });
+                        setMessage('Merge completed');
+                        fetchData(activeTab);
+                      } catch (err) { setMessage('Error: ' + err.message); }
+                    }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve & Merge</button>
+                    <button onClick={async () => {
+                      await supabase.from('merge_requests').update({ status: 'rejected' }).eq('id', mr.id);
+                      fetchData(activeTab);
+                    }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && activeTab === 'claim_disputes' && (
+          <div className="space-y-3">
+            {claimDisputes.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No pending claim disputes</p>
+            ) : claimDisputes.map(cd => (
+              <div key={cd.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <p className="text-white font-bold">Dispute #{cd.id}</p>
+                    <p className="text-sm text-gray-400 mt-1">User: {cd.profiles?.username || cd.user_id}</p>
+                    {cd.description && <p className="text-xs text-gray-500 mt-1">{cd.description}</p>}
+                    <p className="text-xs text-gray-500 mt-1">{new Date(cd.created_at).toLocaleString()}</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button onClick={async () => {
+                      const winner = prompt('Enter the winner user ID or username:');
+                      if (!winner) return;
+                      await supabase.from('claim_disputes').update({ status: 'resolved', winner }).eq('id', cd.id);
+                      fetchData(activeTab);
+                    }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Resolve</button>
+                    <button onClick={async () => {
+                      await supabase.from('claim_disputes').update({ status: 'rejected' }).eq('id', cd.id);
+                      fetchData(activeTab);
+                    }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && activeTab === 'staff_notes' && (
+          <div>
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-4 mb-4">
+              <h3 className="text-white font-bold mb-3">Add Staff Note</h3>
+              <div className="flex flex-col gap-3">
+                <select value={newNoteSiteSlug} onChange={e => setNewNoteSiteSlug(e.target.value)} className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white">
+                  <option value="">Select a site...</option>
+                  {sitesForNotes.map(s => <option key={s.slug} value={s.slug}>{s.name} ({s.slug})</option>)}
+                </select>
+                <textarea value={newNoteText} onChange={e => setNewNoteText(e.target.value)} placeholder="Note text..." className="px-4 py-2 bg-[#202124] border border-gray-700 rounded-lg text-white" rows={3} />
+                <button onClick={async () => {
+                  if (!newNoteSiteSlug || !newNoteText.trim()) return setMessage('Select a site and enter note text');
+                  await supabase.from('staff_notes').insert({ site_slug: newNoteSiteSlug, note: newNoteText.trim(), admin_id: user.id });
+                  setNewNoteSiteSlug('');
+                  setNewNoteText('');
+                  setMessage('Note added');
+                  fetchData(activeTab);
+                }} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm self-start">Add Note</button>
+              </div>
+            </div>
+            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+              {staffNotes.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No staff notes yet</p>
+              ) : staffNotes.map(n => (
+                <div key={n.id} className="bg-[#303134] border border-gray-700 rounded-xl p-3">
+                  <p className="text-white text-sm">{n.note}</p>
+                  <div className="flex gap-3 mt-2 text-xs text-gray-500">
+                    <span>Site: <span className="text-blue-400">{n.sites?.name || n.site_slug}</span></span>
+                    <span>Admin: <span className="text-yellow-400">{n.admin?.username || n.admin_id}</span></span>
+                    <span>{new Date(n.created_at).toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!loading && activeTab === 'image_moderation' && (
+          <div className="space-y-3">
+            {reviewMedia.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No media to review</p>
+            ) : reviewMedia.map(m => (
+              <div key={m.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    {m.url && (
+                      <img src={m.url} alt="Review media" className="max-w-xs max-h-48 rounded border border-gray-700 mb-2" onError={(e) => { e.target.style.display = 'none' }} />
+                    )}
+                    <p className="text-sm text-gray-400">Site: {m.reviews?.sites?.name || 'Unknown'}</p>
+                    {m.reviews?.content && <p className="text-xs text-gray-500 mt-1">Review: {m.reviews.content}</p>}
+                    <p className="text-xs text-gray-500 mt-1">{new Date(m.created_at).toLocaleString()}</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button onClick={async () => {
+                      await supabase.from('review_media').update({ flagged: false, reviewed: true }).eq('id', m.id);
+                      fetchData(activeTab);
+                    }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
+                    <button onClick={async () => {
+                      await supabase.from('review_media').update({ flagged: true, reviewed: true }).eq('id', m.id);
+                      fetchData(activeTab);
+                    }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Flag</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && activeTab === 'audit_log' && (
+          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4">
+            <h3 className="text-white font-bold mb-3">Admin Audit Log</h3>
+            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+              {auditLogs.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No audit log entries</p>
+              ) : auditLogs.map(log => (
+                <div key={log.id} className="bg-[#202124] p-3 rounded border border-gray-700">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{log.action || 'Unknown action'}</p>
+                      {log.details && <p className="text-xs text-gray-400 mt-0.5 truncate">{typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}</p>}
+                    </div>
+                    <p className="text-xs text-gray-500 shrink-0 ml-2">{new Date(log.created_at).toLocaleString()}</p>
+                  </div>
+                  {log.admin_id && <p className="text-xs text-gray-600 mt-1">Admin: {log.admin_id}</p>}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>

@@ -40,6 +40,9 @@ const Settings = lazy(() => import('./pages/Settings'));
 const NotificationsPage = lazy(() => import('./pages/Notifications'));
 const SiteAnalytics = lazy(() => import('./pages/SiteAnalytics'));
 const SubmitSite = lazy(() => import('./pages/SubmitSite'));
+const SiteRequests = lazy(() => import('./pages/SiteRequests'));
+const SiteEmbed = lazy(() => import('./pages/SiteEmbed'));
+const Compare = lazy(() => import('./pages/Compare'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function AuthHandler() {
@@ -78,6 +81,8 @@ function App() {
           <Route path="/ask" element={<Ask user={user} />} />
           <Route path="/site/:slug" element={<Site user={user} />} />
           <Route path="/site/:slug/manage" element={<SiteManage user={user} />} />
+          <Route path="/site/:slug/embed" element={<SiteEmbed />} />
+          <Route path="/requests" element={<SiteRequests user={user} />} />
           <Route path="/profile/:userId" element={<Profile user={user} />} />
           <Route path="/collections" element={<Collections user={user} />} />
           <Route path="/login" element={<Login />} />
@@ -105,6 +110,7 @@ function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/site/:slug/analytics" element={<SiteAnalytics />} />
+          <Route path="/compare" element={<Compare user={user} />} />
           <Route path="/forums/new-thread/:categoryId" element={<CreateThread />} />
           <Route path="/forums/thread/:threadId" element={<ForumPost />} />
           <Route path="*" element={<NotFound />} />

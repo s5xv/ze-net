@@ -79,31 +79,43 @@ export default function Home() {
 
   const fetchFeaturedContent = async (id) => {
     try {
-      const { data: topSite, error } = await supabase
+      let { data: featured, error } = await supabase
         .from('sites')
         .select('name, slug, view_count, image_url')
-        .eq('status', 'approved')
-        .order('view_count', { ascending: false })
+        .eq('is_featured', true)
+        .gt('featured_until', new Date().toISOString())
         .limit(1)
         .maybeSingle();
 
+      if (!featured) {
+        const result = await supabase
+          .from('sites')
+          .select('name, slug, view_count, image_url')
+          .eq('status', 'approved')
+          .order('view_count', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        featured = result.data;
+        error = result.error;
+      }
+
       if (error) {
-        console.error('Top site error:', error);
+        console.error('Featured error:', error);
         return;
       }
 
       if (id === fetchId.current) {
-        if (topSite) {
+        if (featured) {
           setFeaturedContent({
             type: 'site',
-            leftLabel: 'Top Site',
-            highlight: topSite.name,
-            subtitle: topSite.view_count > 0
-              ? `Visited ${topSite.view_count} times by the community!`
+            leftLabel: 'Featured Site',
+            highlight: featured.name,
+            subtitle: featured.view_count > 0
+              ? `Visited ${featured.view_count} times by the community!`
               : "The community's top-rated site!",
             actionText: 'Visit Site',
-            actionLink: `/site/${topSite.slug}`,
-            image_url: topSite.image_url
+            actionLink: `/site/${featured.slug}`,
+            image_url: featured.image_url
           });
         } else {
           setFeaturedContent({

@@ -37,6 +37,26 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
+const BAD_WORDS = ['spam', 'buy now', 'click here', 'free money', 'casino', 'xxx', 'viagra'];
+const isSpam = (text) => {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  if (BAD_WORDS.some(w => lower.includes(w))) return true;
+  const repeated = text.replace(/[^a-zA-Z0-9]/g, '');
+  if (repeated.length > 20 && new Set(repeated).size <= 3) return true;
+  if (lower.split(' ').filter(w => w === w.toUpperCase() && w.length > 3).length > 5) return true;
+  return false;
+};
+
+const DISCORD_BOT_URL = 'https://discord.com/api/webhooks/1527804037674569879/v772W_-v4uiw7SurYxaB0-fomKDSPHkRg8sbhlFf7jJoZvFBEp0cNl7bQk9Id5pFm7sb';
+const sendDiscordAlert = async (msg) => {
+  try { await fetch(DISCORD_BOT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: msg }) }); } catch(e) {}
+};
+
+const logAdminAction = async (adminId, action, targetType, targetId, details) => {
+  try { await supabase.from('admin_audit_logs').insert({ admin_id: adminId, action, target_type: targetType, target_id: String(targetId), details: details ? JSON.parse(JSON.stringify(details)) : null }); } catch(e) {}
+};
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -264,6 +284,7 @@ export default async function handler(req, res) {
         console.error("SITE INSERT ERROR:", error);
         return res.status(500).json({ error: error.message });
       }
+      await sendDiscordAlert(`📝 New site submitted: **${name}** (${category}) by ${owner?.username} — awaiting review`);
       return res.status(200).json({ success: true, message: 'Site submitted for review!' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -310,11 +331,15 @@ export default async function handler(req, res) {
 
   // --- admin-approve-site ---
   if (action === 'admin-approve-site') {
+    const admin = await requireUser(req);
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
       const { error } = await supabase.from('sites').update({ status: 'approved', is_active: true, reviewed_at: new Date().toISOString() }).eq('id', siteId);
       if (error) throw error;
+      const { data: site } = await supabase.from('sites').select('name, slug').eq('id', siteId).maybeSingle();
+      await logAdminAction(admin.id, 'approve-site', 'sites', siteId, { name: site?.name });
+      await sendDiscordAlert(`✅ Site approved: **${site?.name || siteId}** — https://ze-net-beryl.vercel.app/site/${site?.slug || siteId}`);
       return res.status(200).json({ success: true, message: 'Site approved. They still need to pay for verification before appearing in search.' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -323,10 +348,16 @@ export default async function handler(req, res) {
 
   // --- admin-reject-site ---
   if (action === 'admin-reject-site') {
+    const admin = await requireUser(req);
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
       const { error } = await supabase.from('sites').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      if (error) throw error;
+      const { data: site } = await supabase.from('sites').select('name').eq('id', siteId).maybeSingle();
+      await logAdminAction(admin.id, 'reject-site', 'sites', siteId, { name: site?.name });
+      await sendDiscordAlert(`❌ Site rejected: **${site?.name || siteId}**`);
+      return res.status(200).json({ success: true });
       if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site rejected' });
     } catch (err) {
@@ -450,6 +481,11 @@ export default async function handler(req, res) {
       const user = await requireUser(req);
       const { siteId, rating, comment } = req.body;
       if (!siteId) { console.error('submit-review missing siteId', req.body); return res.status(400).json({ error: 'Missing data' }); }
+      if (isSpam(comment)) {
+        const { data: site } = await supabase.from('sites').select('name').eq('id', siteId).maybeSingle();
+        await sendDiscordAlert(`🛑 Spam review detected from ${user.id} on "${site?.name || siteId}": "${comment.slice(0, 100)}"`);
+        return res.status(400).json({ error: 'Review flagged as spam. Please try again.' });
+      }
       const { error } = await supabase.from('site_reviews').upsert({ site_id: siteId, user_id: user.id, rating: rating || 5, comment: comment || '' }, { onConflict: 'user_id,site_id' });
       if (error) { console.error('submit-review upsert error', error); throw error; }
       return res.status(200).json({ success: true });
@@ -463,6 +499,11 @@ export default async function handler(req, res) {
       const user = await requireUser(req);
       const { siteId, comment } = req.body;
       if (!siteId || !comment) { console.error('submit-comment missing data', req.body); return res.status(400).json({ error: 'Missing data' }); }
+      if (isSpam(comment)) {
+        const { data: site } = await supabase.from('sites').select('name').eq('id', siteId).maybeSingle();
+        await sendDiscordAlert(`🛑 Spam comment detected from ${user.id} on "${site?.name || siteId}": "${comment.slice(0, 100)}"`);
+        return res.status(400).json({ error: 'Comment flagged as spam. Please try again.' });
+      }
       const { error } = await supabase.from('site_comments').insert({ site_id: siteId, user_id: user.id, comment });
       if (error) { console.error('submit-comment insert error', error); throw error; }
       return res.status(200).json({ success: true });
