@@ -84,6 +84,7 @@ export default function Home() {
         .select('name, slug, view_count, image_url')
         .eq('is_featured', true)
         .gt('featured_until', new Date().toISOString())
+        .eq('status', 'approved')
         .limit(1)
         .maybeSingle();
 

@@ -43,8 +43,8 @@ const isSpam = (text) => {
   const lower = text.toLowerCase();
   if (BAD_WORDS.some(w => lower.includes(w))) return true;
   const repeated = text.replace(/[^a-zA-Z0-9]/g, '');
-  if (repeated.length > 20 && new Set(repeated).size <= 3) return true;
-  if (lower.split(' ').filter(w => w === w.toUpperCase() && w.length > 3).length > 5) return true;
+  if (repeated.length > 20 && new Set([...repeated.toLowerCase()]).size <= 3) return true;
+  if (text.split(' ').filter(w => w.length > 3 && w === w.toUpperCase()).length > 5) return true;
   return false;
 };
 
