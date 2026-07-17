@@ -49,7 +49,6 @@ export default function Admin() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordOk, setPasswordOk] = useState(hasAdminPassword());
   const [userPermissions, setUserPermissions] = useState(null);
-  const [mergeRequests, setMergeRequests] = useState([]);
   const [claimDisputes, setClaimDisputes] = useState([]);
   const [staffNotes, setStaffNotes] = useState([]);
   const [newNoteSiteSlug, setNewNoteSiteSlug] = useState('');
@@ -57,6 +56,12 @@ export default function Admin() {
   const [sitesForNotes, setSitesForNotes] = useState([]);
   const [reviewMedia, setReviewMedia] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [allSitesList, setAllSitesList] = useState([]);
+  const [featuredSiteId, setFeaturedSiteId] = useState('');
+  const [featuredUntil, setFeaturedUntil] = useState('');
+  const [notifUserId, setNotifUserId] = useState('');
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifBody, setNotifBody] = useState('');
 
   const fetchData = async (tab) => {
     setLoading(true);
@@ -141,13 +146,6 @@ export default function Admin() {
         const pm = {};
         (pfRes.data || []).forEach(p => pm[p.id] = p.username);
         setProfilesMap(pm);
-      } else if (tab === 'merge_requests') {
-        const { data } = await supabase
-          .from('merge_requests')
-          .select('*, from_site:sites!from_site_id(name, slug), to_site:sites!to_site_id(name, slug)')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false });
-        setMergeRequests(data || []);
       } else if (tab === 'claim_disputes') {
         const { data } = await supabase
           .from('claim_disputes')
@@ -171,7 +169,9 @@ export default function Admin() {
         setReviewMedia(data || []);
       } else if (tab === 'audit_log') {
         const { data } = await supabase.from('admin_audit_logs').select('*').order('created_at', { ascending: false }).limit(200);
-        setAuditLogs(data || []);
+      } else if (tab === 'features') {
+        const { data } = await supabase.from('sites').select('id, name, slug, is_featured, featured_until').order('name');
+        setAllSitesList(data || []);
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -539,11 +539,11 @@ export default function Admin() {
           {hasPerm('manage_staff') && <TabButton id="moderation" label="Moderation" badge={reports.length} />}
           {hasPerm('manage_staff') && <TabButton id="messages" label="Messages" />}
           {hasPerm('manage_ads') && <TabButton id="manage-ads" label="Manage Ads" />}
-          {hasPerm('manage_staff') && <TabButton id="merge_requests" label="Merge Requests" />}
           {hasPerm('manage_staff') && <TabButton id="claim_disputes" label="Claim Disputes" />}
           {hasPerm('manage_staff') && <TabButton id="staff_notes" label="Staff Notes" />}
           {hasPerm('manage_staff') && <TabButton id="image_moderation" label="Image Moderation" />}
           {hasPerm('manage_staff') && <TabButton id="audit_log" label="Audit Log" />}
+          {hasPerm('manage_staff') && <TabButton id="features" label="Features" />}
         </div>
 
         {loading && <p className="text-center text-gray-400 py-10">Loading...</p>}
@@ -1119,57 +1119,6 @@ export default function Admin() {
           </div>
         )}
 
-        {!loading && activeTab === 'merge_requests' && (
-          <div className="space-y-3">
-            {mergeRequests.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No pending merge requests</p>
-            ) : mergeRequests.map(mr => (
-              <div key={mr.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1">
-                    <p className="text-white font-bold">Merge Request</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      From: <span className="text-yellow-400">{mr.from_site?.name || mr.from_site_id}</span>
-                      {' → '}
-                      To: <span className="text-blue-400">{mr.to_site?.name || mr.to_site_id}</span>
-                    </p>
-                    {mr.reason && <p className="text-xs text-gray-500 mt-1">Reason: {mr.reason}</p>}
-                    <p className="text-xs text-gray-500 mt-1">{new Date(mr.created_at).toLocaleString()}</p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <button onClick={async () => {
-                      try {
-                        const relatedTables = ['ads', 'ad_requests', 'site_verification_requests', 'site_reports', 'reviews', 'staff_notes', 'site_media'];
-                        for (const table of relatedTables) {
-                          const { data: records } = await supabase.from(table).select('id').eq('site_id', mr.from_site_id);
-                          if (records && records.length > 0) {
-                            await supabase.from(table).update({ site_id: mr.to_site_id }).eq('site_id', mr.from_site_id);
-                          }
-                        }
-                        await supabase.from('sites').delete().eq('id', mr.from_site_id);
-                        await supabase.from('merge_requests').update({ status: 'merged' }).eq('id', mr.id);
-                        await supabase.from('staff_actions').insert({
-                          staff_id: user.id,
-                          action_type: 'merge_sites',
-                          reference_id: mr.id?.toString(),
-                          description: `Merged "${mr.from_site?.name}" into "${mr.to_site?.name}"`,
-                          amount: 0
-                        });
-                        setMessage('Merge completed');
-                        fetchData(activeTab);
-                      } catch (err) { setMessage('Error: ' + err.message); }
-                    }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve & Merge</button>
-                    <button onClick={async () => {
-                      await supabase.from('merge_requests').update({ status: 'rejected' }).eq('id', mr.id);
-                      fetchData(activeTab);
-                    }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {!loading && activeTab === 'claim_disputes' && (
           <div className="space-y-3">
             {claimDisputes.length === 0 ? (
@@ -1270,14 +1219,14 @@ export default function Admin() {
         )}
 
         {!loading && activeTab === 'audit_log' && (
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4">
-            <h3 className="text-white font-bold mb-3">Admin Audit Log</h3>
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+          <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+            <h2 className="text-lg font-bold text-white mb-4">Admin Audit Log</h2>
+            <div className="max-h-[600px] overflow-y-auto space-y-2">
               {auditLogs.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">No audit log entries</p>
+                <p className="text-gray-500 text-sm">No audit logs yet</p>
               ) : auditLogs.map(log => (
-                <div key={log.id} className="bg-[#202124] p-3 rounded border border-gray-700">
-                  <div className="flex justify-between items-start">
+                <div key={log.id} className="bg-[#202124] p-3 rounded-lg">
+                  <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-medium truncate">{log.action || 'Unknown action'}</p>
                       {log.details && <p className="text-xs text-gray-400 mt-0.5 truncate">{typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}</p>}
@@ -1287,6 +1236,65 @@ export default function Admin() {
                   {log.admin_id && <p className="text-xs text-gray-600 mt-1">Admin: {log.admin_id}</p>}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {!loading && activeTab === 'features' && (
+          <div className="space-y-6">
+            {/* Featured Sites */}
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-white mb-4">Featured Sites</h2>
+              <div className="space-y-2 mb-4">
+                {allSitesList.map(s => (
+                  <div key={s.id} className="flex items-center justify-between bg-[#202124] p-3 rounded-lg">
+                    <div>
+                      <p className="text-white text-sm font-medium">{s.name}</p>
+                      <p className="text-xs text-gray-500">{s.slug}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {s.is_featured && s.featured_until && new Date(s.featured_until) > new Date() && (
+                        <span className="text-xs text-green-400">Active until {new Date(s.featured_until).toLocaleDateString()}</span>
+                      )}
+                      <button onClick={async () => {
+                        const until = prompt('Featured until date (YYYY-MM-DD):');
+                        if (!until) return;
+                        await supabase.from('sites').update({ is_featured: true, featured_until: new Date(until).toISOString() }).eq('id', s.id);
+                        fetchData('features');
+                      }} className="px-3 py-1 bg-blue-600 text-white text-xs rounded">Feature</button>
+                      {s.is_featured && (
+                        <button onClick={async () => {
+                          await supabase.from('sites').update({ is_featured: false, featured_until: null }).eq('id', s.id);
+                          fetchData('features');
+                        }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Remove</button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Send Notification */}
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-white mb-4">Send Notification</h2>
+              <div className="space-y-3">
+                <input type="text" placeholder="User ID" value={notifUserId} onChange={e => setNotifUserId(e.target.value)} className="w-full px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white text-sm" />
+                <input type="text" placeholder="Title" value={notifTitle} onChange={e => setNotifTitle(e.target.value)} className="w-full px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white text-sm" />
+                <textarea placeholder="Body" value={notifBody} onChange={e => setNotifBody(e.target.value)} className="w-full px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white text-sm" rows="2" />
+                <button onClick={async () => {
+                  if (!notifUserId || !notifTitle) return;
+                  await supabase.from('notifications').insert({ user_id: notifUserId, type: 'admin', title: notifTitle, body: notifBody });
+                  alert('Notification sent!');
+                  setNotifUserId(''); setNotifTitle(''); setNotifBody('');
+                }} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">Send Notification</button>
+              </div>
+            </div>
+
+            {/* Spam Test */}
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-white mb-4">Spam Detection Test</h2>
+              <p className="text-gray-400 text-sm mb-3">Try posting a review or comment with spammy content (all caps, repeated chars, bad words) on any site. It should be rejected with a spam alert and logged to Discord.</p>
+              <a href="/site" className="text-blue-400 text-sm underline">Go to a site to test →</a>
             </div>
           </div>
         )}

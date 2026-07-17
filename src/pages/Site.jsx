@@ -46,8 +46,7 @@ export default function Site() {
   const [reviewSort, setReviewSort] = useState('newest');
   const [reviewFilter, setReviewFilter] = useState(0);
   const [reviewVotes, setReviewVotes] = useState({});
-  const [showMergeModal, setShowMergeModal] = useState(false);
-  const [mergeTarget, setMergeTarget] = useState('');
+
 
   useEffect(() => { fetchSite(); }, [slug, user]);
   usePolling(async () => {
@@ -188,24 +187,21 @@ export default function Site() {
   const handleReviewVote = async (reviewId, voteType) => {
     if (!user) return;
     const existing = reviewVotes[reviewId];
+    const inc = voteType === 'up' ? 'upvotes' : 'downvotes';
     if (existing === voteType) {
       await supabase.from('review_votes').delete().eq('review_id', reviewId).eq('user_id', user.id);
+      await supabase.rpc('decrement_review_vote', { row_id: reviewId, col: inc });
       setReviewVotes(prev => { const n = {...prev}; delete n[reviewId]; return n; });
     } else {
-      if (existing) await supabase.from('review_votes').delete().eq('review_id', reviewId).eq('user_id', user.id);
+      if (existing) {
+        const oldInc = existing === 'up' ? 'upvotes' : 'downvotes';
+        await supabase.rpc('decrement_review_vote', { row_id: reviewId, col: oldInc });
+      }
       await supabase.from('review_votes').insert({ review_id: reviewId, user_id: user.id, vote_type: voteType });
+      await supabase.rpc('increment_review_vote', { row_id: reviewId, col: inc });
       setReviewVotes(prev => ({...prev, [reviewId]: voteType }));
     }
-  };
-
-  const handleMergeRequest = async () => {
-    if (!mergeTarget.trim()) return;
-    const { data: target } = await supabase.from('sites').select('id').eq('slug', mergeTarget.trim()).maybeSingle();
-    if (!target || target.id === site.id) { alert('Site not found or same site'); return; }
-    await supabase.from('merge_requests').insert({ from_site_id: site.id, to_site_id: target.id, created_by: user.id });
-    alert('Merge request submitted for admin review');
-    setShowMergeModal(false);
-    setMergeTarget('');
+    fetchSite();
   };
 
   let displayedReviews = [...reviews];
@@ -287,6 +283,8 @@ export default function Site() {
                 <a href={site.url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold">Visit Site</a>
               )}
               <button onClick={() => setShowQR(true)} className="px-4 py-3 bg-gray-700 text-white rounded-lg font-bold text-sm">QR</button>
+              <a href={`/compare?ids=${slug}`} target="_blank" rel="noopener noreferrer" className="px-4 py-3 bg-cyan-700 text-white rounded-lg font-bold text-sm">Compare</a>
+              <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/site/${slug}/embed`); alert('Embed URL copied!'); }} className="px-4 py-3 bg-gray-700 text-white rounded-lg font-bold text-sm">Embed</button>
               {user && site.user_id && user.id !== site.user_id && (
                 <button onClick={() => setShowTipModal(true)} className="px-6 py-3 bg-green-600 text-white rounded-lg font-bold">Tip Owner</button>
               )}
@@ -295,9 +293,6 @@ export default function Site() {
                   <a href={`/site/${slug}/manage`} className="px-4 py-3 bg-yellow-600 text-white rounded-lg font-bold text-sm">Manage</a>
                   <a href={`/site/${slug}/analytics`} className="px-4 py-3 bg-purple-600 text-white rounded-lg font-bold text-sm">Analytics</a>
                 </>
-              )}
-              {user && user.id !== site.user_id && (
-                <button onClick={() => setShowMergeModal(true)} className="px-4 py-3 bg-pink-700 text-white rounded-lg font-bold text-sm">Suggest Merge</button>
               )}
               <button onClick={() => setShowReportModal(true)} className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold">Report</button>
             </div>
@@ -581,21 +576,6 @@ export default function Site() {
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(window.location.href)}`} alt="QR Code" className="mx-auto" />
               <p className="text-gray-400 text-sm text-center mt-2">Scan to visit this site</p>
               <button onClick={() => setShowQR(false)} className="w-full mt-4 px-4 py-2 bg-gray-700 text-white rounded">Close</button>
-            </div>
-          </div>
-        )}
-
-        {/* Merge Modal */}
-        {showMergeModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowMergeModal(false)}>
-            <div className="bg-[#303134] border border-gray-700 rounded-xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
-              <h3 className="text-xl font-bold text-white mb-4">Suggest Merge</h3>
-              <p className="text-gray-400 text-sm mb-4">Enter the slug of the site you believe is a duplicate:</p>
-              <input type="text" value={mergeTarget} onChange={e => setMergeTarget(e.target.value)} placeholder="site-slug" className="w-full px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white mb-4" />
-              <div className="flex gap-2">
-                <button onClick={handleMergeRequest} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded">Submit Request</button>
-                <button onClick={() => setShowMergeModal(false)} className="flex-1 px-4 py-2 bg-gray-700 text-white rounded">Cancel</button>
-              </div>
             </div>
           </div>
         )}
