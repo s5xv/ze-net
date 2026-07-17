@@ -322,8 +322,8 @@ const fetchAds = async (id) => {
                   )}
                 </div>
               </div>
-          </div>
-
+            </div>
+        </div>
 
         <div className="hidden xl:block fixed top-20 left-4 xl:left-8 w-64 space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 7rem)' }}>
           {ads.map(ad => {
