@@ -21,6 +21,8 @@ export default function Home() {
   const [trendingSites, setTrendingSites] = useState([]);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const suggestionsRef = useRef(null);
+  const leftSidebarRef = useRef(null);
+  const rightSidebarRef = useRef(null);
   const fetchId = useRef(0);
 
   useEffect(() => {
@@ -28,6 +30,16 @@ export default function Home() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    [leftSidebarRef, rightSidebarRef].forEach(ref => {
+      if (ref.current) {
+        ref.current.style.setProperty('position', 'fixed', 'important');
+        ref.current.style.setProperty('top', '80px', 'important');
+        ref.current.style.setProperty('z-index', '50', 'important');
+      }
+    });
+  }, [ads, bookmarks, windowWidth]);
 
   useEffect(() => {
     const id = ++fetchId.current;
@@ -341,7 +353,7 @@ const fetchAds = async (id) => {
         </div>
       </main>
 
-      {windowWidth >= 1280 && <div className="home-sidebar" style={{ left: 'max(calc(50vw - 700px), 16px)', width: '260px', maxHeight: 'calc(100vh - 96px)' }}>
+      {windowWidth >= 1280 && <div className="home-sidebar" ref={leftSidebarRef} style={{ left: 0, width: '260px', maxHeight: 'calc(100vh - 96px)' }}>
         {ads.map(ad => {
           const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
           const tierStyle = tierMap[ad.tier] || 'bronze';
@@ -366,7 +378,7 @@ const fetchAds = async (id) => {
         })}
       </div>}
 
-      {windowWidth >= 1024 && <div className="home-sidebar" style={{ right: 'max(calc(50vw - 700px), 16px)', width: '260px', maxHeight: 'calc(100vh - 96px)' }}>
+      {windowWidth >= 1024 && <div className="home-sidebar" ref={rightSidebarRef} style={{ right: 0, width: '260px', maxHeight: 'calc(100vh - 96px)' }}>
         {user && bookmarks.length > 0 && (
           <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm mb-4">
             <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
