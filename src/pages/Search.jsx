@@ -13,11 +13,11 @@ export default function Search() {
   const [siteResults, setSiteResults] = useState([]);
   const [wikiResults, setWikiResults] = useState([]);
   const [deptResults, setDeptResults] = useState([]);
-  const [threadResults, setThreadResults] = useState([]);
   const [aiSummary, setAiSummary] = useState(null);
   const [aiSources, setAiSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [summarizing, setSummarizing] = useState(false);
+  const [aiCollapsed, setAiCollapsed] = useState(false);
   const [promotedAds, setPromotedAds] = useState([]);
   const navigate = useNavigate();
   const searchId = useRef(0);
@@ -42,6 +42,7 @@ export default function Search() {
     setLoading(true);
     setAiSummary(null);
     setAiSources([]);
+    setAiCollapsed(false);
     try {
       const rawQuery = query.toLowerCase().trim();
       const searchTerm = extractSearchTerms(rawQuery);
@@ -51,10 +52,20 @@ export default function Search() {
       if (id === searchId.current) setSiteResults(sitesData || []);
 
       const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
-      if (id === searchId.current) setWikiResults((wikiData || []).filter(p => p.content && p.content.trim()));
-
+      const filteredWiki = (wikiData || []).filter(p => p.content && p.content.trim());
       const { data: threadData } = await supabase.from('threads').select('*').or(`title.ilike.%${searchTerm}%,body.ilike.%${searchTerm}%`).order('last_post_date', { ascending: false }).limit(15);
-      if (id === searchId.current) setThreadResults(threadData || []);
+      const mappedThreads = (threadData || []).map(t => ({
+        id: `thread-${t.thread_id}`,
+        title: t.title,
+        url: t.url,
+        content: t.body || '',
+        body: t.body,
+        _type: 'thread',
+        forum_title: t.forum_title,
+        username: t.username,
+      }));
+      const merged = [...filteredWiki, ...mappedThreads];
+      if (id === searchId.current) setWikiResults(merged);
 
       let deptData = [];
       try {
@@ -78,7 +89,7 @@ export default function Search() {
       }).slice(0, 5);
       if (id === searchId.current) setPromotedAds(filteredAds);
 
-      const allResults = [...(sitesData || []), ...(wikiData || []), ...deptData, ...(threadData || [])];
+      const allResults = [...(sitesData || []), ...merged, ...deptData];
       generateAISummary(allResults);
 
       try {
@@ -169,37 +180,44 @@ export default function Search() {
 
             {aiSummary && (
               <div className="bg-white dark:bg-[#202124] border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden">
-                <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 border-b border-gray-100 dark:border-gray-800">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md">
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
-                  </div>
-                  <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-lg">AI Overview</h3>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Beta</span>
-                </div>
-                
-                <div className="p-6">
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[15px] whitespace-pre-wrap">
-                    {renderMarkdownBold(aiSummary)}
-                  </p>
-                </div>
-                
-                {aiSources.length > 0 && (
-                  <div className="px-6 pb-4">
-                    <div className="flex flex-wrap gap-2">
-                      {aiSources.slice(0, 4).map((source, i) => (
-                        <span key={i} className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-400">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                          {source}
-                        </span>
-                      ))}
+                <button onClick={() => setAiCollapsed(!aiCollapsed)} className="w-full text-left">
+                  <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 border-b border-gray-100 dark:border-gray-800">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md flex-shrink-0">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z"/></svg>
                     </div>
+                    <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-lg">AI Overview</h3>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">Beta</span>
+                    <svg className={`w-5 h-5 text-gray-500 transition-transform ${aiCollapsed ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
                   </div>
-                )}
+                </button>
                 
-                <div className="px-6 py-3 bg-gray-50 dark:bg-[#171717] border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Powered by Mistral AI</span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 italic">Based on Z&E Net data</span>
-                </div>
+                {!aiCollapsed && (
+                  <>
+                    <div className="p-6">
+                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[15px] whitespace-pre-wrap">
+                        {renderMarkdownBold(aiSummary)}
+                      </p>
+                    </div>
+                    
+                    {aiSources.length > 0 && (
+                      <div className="px-6 pb-4">
+                        <div className="flex flex-wrap gap-2">
+                          {aiSources.slice(0, 4).map((source, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                              {source}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="px-6 py-3 bg-gray-50 dark:bg-[#171717] border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Powered by Mistral AI</span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500 italic">Based on Z&E Net data</span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -241,47 +259,28 @@ export default function Search() {
 
             {wikiResults.length > 0 && (
               <div>
-                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Wiki Pages</h2>
+                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Wiki & Forum</h2>
                 <div className="space-y-3">
                   {wikiResults.map((page) => {
                     const wikiText = getWikiText(page);
+                    const isThread = page._type === 'thread';
                     return (
-                      <a key={page.id} href={page.url || '#'} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all hover:border-blue-500/30">
-                        <h4 className="font-semibold text-blue-600 dark:text-blue-400">{page.title}</h4>
+                      <a key={page.id} href={page.url || '#'} target="_blank" rel="noopener noreferrer" className={`block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all ${isThread ? 'hover:border-green-500/30' : 'hover:border-blue-500/30'}`}>
+                        <div className="flex items-start gap-2">
+                          <h4 className={`font-semibold flex-1 min-w-0 ${isThread ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400'}`}>{page.title}</h4>
+                          {isThread && <span className="text-[10px] px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded font-medium flex-shrink-0 mt-0.5">Forum</span>}
+                        </div>
+                        {isThread && page.forum_title && (
+                          <p className="text-xs text-gray-500 mt-0.5">{page.forum_title} · by {page.username}</p>
+                        )}
                         {wikiText && wikiText.length > 10 ? (
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{wikiText.substring(0, 150)}...</p>
                         ) : (
-                          <p className="text-sm text-gray-500 italic mt-1">Wiki page found (click to view)</p>
+                          <p className="text-sm text-gray-500 italic mt-1">{isThread ? 'Forum thread found (click to view)' : 'Wiki page found (click to view)'}</p>
                         )}
                       </a>
                     );
                   })}
-                </div>
-              </div>
-            )}
-
-            {threadResults.length > 0 && (
-              <div>
-                <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Forum Threads ({threadResults.length})</h2>
-                <div className="space-y-3">
-                  {threadResults.map((thread) => (
-                    <a key={thread.thread_id} href={thread.url} target="_blank" rel="noopener noreferrer" className="block bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition-all hover:border-green-500/30">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-green-600 dark:text-green-400 truncate">{thread.title}</h3>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            {thread.forum_title} <span className="mx-1">·</span> {thread.category} <span className="mx-1">·</span> by {thread.username}
-                          </p>
-                        </div>
-                        <div className="text-right text-xs text-gray-500 flex-shrink-0 ml-4 whitespace-nowrap">
-                          <p>{thread.reply_count || 0} replies</p>
-                        </div>
-                      </div>
-                      {thread.body && thread.body.length > 10 && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 line-clamp-2">{thread.body.substring(0, 200)}</p>
-                      )}
-                    </a>
-                  ))}
                 </div>
               </div>
             )}
@@ -309,7 +308,7 @@ export default function Search() {
               </div>
             )}
 
-            {siteResults.length === 0 && wikiResults.length === 0 && deptResults.length === 0 && threadResults.length === 0 && !loading && (
+            {siteResults.length === 0 && wikiResults.length === 0 && deptResults.length === 0 && !loading && (
               <div className="text-center py-12 text-gray-500">No results found for "{query}"</div>
             )}
           </div>
