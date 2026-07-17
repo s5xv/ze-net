@@ -57,9 +57,11 @@ export default function Home() {
     const fetchSuggestions = async () => {
       const { data: siteData } = await supabase.from('sites').select('name, slug, shortcuts').eq('status', 'approved').or(`name.ilike.%${q}%,shortcuts.ilike.%${q}%`).limit(5);
       const { data: wikiData } = await supabase.from('wiki_pages').select('title').ilike('title', `%${q}%`).limit(3);
+      const { data: threadData } = await supabase.from('threads').select('title, url').ilike('title', `%${q}%`).order('last_post_date', { ascending: false }).limit(3);
       const combined = [
         ...(siteData || []).map(s => ({ type: 'site', text: s.name, slug: s.slug })),
-        ...(wikiData || []).map(w => ({ type: 'wiki', text: w.title }))
+        ...(wikiData || []).map(w => ({ type: 'wiki', text: w.title })),
+        ...(threadData || []).map(t => ({ type: 'thread', text: t.title, url: t.url }))
       ].sort((a, b) => a.text.localeCompare(b.text)).slice(0, 8);
       setSuggestions(combined);
       setShowSuggestions(combined.length > 0);
@@ -158,6 +160,8 @@ const fetchAds = async (id) => {
   const handleSuggestionClick = (suggestion) => {
     if (suggestion.type === 'site') {
       navigate(`/site/${suggestion.slug}`);
+    } else if (suggestion.type === 'thread') {
+      window.open(suggestion.url, '_blank');
     } else {
       navigate(`/search?q=${encodeURIComponent(suggestion.text)}`);
     }
