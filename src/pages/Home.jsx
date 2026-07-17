@@ -198,6 +198,14 @@ const fetchAds = async (id) => {
 
   return (
     <Layout user={user}>
+      <style>{`
+        .home-sidebar {
+          position: fixed !important;
+          top: 80px !important;
+          z-index: 50 !important;
+          overflow-y: auto !important;
+        }
+      `}</style>
       <main className="flex-grow px-4 py-8 sm:py-12 min-h-screen">
         <div className="max-w-3xl mx-auto space-y-8">
             <div className="text-center mb-6">
@@ -333,7 +341,7 @@ const fetchAds = async (id) => {
         </div>
       </main>
 
-      {windowWidth >= 1280 && <div style={{ position: 'fixed', top: '80px', left: 'max(calc(50vw - 700px), 16px)', width: '260px', maxHeight: 'calc(100vh - 96px)', overflowY: 'auto', zIndex: 50 }}>
+      {windowWidth >= 1280 && <div className="home-sidebar" style={{ left: 'max(calc(50vw - 700px), 16px)', width: '260px', maxHeight: 'calc(100vh - 96px)' }}>
         {ads.map(ad => {
           const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
           const tierStyle = tierMap[ad.tier] || 'bronze';
@@ -358,7 +366,7 @@ const fetchAds = async (id) => {
         })}
       </div>}
 
-      {windowWidth >= 1024 && <div style={{ position: 'fixed', top: '80px', right: 'max(calc(50vw - 700px), 16px)', width: '260px', maxHeight: 'calc(100vh - 96px)', overflowY: 'auto', zIndex: 50 }}>
+      {windowWidth >= 1024 && <div className="home-sidebar" style={{ right: 'max(calc(50vw - 700px), 16px)', width: '260px', maxHeight: 'calc(100vh - 96px)' }}>
         {user && bookmarks.length > 0 && (
           <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm mb-4">
             <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
