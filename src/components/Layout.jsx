@@ -117,6 +117,7 @@ export default function Layout({ children, user }) {
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                 {isStaff && <a href="/wiki" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Wiki</a>}
                 <a href="/contact" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Contact Us</a>
+                <a href="/changelog" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Changelog</a>
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                 {user && (
                   <button onClick={async () => { await supabase.auth.signOut(); Object.keys(localStorage).filter(k => k.startsWith('sb-')).forEach(k => localStorage.removeItem(k)); window.location.href = '/'; }} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Sign Out</button>
