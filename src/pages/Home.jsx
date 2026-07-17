@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
@@ -21,8 +22,6 @@ export default function Home() {
   const [trendingSites, setTrendingSites] = useState([]);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const suggestionsRef = useRef(null);
-  const leftSidebarRef = useRef(null);
-  const rightSidebarRef = useRef(null);
   const fetchId = useRef(0);
 
   useEffect(() => {
@@ -30,16 +29,6 @@ export default function Home() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  useEffect(() => {
-    [leftSidebarRef, rightSidebarRef].forEach(ref => {
-      if (ref.current) {
-        ref.current.style.setProperty('position', 'fixed', 'important');
-        ref.current.style.setProperty('top', '80px', 'important');
-        ref.current.style.setProperty('z-index', '50', 'important');
-      }
-    });
-  }, [ads, bookmarks, windowWidth]);
 
   useEffect(() => {
     const id = ++fetchId.current;
@@ -210,14 +199,6 @@ const fetchAds = async (id) => {
 
   return (
     <Layout user={user}>
-      <style>{`
-        .home-sidebar {
-          position: fixed !important;
-          top: 80px !important;
-          z-index: 50 !important;
-          overflow-y: auto !important;
-        }
-      `}</style>
       <main className="flex-grow px-4 py-8 sm:py-12 min-h-screen">
         <div className="max-w-3xl mx-auto space-y-8">
             <div className="text-center mb-6">
@@ -353,8 +334,9 @@ const fetchAds = async (id) => {
         </div>
       </main>
 
-      {windowWidth >= 1280 && <div className="home-sidebar" ref={leftSidebarRef} style={{ left: 0, width: '260px', maxHeight: 'calc(100vh - 96px)' }}>
-        {ads.map(ad => {
+      {windowWidth >= 1280 && createPortal(
+        <div style={{ position: 'fixed', top: '80px', left: 0, width: '260px', maxHeight: 'calc(100vh - 96px)', overflowY: 'auto', zIndex: 50 }}>
+          {ads.map(ad => {
           const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
           const tierStyle = tierMap[ad.tier] || 'bronze';
           return (
@@ -376,9 +358,12 @@ const fetchAds = async (id) => {
           </a>
         );
         })}
-      </div>}
+        </div>,
+        document.body
+      )}
 
-      {windowWidth >= 1024 && <div className="home-sidebar" ref={rightSidebarRef} style={{ right: 0, width: '260px', maxHeight: 'calc(100vh - 96px)' }}>
+      {windowWidth >= 1024 && createPortal(
+        <div style={{ position: 'fixed', top: '80px', right: 0, width: '260px', maxHeight: 'calc(100vh - 96px)', overflowY: 'auto', zIndex: 50 }}>
         {user && bookmarks.length > 0 && (
           <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm mb-4">
             <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
@@ -425,7 +410,9 @@ const fetchAds = async (id) => {
             </div>
           </div>
         )}
-      </div>}
+      </div>,
+      document.body
+      )}
     </Layout>
   );
 }
