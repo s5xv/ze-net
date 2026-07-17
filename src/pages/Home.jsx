@@ -19,8 +19,15 @@ export default function Home() {
   const [bookmarks, setBookmarks] = useState([]);
   const [newSites, setNewSites] = useState([]);
   const [trendingSites, setTrendingSites] = useState([]);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const suggestionsRef = useRef(null);
   const fetchId = useRef(0);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const id = ++fetchId.current;
@@ -326,7 +333,7 @@ const fetchAds = async (id) => {
         </div>
       </main>
 
-      <div className="hidden xl:block" style={{ position: 'fixed', top: '80px', left: 'max(calc(50vw - 680px), 8px)', width: '260px', maxHeight: 'calc(100vh - 96px)', overflowY: 'auto', zIndex: 40 }}>
+      {windowWidth >= 1280 && <div style={{ position: 'fixed', top: '80px', left: 'max(calc(50vw - 700px), 16px)', width: '260px', maxHeight: 'calc(100vh - 96px)', overflowY: 'auto', zIndex: 50 }}>
         {ads.map(ad => {
           const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
           const tierStyle = tierMap[ad.tier] || 'bronze';
@@ -349,9 +356,9 @@ const fetchAds = async (id) => {
           </a>
         );
         })}
-      </div>
+      </div>}
 
-      <div className="hidden lg:block" style={{ position: 'fixed', top: '80px', right: 'max(calc(50vw - 680px), 8px)', width: '260px', maxHeight: 'calc(100vh - 96px)', overflowY: 'auto', zIndex: 40 }}>
+      {windowWidth >= 1024 && <div style={{ position: 'fixed', top: '80px', right: 'max(calc(50vw - 700px), 16px)', width: '260px', maxHeight: 'calc(100vh - 96px)', overflowY: 'auto', zIndex: 50 }}>
         {user && bookmarks.length > 0 && (
           <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm mb-4">
             <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
@@ -398,7 +405,7 @@ const fetchAds = async (id) => {
             </div>
           </div>
         )}
-      </div>
+      </div>}
     </Layout>
   );
 }
