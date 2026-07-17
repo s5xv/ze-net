@@ -323,58 +323,7 @@ const fetchAds = async (id) => {
                 </div>
               </div>
           </div>
-        </div>
 
-        <div className="hidden lg:block w-72 space-y-4 flex-shrink-0 self-start sticky top-8">
-          {user && bookmarks.length > 0 && (
-            <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
-              <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
-                <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
-                </svg>
-                Bookmarks
-              </h3>
-              <div className="space-y-2">
-                {bookmarks.slice(0, 5).map((bm) => (
-                  <a key={bm.id} href={`/site/${bm.sites?.slug}`} className="block p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors">
-                    <h4 className="font-semibold text-xs text-blue-600 dark:text-blue-400 truncate">{bm.sites?.name}</h4>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {ads.filter(ad => ad.tier === 'elite').slice(0, 1).map(ad => (
-            <a key={`elite-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="block bg-gradient-to-r from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border border-yellow-500/50 rounded-xl p-3 hover:shadow-lg transition-all group">
-              <div className="flex items-center gap-2">
-                {ad.image_url && <img src={fixImgUrl(ad.image_url)} alt="" className="w-10 h-10 rounded-lg object-cover border border-yellow-500/30" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
-                <div className="flex-1 min-w-0">
-                  <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-wider">👑 Elite Sponsor</span>
-                  <h4 className="font-semibold text-sm group-hover:underline truncate text-yellow-600 dark:text-yellow-400">{ad.title}</h4>
-                </div>
-              </div>
-            </a>
-          ))}
-
-          {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium' || ad.tier === 'elite').length > 0 && (
-            <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-3">
-              <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Featured Ads</h3>
-              <div className="space-y-2">
-                {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium' || ad.tier === 'elite').map(ad => (
-                  <a key={`fa-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors group">
-                    {ad.image_url && <img src={fixImgUrl(ad.image_url, 80, 80)} alt="" className="w-8 h-8 rounded object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-semibold group-hover:underline truncate">{ad.title}</h4>
-                      <span className="text-[10px] text-gray-500">{ad.tier === 'elite' ? '👑 Elite' : ad.tier === 'premium' ? '⭐ Premium' : '🥈 Featured'}</span>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-
-        </div>
 
         <div className="hidden xl:block fixed top-20 left-4 xl:left-8 w-64 space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 7rem)' }}>
           {ads.map(ad => {
