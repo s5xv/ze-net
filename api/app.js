@@ -66,6 +66,8 @@ export default async function handler(req, res) {
   try { if (typeof req.body === 'string') req.body = JSON.parse(req.body); } catch (_) {}
   const { action } = req.query;
 
+  try {
+
   // --- get-departments ---
   if (action === 'get-departments') {
     try {
@@ -332,8 +334,13 @@ export default async function handler(req, res) {
   // --- admin-approve-site ---
   if (action === 'admin-approve-site') {
     const { siteId } = req.body;
+    console.log('admin-approve-site called', { siteId, body: req.body });
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
+      const { data: existing, error: fetchErr } = await supabase.from('sites').select('id, name').eq('id', siteId).maybeSingle();
+      console.log('Existing site:', { existing, fetchErr });
+      if (fetchErr) throw fetchErr;
+      if (!existing) return res.status(404).json({ error: 'Site not found' });
       const { error } = await supabase.from('sites').update({ status: 'approved', is_active: true, reviewed_at: new Date().toISOString() }).eq('id', siteId);
       if (error) throw error;
       const { data: site } = await supabase.from('sites').select('name, slug').eq('id', siteId).maybeSingle();
@@ -341,7 +348,8 @@ export default async function handler(req, res) {
       await sendDiscordAlert(`✅ Site approved: **${site?.name || siteId}** — https://ze-net-beryl.vercel.app/site/${site?.slug || siteId}`);
       return res.status(200).json({ success: true, message: 'Site approved.' });
     } catch (err) {
-      return res.status(500).json({ error: err.message });
+      console.error('admin-approve-site error:', err);
+      return res.status(500).json({ error: err.message, stack: err.stack });
     }
   }
 
@@ -350,6 +358,9 @@ export default async function handler(req, res) {
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
+      const { data: existing, error: fetchErr } = await supabase.from('sites').select('id').eq('id', siteId).maybeSingle();
+      if (fetchErr) throw fetchErr;
+      if (!existing) return res.status(404).json({ error: 'Site not found' });
       const { error } = await supabase.from('sites').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', siteId);
       if (error) throw error;
       const { data: site } = await supabase.from('sites').select('name').eq('id', siteId).maybeSingle();
@@ -357,6 +368,7 @@ export default async function handler(req, res) {
       await sendDiscordAlert(`❌ Site rejected: **${site?.name || siteId}**`);
       return res.status(200).json({ success: true });
     } catch (err) {
+      console.error('admin-reject-site error:', err);
       return res.status(500).json({ error: err.message });
     }
   }
@@ -689,4 +701,9 @@ export default async function handler(req, res) {
   }
 
   return res.status(400).json({ error: 'Invalid action' });
+
+  } catch (globalErr) {
+    console.error('Unhandled error:', globalErr);
+    return res.status(500).json({ error: globalErr.message || 'Internal error' });
+  }
 }
