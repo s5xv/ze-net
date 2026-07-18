@@ -82,13 +82,20 @@ export default function Search() {
       } catch (e) { console.error('Dept search error', e); }
       if (id === searchId.current) setDeptResults(deptData);
 
-      const { data: adData } = await supabase.from('ads').select('*, sites(name)').eq('is_active', true).in('tier', ['premium', 'elite']).limit(20);
-      const filteredAds = (adData || []).filter(ad => {
+      const now = new Date();
+      const { data: adData } = await supabase.from('ads').select('*, sites(name)').eq('is_active', true).in('tier', ['premium', 'elite']);
+      const activeAds = (adData || []).filter(ad => {
+        if (!ad.duration_days) return true;
+        const createdAt = new Date(ad.created_at);
+        const expiresAt = new Date(createdAt.getTime() + ad.duration_days * 24 * 60 * 60 * 1000);
+        return expiresAt > now;
+      });
+      const filteredAds = activeAds.filter(ad => {
         if (ad.title?.toLowerCase().includes(searchTerm)) return true;
         if (ad.description?.toLowerCase().includes(searchTerm)) return true;
         if (ad.sites?.name?.toLowerCase().includes(searchTerm)) return true;
         return false;
-      }).slice(0, 5);
+      }).sort(() => Math.random() - 0.5).slice(0, 5);
       if (id === searchId.current) setPromotedAds(filteredAds);
 
       const allResults = [...(sitesData || []), ...merged, ...deptData];

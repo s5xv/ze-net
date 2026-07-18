@@ -164,6 +164,29 @@ export default async function handler(req, res) {
     }
   }
 
+  // --- track-ad-click ---
+  if (action === 'track-ad-click') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    try {
+      const { adId } = req.body;
+      if (!adId) return res.status(400).json({ error: 'adId required' });
+      const { data: ad } = await supabase.from('ads').select('click_count, link_url').eq('id', adId).maybeSingle();
+      if (ad) {
+        await supabase.from('ads').update({ click_count: (ad.click_count || 0) + 1 }).eq('id', adId);
+        if (ad.link_url?.startsWith('/site/')) {
+          const slug = ad.link_url.replace('/site/', '');
+          const { data: site } = await supabase.from('sites').select('id, click_count').eq('slug', slug).maybeSingle();
+          if (site) {
+            await supabase.from('sites').update({ click_count: (site.click_count || 0) + 1 }).eq('id', site.id);
+          }
+        }
+      }
+      return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // --- revoke-ad ---
   if (action === 'revoke-ad') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
@@ -192,28 +215,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // --- track-view ---
-  if (action === 'track-view') {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
-    const { siteId, ownerId, viewerId } = req.body;
-    if (!siteId || !ownerId || !viewerId) return res.status(400).json({ error: 'Missing data' });
-    if (ownerId === viewerId) return res.status(400).json({ error: 'Cannot pay yourself' });
-    try {
-      const { data: profile } = await supabase.from('profiles').select('mc_verified').eq('id', viewerId).maybeSingle();
-      if (!profile?.mc_verified) return res.status(403).json({ success: false, message: 'Viewer not verified' });
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: recentView } = await supabase.from('site_views').select('id').eq('site_id', siteId).eq('viewer_id', viewerId).gte('created_at', twentyFourHoursAgo).maybeSingle();
-      if (recentView) return res.status(409).json({ success: false, message: 'View already counted today' });
-      const { error: viewErr } = await supabase.from('site_views').insert({ site_id: siteId, viewer_id: viewerId });
-      if (viewErr) throw viewErr;
-      const { error: balErr } = await supabase.rpc('increment_balance', { target_user_id: ownerId, deposit_amount: 0.10 });
-      if (balErr) throw balErr;
-      return res.status(200).json({ success: true, message: 'Owner paid $0.10' });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  }
-
   // --- summarize ---
   if (action === 'summarize') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
@@ -222,23 +223,51 @@ export default async function handler(req, res) {
     try {
       const apiKey = process.env.MISTRAL_API_KEY;
       if (!apiKey) return res.status(200).json({ summary: "⚠️ AI is ready, but the MISTRAL_API_KEY is missing! Go to Vercel Dashboard > Settings > Environment Variables and add it." });
+
       const hasResults = Array.isArray(results) && results.length > 0;
       const resultsText = hasResults
-        ? results.slice(0, 40).filter(Boolean).map((r, i) => {
-            const name = r?.name || r?.title || 'Unknown';
+        ? results.slice(0, 60).filter(Boolean).map((r, i) => {
+            const name = r?.name || r?.title || r?.business_name || 'Unknown';
             const desc = r?.description || r?.content || '';
-            const type = r?.category ? 'Site' : (r?.content ? 'Wiki' : 'Department');
-            return `--- Item ${i+1} ---\nType: ${type}\nName: ${name}\nDescription: ${desc.substring(0, 300)}`;
+            const type = r?.category ? 'Site' : (r?.content ? 'Wiki' : (r?.forum_title ? 'Forum Thread' : 'Department'));
+            const extra = [];
+            if (r?.category) extra.push(`Category: ${r.category}`);
+            if (r?.subcategory) extra.push(`Subcategory: ${r.subcategory}`);
+            if (r?.slug) extra.push(`URL: /site/${r.slug}`);
+            if (r?.view_count !== undefined) extra.push(`Views: ${r.view_count}`);
+            if (r?.shortcut) extra.push(`Shortcut: /${r.shortcut}`);
+            if (r?.is_verified) extra.push('Verified');
+            return `--- Item ${i+1} ---\nType: ${type}\nName: ${name}\nDescription: ${desc ? desc.substring(0, 500) : 'No description'}\n${extra.join(' | ')}`;
           }).join('\n\n')
         : 'No results found in the directory for this query.';
 
-      const prompt = hasResults
-        ? `You are the 'Z&E Net AI Search Assistant', an expert navigation tool for the DemocracyCraft Minecraft server directory.\n\nUser Query: "${query}"\n\nBelow are the ONLY database results available. You must base your answer EXCLUSIVELY on these items — do NOT use your training knowledge to modify names or descriptions:\n\n${resultsText}\n\nRULES (follow every rule exactly):\n1. If the query asks for a category listing (departments, shops, banks, etc.), output the EXACT list from the database. Copy each Name and Description verbatim — do not rephrase or "improve" them.\n2. If the results contain EXACTLY the information the user wants, list it directly.\n3. ONLY use the provided items. Never add information from your training.\n4. Format each item's name in bold (**name**).\n5. If no items match the query at all, say "No relevant results found in the directory."\n\nOutput ONLY the answer — no preambles.`
-        : `You are a helpful assistant for the DemocracyCraft Minecraft server. The directory has no specific results for this query, so answer from general knowledge.\n\nRULES:\n- Do NOT invent specific games, minigames, shops, sites, plugins, or features that don't exist.\n- You CAN describe the server type (towny/economy/political roleplay) and general activities (politics, business, building).\n- If asked about specific content, say "I don't have specific information about that in the directory. Try searching for it!"\n\nUser Question: "${query}"\n\nKeep the answer concise (1-3 paragraphs). Use markdown bold for key terms. End with: "\n\n*Based on general knowledge — check the directory for verified listings*"`;
+      const prompt = `You are the Z&E Net AI Assistant for the DemocracyCraft Minecraft server directory. You help users find shops, services, government departments, and information.
+
+ABOUT DEMOCRACYCRAFT:
+- Towny/economy/political roleplay server with player-run shops, government, and businesses
+- Categories: Retail, Restaurant, Real Estate, Bank, Legal, Services, Farm, Entertainment, Government, Tech/Redstone, Transport, Hotel
+- Sites have view counts, reviews, ratings, tags, and status badges (Open/Closed/Busy)
+- Users can bookmark, follow, upvote, and review sites
+
+USER QUERY: "${query}"
+
+${hasResults ? `DATABASE RESULTS (use these primarily):\n\n${resultsText}\n\nIf the user asks for recommendations or comparisons, synthesize the data. If listing, keep it organized. Use bold for names. Feel free to group results by category or type. You can add brief context about what each place offers based on the description.` : 'No specific database results matched this query. Use your general knowledge about DemocracyCraft to answer helpfully, but do not invent specific shops or players. Suggest the user try a different search term.'}
+
+RULES:
+- Be concise but helpful — 2-5 sentences usually enough
+- Bold **names** of sites/places
+- If listing multiple items, use bullet points
+- If the user seems frustrated or searching for something specific that isnt found, suggest alternative search terms
+- You can answer general DemocracyCraft questions from your knowledge (economy, towny, plugins, etc.)
+- Never invent specific sites, shops, or players that don't come from the database results
+- Be friendly and conversational — use emojis occasionally 🏪 🏦 🏛️
+- If recommending, explain WHY briefly based on description or category
+- If no results at all, acknowledge it and offer to help with something else`;
+
       const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'mistral-small-latest', messages: [{ role: 'user', content: prompt }], max_tokens: 800, temperature: 0.2 })
+        body: JSON.stringify({ model: 'mistral-small-latest', messages: [{ role: 'system', content: 'You are Z&E Net AI, a helpful assistant for the DemocracyCraft Minecraft server directory. You help players find shops, services, and information. You are friendly, concise, and knowledgeable.' }, { role: 'user', content: prompt }], max_tokens: 1000, temperature: 0.4 })
       });
       const data = await response.json();
       if (data.error) throw new Error(typeof data.error === 'string' ? data.error : (data.error?.message || 'AI API error'));
@@ -528,7 +557,7 @@ export default async function handler(req, res) {
       if (remove) {
         await supabase.from('site_upvotes').delete().eq('user_id', user.id).eq('site_id', siteId);
       } else {
-        await supabase.from('site_upvotes').insert({ user_id: user.id, site_id: siteId });
+        await supabase.from('site_upvotes').upsert({ user_id: user.id, site_id: siteId }, { onConflict: 'user_id, site_id', ignoreDuplicates: true });
       }
       return res.status(200).json({ success: true });
     } catch (err) { return res.status(500).json({ error: err.message }); }
@@ -585,7 +614,8 @@ export default async function handler(req, res) {
       const { count: reviews } = await supabase.from('site_reviews').select('*', { count: 'exact', head: true }).eq('site_id', site.id);
       const { count: comments } = await supabase.from('site_comments').select('*', { count: 'exact', head: true }).eq('site_id', site.id);
       const { count: followers } = await supabase.from('site_followers').select('*', { count: 'exact', head: true }).eq('site_id', site.id);
-      return res.status(200).json({ stats: { views: views || 0, upvotes: upvotes || 0, reviews: reviews || 0, comments: comments || 0, followers: followers || 0, adViews: site.view_count || 0, adClicks: site.click_count || 0 } });
+      const hasAds = site.ad_tier && site.ad_expires_at && new Date(site.ad_expires_at) > new Date();
+      return res.status(200).json({ stats: { views: views || 0, upvotes: upvotes || 0, reviews: reviews || 0, comments: comments || 0, followers: followers || 0, hasAds, adViews: hasAds ? (site.view_count || 0) : null, adClicks: hasAds ? (site.click_count || 0) : null } });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
@@ -676,9 +706,9 @@ export default async function handler(req, res) {
         const { count: daily } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('site_id', siteId).eq('viewer_id', user.id).gte('created_at', oneDayAgo);
         if (daily >= 3) return res.status(429).json({ success: false, message: 'Max 3 views/day on this site' });
         await supabase.from('site_views').insert({ site_id: siteId, viewer_id: user.id });
-        const { data: site } = await supabase.from('sites').select('owner_user_id, view_count').eq('id', siteId).maybeSingle();
+        const { data: site } = await supabase.from('sites').select('owner_user_id').eq('id', siteId).maybeSingle();
         if (site) {
-          await supabase.from('sites').update({ view_count: (site.view_count || 0) + 1 }).eq('id', siteId);
+          await supabase.rpc('increment_view_count', { p_site_id: siteId });
           if (site.owner_user_id) {
             await supabase.rpc('increment_balance', { target_user_id: site.owner_user_id, deposit_amount: 0.10 });
           }

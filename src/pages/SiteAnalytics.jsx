@@ -11,7 +11,7 @@ export default function SiteAnalytics() {
   const navigate = useNavigate();
   const [site, setSite] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ views: 0, upvotes: 0, reviews: 0, comments: 0, followers: 0, adViews: 0, adClicks: 0 });
+  const [stats, setStats] = useState({ views: 0, upvotes: 0, reviews: 0, comments: 0, followers: 0, hasAds: false, adViews: null, adClicks: null });
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -44,13 +44,15 @@ export default function SiteAnalytics() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Total Views', value: stats.views, color: 'blue', cls: 'text-blue-600 dark:text-blue-400' },
+            { label: 'Views', value: stats.views, color: 'blue', cls: 'text-blue-600 dark:text-blue-400' },
             { label: 'Upvotes', value: stats.upvotes, color: 'green', cls: 'text-green-600 dark:text-green-400' },
             { label: 'Reviews', value: stats.reviews, color: 'purple', cls: 'text-purple-600 dark:text-purple-400' },
             { label: 'Comments', value: stats.comments, color: 'orange', cls: 'text-orange-600 dark:text-orange-400' },
             { label: 'Followers', value: stats.followers, color: 'pink', cls: 'text-pink-600 dark:text-pink-400' },
-            { label: 'Ad Views', value: stats.adViews, color: 'indigo', cls: 'text-indigo-600 dark:text-indigo-400' },
-            { label: 'Ad Clicks', value: stats.adClicks, color: 'teal', cls: 'text-teal-600 dark:text-teal-400' },
+            ...(stats.hasAds ? [
+              { label: 'Ad Views', value: stats.adViews ?? 0, color: 'indigo', cls: 'text-indigo-600 dark:text-indigo-400' },
+              { label: 'Ad Clicks', value: stats.adClicks ?? 0, color: 'teal', cls: 'text-teal-600 dark:text-teal-400' },
+            ] : []),
           ].map(s => (
             <div key={s.label} className="bg-white dark:bg-[#303134] rounded-xl p-5 border border-gray-200 dark:border-gray-700">
               <p className="text-sm text-gray-500">{s.label}</p>

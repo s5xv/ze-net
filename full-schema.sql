@@ -33,6 +33,7 @@ DROP TABLE IF EXISTS public.bookmarks CASCADE;
 DROP TABLE IF EXISTS public.site_followers CASCADE;
 DROP TABLE IF EXISTS public.site_comments CASCADE;
 DROP TABLE IF EXISTS public.site_reviews CASCADE;
+DROP TABLE IF EXISTS public.review_votes CASCADE;
 DROP TABLE IF EXISTS public.site_upvotes CASCADE;
 DROP TABLE IF EXISTS public.site_views CASCADE;
 DROP TABLE IF EXISTS public.sites CASCADE;
@@ -241,7 +242,17 @@ CREATE TABLE public.ad_requests (
 );
 CREATE INDEX idx_ad_requests_status ON public.ad_requests(status);
 
--- Ads (legacy)
+-- Review votes
+CREATE TABLE public.review_votes (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  review_id bigint NOT NULL REFERENCES public.site_reviews(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  vote_type text NOT NULL CHECK (vote_type IN ('up', 'down')),
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(review_id, user_id)
+);
+
+-- Ads
 CREATE TABLE public.ads (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   title text,
@@ -250,6 +261,7 @@ CREATE TABLE public.ads (
   link_url text,
   tier text,
   is_active boolean DEFAULT true,
+  click_count integer DEFAULT 0,
   duration_days integer DEFAULT 7,
   created_at timestamptz DEFAULT now()
 );
@@ -632,6 +644,44 @@ BEGIN
   UPDATE public.sites SET status = 'rejected', reviewed_at = NOW() WHERE id = p_site_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP FUNCTION IF EXISTS public.increment_view_count(uuid);
+CREATE OR REPLACE FUNCTION public.increment_view_count(p_site_id uuid)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.sites SET view_count = view_count + 1 WHERE id = p_site_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP FUNCTION IF EXISTS public.increment_click_count(uuid);
+CREATE OR REPLACE FUNCTION public.increment_click_count(p_site_id uuid)
+RETURNS void AS $$
+BEGIN
+  UPDATE public.sites SET click_count = click_count + 1 WHERE id = p_site_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP FUNCTION IF EXISTS public.increment_review_vote(bigint, text);
+CREATE OR REPLACE FUNCTION public.increment_review_vote(row_id bigint, col text)
+RETURNS void AS $$
+BEGIN
+  EXECUTE format('UPDATE public.site_reviews SET %I = %I + 1 WHERE id = $1', col, col) USING row_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP FUNCTION IF EXISTS public.decrement_review_vote(bigint, text);
+CREATE OR REPLACE FUNCTION public.decrement_review_vote(row_id bigint, col text)
+RETURNS void AS $$
+BEGIN
+  EXECUTE format('UPDATE public.site_reviews SET %I = GREATEST(%I - 1, 0) WHERE id = $1', col, col) USING row_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- One-time migration for existing DB: add click_count to ads table
+-- ALTER TABLE public.ads ADD COLUMN click_count integer DEFAULT 0;
+
+-- One-time backfill: sync sites.view_count with actual site_views count
+-- UPDATE public.sites SET view_count = (SELECT count(*) FROM public.site_views WHERE site_id = sites.id);
 
 -- ============================================================
 -- 5. SEED DATA

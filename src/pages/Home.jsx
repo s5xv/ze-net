@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
+import { apiFetch } from '../services/api';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
 
@@ -144,20 +145,41 @@ export default function Home() {
 
 const fetchAds = async (id) => {
     try {
-      const { data } = await supabase.from('ads').select('*').eq('is_active', true).order('created_at', { ascending: false });
-      if (id === fetchId.current) setAds(data || []);
+      const now = new Date();
+      const { data } = await supabase.from('ads').select('*').eq('is_active', true);
+      const active = (data || []).filter(ad => {
+        if (!ad.duration_days) return true;
+        const createdAt = new Date(ad.created_at);
+        const expiresAt = new Date(createdAt.getTime() + ad.duration_days * 24 * 60 * 60 * 1000);
+        return expiresAt > now;
+      });
+      const shuffled = [...active].sort(() => Math.random() - 0.5);
+      if (id === fetchId.current) setAds(shuffled);
     } catch (e) { console.error('Ads error:', e); }
   };
 
   const fetchNewAndTrending = async (id) => {
     try {
-      const [newSitesResult, trendingSitesResult] = await Promise.all([
+      const [newSitesResult, trendingCounts] = await Promise.all([
         supabase.from('sites').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(5),
-        supabase.from('sites').select('*').eq('status', 'approved').order('view_count', { ascending: false }).limit(5),
+        supabase.from('site_views').select('site_id').gte('created_at', new Date(Date.now() - 7*24*60*60*1000).toISOString()),
       ]);
       if (id === fetchId.current) {
         setNewSites(newSitesResult.data || []);
-        setTrendingSites(trendingSitesResult.data || []);
+        const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+        const viewCounts = {};
+        (trendingCounts.data || []).forEach(v => { viewCounts[v.site_id] = (viewCounts[v.site_id] || 0) + 1; });
+        const sorted = Object.entries(viewCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        if (sorted.length > 0) {
+          const ids = sorted.map(s => s[0]);
+          const { data: sites } = await supabase.from('sites').select('*').eq('status', 'approved').in('id', ids);
+          if (sites) {
+            const siteMap = Object.fromEntries(sites.map(s => [s.id, s]));
+            setTrendingSites(sorted.map(([id]) => siteMap[id]).filter(Boolean));
+          }
+        } else {
+          setTrendingSites([]);
+        }
       }
     } catch (e) { console.error('Sites error:', e); }
   };
@@ -229,7 +251,7 @@ const fetchAds = async (id) => {
               const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
               const tierStyle = tierMap[ad.tier] || 'bronze';
               return (
-              <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className={`block rounded-xl p-4 mb-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
+              <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" onClick={() => apiFetch('/api/app?action=track-ad-click', { method: 'POST', body: JSON.stringify({ adId: ad.id }) }).catch(() => {})} className={`block rounded-xl p-4 mb-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
                 <div style={{ height: '160px' }} className="w-full mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 relative flex items-center justify-center">
                   {ad.image_url ? (
                     <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" style={{ maxWidth: '100%', maxHeight: '160px', width: 'auto', height: 'auto' }} className="rounded" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }} />
@@ -362,7 +384,7 @@ const fetchAds = async (id) => {
                   <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                       <span className="text-orange-500 text-xl">🔥</span>
-                      Trending This Week
+                      Trending Now
                     </h3>
                     <div className="space-y-3">
                       {trendingSites.length === 0 ? (
@@ -404,7 +426,7 @@ const fetchAds = async (id) => {
             )}
 
             {ads.filter(ad => ad.tier === 'elite').slice(0, 1).map(ad => (
-              <a key={`elite-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="block bg-gradient-to-r from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border border-yellow-500/50 rounded-xl p-3 hover:shadow-lg transition-all group mb-4">
+              <a key={`elite-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" onClick={() => apiFetch('/api/app?action=track-ad-click', { method: 'POST', body: JSON.stringify({ adId: ad.id }) }).catch(() => {})} className="block bg-gradient-to-r from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border border-yellow-500/50 rounded-xl p-3 hover:shadow-lg transition-all group mb-4">
                 <div className="flex items-center gap-2">
                   {ad.image_url && <img src={fixImgUrl(ad.image_url)} alt="" className="w-10 h-10 rounded-lg object-cover border border-yellow-500/30" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
                   <div className="flex-1 min-w-0">
@@ -420,7 +442,7 @@ const fetchAds = async (id) => {
                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Featured Ads</h3>
                 <div className="space-y-2">
                   {ads.filter(ad => ad.tier === 'featured' || ad.tier === 'premium' || ad.tier === 'elite').map(ad => (
-                    <a key={`fa-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors group">
+                    <a key={`fa-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" onClick={() => apiFetch('/api/app?action=track-ad-click', { method: 'POST', body: JSON.stringify({ adId: ad.id }) }).catch(() => {})} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors group">
                       {ad.image_url && <img src={fixImgUrl(ad.image_url, 80, 80)} alt="" className="w-8 h-8 rounded object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xs font-semibold group-hover:underline truncate">{ad.title}</h4>

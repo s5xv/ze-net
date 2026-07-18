@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import { usePolling } from '../hooks/useRealtime';
 import { apiFetch } from '../services/api';
 
+let _viewRecordedSlug = null;
+
 function renderRichText(text) {
   if (!text) return null;
   const parts = text.split(/(\*\*.*?\*\*|_.*?_|~~.*?~~|\[.*?\]\(.*?\))/g);
@@ -47,8 +49,9 @@ export default function Site() {
   const [reviewFilter, setReviewFilter] = useState(0);
   const [reviewVotes, setReviewVotes] = useState({});
 
-
-  useEffect(() => { fetchSite(); }, [slug, user]);
+  useEffect(() => {
+    fetchSite();
+  }, [slug, user]);
   usePolling(async () => {
     if (!site?.id) return;
     try {
@@ -66,7 +69,10 @@ export default function Site() {
       if (error || !data) { setLoading(false); return; }
       
       setSite(data);
-      apiAction('record-view', { siteId: data.id }).catch(e => console.error('View recording:', e));
+      if (_viewRecordedSlug !== slug) {
+        _viewRecordedSlug = slug;
+        apiAction('record-view', { siteId: data.id }).catch(e => console.error('View recording:', e));
+      }
       
       if (user) {
         const { data: bookmark } = await supabase.from('bookmarks').select('id').eq('user_id', user.id).eq('site_id', data.id).maybeSingle();
@@ -131,11 +137,17 @@ export default function Site() {
 
   const apiAction = (action, body) => apiFetch('/api/app?action=' + action, { method: 'POST', body: JSON.stringify(body) });
 
+  const [upvoteBusy, setUpvoteBusy] = useState(false);
+
   const handleUpvote = async () => {
-    if (!user || !site?.id) return;
-    await apiAction('toggle-upvote', { siteId: site.id, remove: hasUpvoted });
-    setHasUpvoted(!hasUpvoted);
-    setUpvotes(u => hasUpvoted ? u - 1 : u + 1);
+    if (!user || !site?.id || upvoteBusy) return;
+    setUpvoteBusy(true);
+    try {
+      await apiAction('toggle-upvote', { siteId: site.id, remove: hasUpvoted });
+      setHasUpvoted(!hasUpvoted);
+      setUpvotes(u => hasUpvoted ? u - 1 : u + 1);
+    } catch (_) {}
+    setUpvoteBusy(false);
   };
 
   const submitReview = async () => {
@@ -184,24 +196,30 @@ export default function Site() {
     }
   };
 
+  const [reviewVoteBusy, setReviewVoteBusy] = useState({});
+
   const handleReviewVote = async (reviewId, voteType) => {
-    if (!user) return;
-    const existing = reviewVotes[reviewId];
-    const inc = voteType === 'up' ? 'upvotes' : 'downvotes';
-    if (existing === voteType) {
-      await supabase.from('review_votes').delete().eq('review_id', reviewId).eq('user_id', user.id);
-      await supabase.rpc('decrement_review_vote', { row_id: reviewId, col: inc });
-      setReviewVotes(prev => { const n = {...prev}; delete n[reviewId]; return n; });
-    } else {
-      if (existing) {
-        const oldInc = existing === 'up' ? 'upvotes' : 'downvotes';
-        await supabase.rpc('decrement_review_vote', { row_id: reviewId, col: oldInc });
+    if (!user || reviewVoteBusy[reviewId]) return;
+    setReviewVoteBusy(prev => ({...prev, [reviewId]: true}));
+    try {
+      const existing = reviewVotes[reviewId];
+      const inc = voteType === 'up' ? 'upvotes' : 'downvotes';
+      if (existing === voteType) {
+        await supabase.from('review_votes').delete().eq('review_id', reviewId).eq('user_id', user.id);
+        await supabase.rpc('decrement_review_vote', { row_id: reviewId, col: inc });
+        setReviewVotes(prev => { const n = {...prev}; delete n[reviewId]; return n; });
+      } else {
+        if (existing) {
+          const oldInc = existing === 'up' ? 'upvotes' : 'downvotes';
+          await supabase.rpc('decrement_review_vote', { row_id: reviewId, col: oldInc });
+        }
+        await supabase.from('review_votes').upsert({ review_id: reviewId, user_id: user.id, vote_type: voteType }, { onConflict: 'review_id, user_id', ignoreDuplicates: true });
+        await supabase.rpc('increment_review_vote', { row_id: reviewId, col: inc });
+        setReviewVotes(prev => ({...prev, [reviewId]: voteType }));
       }
-      await supabase.from('review_votes').insert({ review_id: reviewId, user_id: user.id, vote_type: voteType });
-      await supabase.rpc('increment_review_vote', { row_id: reviewId, col: inc });
-      setReviewVotes(prev => ({...prev, [reviewId]: voteType }));
-    }
-    fetchSite();
+      fetchSite();
+    } catch (_) {}
+    setReviewVoteBusy(prev => ({...prev, [reviewId]: false}));
   };
 
   let displayedReviews = [...reviews];
@@ -283,7 +301,7 @@ export default function Site() {
                 <a href={site.url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold">Visit Site</a>
               )}
               <button onClick={() => setShowQR(true)} className="px-4 py-3 bg-gray-700 text-white rounded-lg font-bold text-sm">QR</button>
-              <a href={`/compare?ids=${slug}`} target="_blank" rel="noopener noreferrer" className="px-4 py-3 bg-cyan-700 text-white rounded-lg font-bold text-sm">Compare</a>
+              <a href={`/compare?ids=${slug}`} className="px-4 py-3 bg-cyan-700 text-white rounded-lg font-bold text-sm">Compare</a>
               <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/site/${slug}/embed`); alert('Embed URL copied!'); }} className="px-4 py-3 bg-gray-700 text-white rounded-lg font-bold text-sm">Embed</button>
               {user && site.user_id && user.id !== site.user_id && (
                 <button onClick={() => setShowTipModal(true)} className="px-6 py-3 bg-green-600 text-white rounded-lg font-bold">Tip Owner</button>
