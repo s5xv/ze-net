@@ -128,7 +128,7 @@ export default function Admin() {
         reports.forEach(r => { r.profiles = { username: profiles[r.user_id] || 'Unknown' }; r.sites = sites[r.site_id] || null; });
         setReports(reports);
       } else if (tab === 'businesses') {
-        const { data } = await supabase.from('business_registrations').select('*').order('created_at', { ascending: false });
+        const { data } = await supabase.from('sites').select('*').order('created_at', { ascending: false });
         setBusinessRegistrations(data || []);
       } else if (tab === 'messages') {
         const { data } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false }).limit(100);
@@ -875,27 +875,34 @@ export default function Admin() {
 
         {!loading && activeTab === 'businesses' && (
           <div>
-            <h3 className="text-lg font-bold text-white mb-3">Business Registrations ({businessRegistrations.length})</h3>
+            <h3 className="text-lg font-bold text-white mb-3">All Sites ({businessRegistrations.length})</h3>
             {businessRegistrations.length === 0 ? (
-              <p className="text-gray-500 text-sm italic">No business registrations yet.</p>
+              <p className="text-gray-500 text-sm italic">No sites yet.</p>
             ) : (
               <div className="space-y-3">
                 {businessRegistrations.map(b => (
                   <div key={b.id} className="bg-[#303134] border border-gray-700 rounded-xl p-4">
                     <div className="flex justify-between items-start gap-4">
                       <div className="flex-1">
-                        <p className="text-white font-bold text-lg">{b.business_name}</p>
-                        <p className="text-sm text-gray-400">{b.category} &middot; {b.plot_number ? `Plot #${b.plot_number}` : 'No plot'}</p>
-                        <p className="text-xs text-gray-500 mt-1">Status: <span className={b.status === 'pending' ? 'text-yellow-400' : b.status === 'approved' ? 'text-green-400' : 'text-red-400'}>{b.status}</span></p>
-                        {b.description && <p className="text-xs text-gray-500 mt-1">{b.description}</p>}
-                        {b.owner_discord && <p className="text-xs text-gray-500 mt-1">Discord: {b.owner_discord}</p>}
-                        {b.website_url && <p className="text-xs text-gray-500 mt-1">URL: {b.website_url}</p>}
+                        <div className="flex items-center gap-2">
+                          <p className="text-white font-bold text-lg">{b.name}</p>
+                          <a href={`/site/${b.slug}`} className="text-blue-400 text-xs hover:underline">View</a>
+                        </div>
+                        <p className="text-sm text-gray-400">{b.category}{b.subcategory ? ' / ' + b.subcategory : ''} &middot; {b.plot_number ? `Plot #${b.plot_number}` : 'No plot'}</p>
+                        <p className="text-xs text-gray-500 mt-1">Status: <span className={b.status === 'approved' ? 'text-green-400' : b.status === 'pending' ? 'text-yellow-400' : 'text-red-400'}>{b.status}</span></p>
+                        {b.is_verified && <p className="text-xs text-blue-400 mt-1">✓ Verified</p>}
+                        {b.description && <p className="text-xs text-gray-500 mt-1">{b.description.slice(0, 100)}</p>}
+                        <p className="text-xs text-gray-500 mt-1">Views: {b.view_count || 0}</p>
+                        <p className="text-xs text-gray-600 mt-1">Added: {new Date(b.created_at).toLocaleDateString()}</p>
                       </div>
                       {b.status === 'pending' && (
                         <div className="flex flex-col gap-2 shrink-0">
-                          <button onClick={async () => { try { await apiFetch('/api/app?action=approve-business', { method: 'POST', body: JSON.stringify({ id: b.id }) }); await supabase.from('staff_actions').insert({ staff_id: user.id, action_type: 'free_site', reference_id: b.id?.toString(), description: `Approved free site "${b.business_name}" (${b.category}) — $40 commission`, amount: 40 }); } catch (e) { setMessage('Error: ' + e.message); } fetchData(activeTab); }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
-                          <button onClick={async () => { await supabase.from('business_registrations').update({ status: 'rejected' }).eq('id', b.id); fetchData(activeTab); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
+                          <button onClick={async () => { try { await apiFetch('/api/app?action=admin-approve-site', { method: 'POST', body: JSON.stringify({ siteId: b.id }) }); } catch (e) { setMessage('Error: ' + e.message); } fetchData(activeTab); }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
+                          <button onClick={async () => { await supabase.from('sites').update({ status: 'rejected' }).eq('id', b.id); fetchData(activeTab); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
                         </div>
+                      )}
+                      {b.status === 'approved' && (
+                        <button onClick={async () => { await supabase.from('sites').delete().eq('id', b.id); fetchData(activeTab); }} className="px-3 py-1 bg-red-600 text-white rounded text-xs shrink-0 self-start">Delete</button>
                       )}
                     </div>
                   </div>
