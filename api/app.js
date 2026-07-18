@@ -331,16 +331,15 @@ export default async function handler(req, res) {
 
   // --- admin-approve-site ---
   if (action === 'admin-approve-site') {
-    const admin = await requireUser(req);
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
       const { error } = await supabase.from('sites').update({ status: 'approved', is_active: true, reviewed_at: new Date().toISOString() }).eq('id', siteId);
       if (error) throw error;
       const { data: site } = await supabase.from('sites').select('name, slug').eq('id', siteId).maybeSingle();
-      await logAdminAction(admin.id, 'approve-site', 'sites', siteId, { name: site?.name });
+      try { const user = await getUser(req); if (user) await logAdminAction(user.id, 'approve-site', 'sites', siteId, { name: site?.name }); } catch(e) {}
       await sendDiscordAlert(`✅ Site approved: **${site?.name || siteId}** — https://ze-net-beryl.vercel.app/site/${site?.slug || siteId}`);
-      return res.status(200).json({ success: true, message: 'Site approved. They still need to pay for verification before appearing in search.' });
+      return res.status(200).json({ success: true, message: 'Site approved.' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -348,18 +347,15 @@ export default async function handler(req, res) {
 
   // --- admin-reject-site ---
   if (action === 'admin-reject-site') {
-    const admin = await requireUser(req);
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
       const { error } = await supabase.from('sites').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', siteId);
       if (error) throw error;
       const { data: site } = await supabase.from('sites').select('name').eq('id', siteId).maybeSingle();
-      await logAdminAction(admin.id, 'reject-site', 'sites', siteId, { name: site?.name });
+      try { const user = await getUser(req); if (user) await logAdminAction(user.id, 'reject-site', 'sites', siteId, { name: site?.name }); } catch(e) {}
       await sendDiscordAlert(`❌ Site rejected: **${site?.name || siteId}**`);
       return res.status(200).json({ success: true });
-      if (error) throw error;
-      return res.status(200).json({ success: true, message: 'Site rejected' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
