@@ -160,26 +160,13 @@ const fetchAds = async (id) => {
 
   const fetchNewAndTrending = async (id) => {
     try {
-      const [newSitesResult, trendingCounts] = await Promise.all([
+      const [newSitesResult, trendingResult] = await Promise.all([
         supabase.from('sites').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(5),
-        supabase.from('site_views').select('site_id').gte('created_at', new Date(Date.now() - 7*24*60*60*1000).toISOString()),
+        apiFetch('/api/app?action=get-trending'),
       ]);
       if (id === fetchId.current) {
         setNewSites(newSitesResult.data || []);
-        const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
-        const viewCounts = {};
-        (trendingCounts.data || []).forEach(v => { viewCounts[v.site_id] = (viewCounts[v.site_id] || 0) + 1; });
-        const sorted = Object.entries(viewCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-        if (sorted.length > 0) {
-          const ids = sorted.map(s => s[0]);
-          const { data: sites } = await supabase.from('sites').select('*').eq('status', 'approved').in('id', ids);
-          if (sites) {
-            const siteMap = Object.fromEntries(sites.map(s => [s.id, s]));
-            setTrendingSites(sorted.map(([id]) => siteMap[id]).filter(Boolean));
-          }
-        } else {
-          setTrendingSites([]);
-        }
+        setTrendingSites(trendingResult?.sites || []);
       }
     } catch (e) { console.error('Sites error:', e); }
   };

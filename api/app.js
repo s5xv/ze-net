@@ -76,6 +76,23 @@ export default async function handler(req, res) {
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // --- get-trending ---
+  if (action === 'get-trending') {
+    try {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: recentViews, error: viewErr } = await supabase.from('site_views').select('site_id').gte('created_at', weekAgo);
+      if (viewErr) return res.status(500).json({ error: viewErr.message });
+      const viewCounts = {};
+      (recentViews || []).forEach(v => { viewCounts[v.site_id] = (viewCounts[v.site_id] || 0) + 1; });
+      const sorted = Object.entries(viewCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      if (sorted.length === 0) return res.status(200).json({ sites: [] });
+      const ids = sorted.map(s => s[0]);
+      const { data: sites } = await supabase.from('sites').select('*').eq('status', 'approved').in('id', ids);
+      const siteMap = Object.fromEntries((sites || []).map(s => [s.id, s]));
+      return res.status(200).json({ sites: sorted.map(([id]) => siteMap[id]).filter(Boolean) });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // --- get-ads ---
   if (action === 'get-ads') {
     if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
