@@ -338,10 +338,10 @@ export default async function handler(req, res) {
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
       const { data: existing, error: fetchErr } = await supabase.from('sites').select('id, name').eq('id', siteId).maybeSingle();
-      console.log('Existing site:', { existing, fetchErr });
-      if (fetchErr) throw fetchErr;
-      if (!existing) return res.status(404).json({ error: 'Site not found' });
-      const { error } = await supabase.from('sites').update({ status: 'approved', is_active: true, reviewed_at: new Date().toISOString() }).eq('id', siteId);
+      console.log('Existing site type:', typeof siteId, 'value:', JSON.stringify(siteId).slice(0, 100));
+      if (fetchErr) { console.error('Fetch existing error:', fetchErr); throw fetchErr; }
+      if (!existing) return res.status(404).json({ error: 'Site not found. ID: ' + JSON.stringify(siteId) });
+      const { error } = await supabase.from('sites').update({ status: 'approved', is_active: true }).eq('id', siteId);
       if (error) throw error;
       const { data: site } = await supabase.from('sites').select('name, slug').eq('id', siteId).maybeSingle();
       try { const user = await getUser(req); if (user) await logAdminAction(user.id, 'approve-site', 'sites', siteId, { name: site?.name }); } catch(e) {}
