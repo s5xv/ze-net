@@ -17,6 +17,7 @@ export default function Home() {
   const { isDark } = useTheme();
   const [stats, setStats] = useState({ totalSites: 0 });
   const [ads, setAds] = useState([]);
+  const [allActiveAds, setAllActiveAds] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
   const [newSites, setNewSites] = useState([]);
   const [trendingSites, setTrendingSites] = useState([]);
@@ -143,20 +144,28 @@ export default function Home() {
     }
   };
 
-const fetchAds = async (id) => {
+  const fetchAds = async (id) => {
     try {
       const now = new Date();
       const { data } = await supabase.from('ads').select('*').eq('is_active', true);
       const active = (data || []).filter(ad => {
         if (!ad.duration_days) return true;
-        const createdAt = new Date(ad.created_at);
-        const expiresAt = new Date(createdAt.getTime() + ad.duration_days * 24 * 60 * 60 * 1000);
-        return expiresAt > now;
+        return new Date(new Date(ad.created_at).getTime() + ad.duration_days * 24 * 60 * 60 * 1000) > now;
       });
-      const shuffled = [...active].sort(() => Math.random() - 0.5);
-      if (id === fetchId.current) setAds(shuffled);
+      if (id === fetchId.current) {
+        setAllActiveAds(active);
+        setAds([...active].sort(() => Math.random() - 0.5).slice(0, 3));
+      }
     } catch (e) { console.error('Ads error:', e); }
   };
+
+  useEffect(() => {
+    if (allActiveAds.length <= 3) return;
+    const interval = setInterval(() => {
+      setAds([...allActiveAds].sort(() => Math.random() - 0.5).slice(0, 3));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [allActiveAds]);
 
   const fetchNewAndTrending = async (id) => {
     try {
