@@ -243,7 +243,7 @@ export default function Home() {
       <div className="flex justify-between min-h-full w-full">
         {windowWidth >= 1280 && (
           <div className="w-64 flex-shrink-0 sticky top-0 self-start max-h-screen overflow-y-auto py-8 pl-4">
-            {ads.map(ad => {
+            {ads.slice(0, 3).map(ad => {
               const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
               const tierStyle = tierMap[ad.tier] || 'bronze';
               return (
