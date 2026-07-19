@@ -42,6 +42,7 @@ const SiteAnalytics = lazy(() => import('./pages/SiteAnalytics'));
 const SubmitSite = lazy(() => import('./pages/SubmitSite'));
 const SiteEmbed = lazy(() => import('./pages/SiteEmbed'));
 const Compare = lazy(() => import('./pages/Compare'));
+const Treasury = lazy(() => import('./pages/Treasury'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function AuthHandler() {
@@ -110,6 +111,7 @@ function App() {
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/site/:slug/analytics" element={<SiteAnalytics />} />
           <Route path="/compare" element={<Compare user={user} />} />
+          <Route path="/treasury" element={<Treasury user={user} />} />
           <Route path="/forums/new-thread/:categoryId" element={<CreateThread />} />
           <Route path="/forums/thread/:threadId" element={<ForumPost />} />
           <Route path="*" element={<NotFound />} />
