@@ -242,12 +242,12 @@ export default function Home() {
     <Layout user={user}>
       <div className="flex justify-between min-h-full w-full">
         {windowWidth >= 1280 && (
-          <div className="w-64 flex-shrink-0 sticky top-0 self-start max-h-screen overflow-y-auto py-8 pl-4">
+          <div className="w-64 flex-shrink-0 py-8 pl-4 space-y-4">
             {ads.slice(0, 3).map(ad => {
               const tierMap = { standard: 'bronze', featured: 'silver', premium: 'gold', elite: 'gold' };
               const tierStyle = tierMap[ad.tier] || 'bronze';
               return (
-              <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" onClick={() => apiFetch('/api/app?action=track-ad-click', { method: 'POST', body: JSON.stringify({ adId: ad.id }) }).catch(() => {})} className={`block rounded-xl p-4 mb-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
+              <a key={ad.id} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" onClick={() => apiFetch('/api/app?action=track-ad-click', { method: 'POST', body: JSON.stringify({ adId: ad.id }) }).catch(() => {})} className={`block rounded-xl p-4 hover:shadow-lg transition-all group border-2 ${tierStyle === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border-yellow-500/50' : tierStyle === 'silver' ? 'bg-gradient-to-br from-gray-400/10 to-gray-500/10 border-gray-400/50' : 'bg-white dark:bg-[#303134] border-gray-300 dark:border-gray-700'}`}>
                 <div style={{ height: '160px' }} className="w-full mb-3 rounded-lg overflow-hidden bg-gradient-to-br from-blue-500/20 to-purple-600/20 relative flex items-center justify-center">
                   {ad.image_url ? (
                     <img src={fixImgUrl(ad.image_url)} alt={ad.title} referrerPolicy="no-referrer" style={{ maxWidth: '100%', maxHeight: '160px', width: 'auto', height: 'auto' }} className="rounded" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }} />
@@ -402,9 +402,9 @@ export default function Home() {
           </main>
         </div>
         {windowWidth >= 1024 && (
-          <div className="w-64 flex-shrink-0 sticky top-0 self-start max-h-screen overflow-y-auto py-8 pr-4">
+          <div className="w-64 flex-shrink-0 sticky top-0 self-start max-h-screen overflow-y-auto py-8 pr-4 space-y-4">
             {user && bookmarks.length > 0 && (
-              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm mb-4">
+              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
                 <h3 className="text-sm font-bold mb-3 flex items-center gap-2">
                   <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
@@ -421,7 +421,34 @@ export default function Home() {
               </div>
             )}
 
+            {ads.slice(0, 3).filter(ad => ad.tier === 'elite').map(ad => (
+              <a key={`elite-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" onClick={() => apiFetch('/api/app?action=track-ad-click', { method: 'POST', body: JSON.stringify({ adId: ad.id }) }).catch(() => {})} className="block bg-gradient-to-r from-yellow-500/10 to-orange-500/10 dark:from-yellow-500/20 dark:to-orange-500/20 border border-yellow-500/50 rounded-xl p-3 hover:shadow-lg transition-all group">
+                <div className="flex items-center gap-2">
+                  {ad.image_url && <img src={fixImgUrl(ad.image_url)} alt="" className="w-10 h-10 rounded-lg object-cover border border-yellow-500/30" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-wider">👑 Elite Sponsor</span>
+                    <h4 className="font-semibold text-sm group-hover:underline truncate text-yellow-600 dark:text-yellow-400">{ad.title}</h4>
+                  </div>
+                </div>
+              </a>
+            ))}
 
+            {ads.slice(0, 3).filter(ad => ad.tier === 'featured' || ad.tier === 'premium').length > 0 && (
+              <div className="bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl p-3">
+                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Featured Ads</h3>
+                <div className="space-y-2">
+                  {ads.slice(0, 3).filter(ad => ad.tier === 'featured' || ad.tier === 'premium').map(ad => (
+                    <a key={`fa-${ad.id}`} href={fixUrl(ad.link_url, ad.title)} target="_blank" rel="noopener noreferrer" onClick={() => apiFetch('/api/app?action=track-ad-click', { method: 'POST', body: JSON.stringify({ adId: ad.id }) }).catch(() => {})} className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-[#202124] rounded-lg hover:bg-gray-100 dark:hover:bg-[#3c4043] transition-colors group">
+                      {ad.image_url && <img src={fixImgUrl(ad.image_url, 80, 80)} alt="" className="w-8 h-8 rounded object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-semibold group-hover:underline truncate">{ad.title}</h4>
+                        <span className="text-[10px] text-gray-500">{ad.tier === 'premium' ? '⭐ Premium' : '🥈 Featured'}</span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
