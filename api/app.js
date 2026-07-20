@@ -826,6 +826,27 @@ RULES:
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // --- admin: list all gigs ---
+  if (action === 'admin-list-gigs') {
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+    try {
+      const { data } = await supabase.from('gigs').select('*, profiles!inner(username)').order('created_at', { ascending: false });
+      return res.status(200).json({ gigs: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- admin: delete gig ---
+  if (action === 'admin-delete-gig') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+    try {
+      const { id } = req.body;
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      await supabase.from('gigs').delete().eq('id', id);
+      return res.status(200).json({ success: true });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // --- lookup-user ---
   if (action === 'lookup-user') {
     const raw = req.query.username || req.body?.username;

@@ -62,6 +62,8 @@ export default function Admin() {
   const [notifUserId, setNotifUserId] = useState('');
   const [notifTitle, setNotifTitle] = useState('');
   const [notifBody, setNotifBody] = useState('');
+  const [allGigs, setAllGigs] = useState([]);
+  const [gigsLoading, setGigsLoading] = useState(false);
 
   const fetchData = async (tab) => {
     setLoading(true);
@@ -175,6 +177,11 @@ export default function Admin() {
       } else if (tab === 'features') {
         const { data } = await supabase.from('sites').select('id, name, slug, is_featured, featured_until').order('name');
         setAllSitesList(data || []);
+      } else if (tab === 'gigs') {
+        setGigsLoading(true);
+        const { gigs } = await apiFetch('/api/app?action=admin-list-gigs');
+        setAllGigs(gigs || []);
+        setGigsLoading(false);
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -547,6 +554,8 @@ export default function Admin() {
           {hasPerm('manage_staff') && <TabButton id="image_moderation" label="Image Moderation" />}
           {hasPerm('manage_staff') && <TabButton id="audit_log" label="Audit Log" />}
           {hasPerm('manage_staff') && <TabButton id="features" label="Features" />}
+          {hasPerm('manage_staff') && <TabButton id="gigs" label="Gigs" />}
+          {hasPerm('manage_staff') && <TabButton id="treasury" label="Treasury" />}
         </div>
 
         {loading && <p className="text-center text-gray-400 py-10">Loading...</p>}
@@ -1264,6 +1273,54 @@ export default function Admin() {
                   {log.admin_id && <p className="text-xs text-gray-600 mt-1">Admin: {log.admin_id}</p>}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {!loading && activeTab === 'gigs' && (
+          <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+            <h2 className="text-lg font-bold text-white mb-4">Gigs Marketplace</h2>
+            {gigsLoading ? (
+              <p className="text-gray-500">Loading...</p>
+            ) : allGigs.length === 0 ? (
+              <p className="text-gray-500">No gigs posted yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead><tr className="border-b border-gray-700 text-sm text-gray-400">
+                    <th className="pb-2 pr-4">Title</th>
+                    <th className="pb-2 pr-4">User</th>
+                    <th className="pb-2 pr-4">Category</th>
+                    <th className="pb-2 pr-4">Price</th>
+                    <th className="pb-2 pr-4">Status</th>
+                    <th className="pb-2">Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {allGigs.map(gig => (
+                      <tr key={gig.id} className="border-b border-gray-700/50 text-sm">
+                        <td className="py-2 pr-4 text-white max-w-xs truncate">{gig.title}</td>
+                        <td className="py-2 pr-4 text-gray-400">{gig.profiles?.username || 'Unknown'}</td>
+                        <td className="py-2 pr-4"><span className="text-xs px-2 py-0.5 bg-gray-700 rounded text-gray-300">{gig.category}</span></td>
+                        <td className="py-2 pr-4 text-green-400">${parseFloat(gig.price).toFixed(2)}</td>
+                        <td className="py-2 pr-4"><span className={`text-xs px-2 py-0.5 rounded ${gig.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{gig.status}</span></td>
+                        <td className="py-2">
+                          <button onClick={async () => { if (confirm('Delete this gig?')) { await apiFetch('/api/app?action=admin-delete-gig', { method: 'POST', body: JSON.stringify({ id: gig.id }) }); fetchData('gigs'); } }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!loading && activeTab === 'treasury' && (
+          <div className="space-y-6">
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-white mb-4">Treasury Overview</h2>
+              <p className="text-gray-400 text-sm mb-4">Full treasury dashboard with charts and transaction history.</p>
+              <a href="/treasury" className="text-blue-400 hover:underline">Open Treasury Dashboard →</a>
             </div>
           </div>
         )}
