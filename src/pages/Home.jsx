@@ -317,8 +317,7 @@ export default function Home() {
                   <a href="/register-business" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Register Business</a>
                   <a href="/submit-ad" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Submit Ad</a>
                   <a href="/verify-site" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Verify Site</a>
-                  <a href="/marketplace" className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors">Marketplace</a>
-                  <a href="/treasury" className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">Treasury</a>
+                  <a href="/marketplace" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Marketplace</a>
                   <a href="/achievements" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Achievements</a>
                 </div>
 
