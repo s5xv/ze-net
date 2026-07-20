@@ -740,7 +740,7 @@ RULES:
   if (action === 'search-gigs') {
     try {
       const { q, category, sort, minPrice, maxPrice } = req.query;
-      let query = supabase.from('gigs').select('*, profiles!inner(username, avatar_url)').eq('status', 'active');
+      let query = supabase.from('gigs').select('*, profiles(username, avatar_url)').eq('status', 'active');
       if (q) query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
       if (category && category !== 'All') query = query.eq('category', category);
       if (minPrice) query = query.gte('price', parseFloat(minPrice));
@@ -768,7 +768,7 @@ RULES:
     try {
       const { id } = req.query;
       if (!id) return res.status(400).json({ error: 'Missing id' });
-      const { data } = await supabase.from('gigs').select('*, profiles!inner(username, avatar_url)').eq('id', id).maybeSingle();
+      const { data } = await supabase.from('gigs').select('*, profiles(username, avatar_url)').eq('id', id).maybeSingle();
       if (!data) return res.status(404).json({ error: 'Gig not found' });
       return res.status(200).json({ gig: data });
     } catch (err) { return res.status(500).json({ error: err.message }); }
@@ -821,7 +821,7 @@ RULES:
   if (action === 'my-gigs') {
     try {
       const user = await requireUser(req);
-      const { data } = await supabase.from('gigs').select('*, profiles!inner(username, avatar_url)').eq('user_id', user.id).order('created_at', { ascending: false });
+      const { data } = await supabase.from('gigs').select('*, profiles(username, avatar_url)').eq('user_id', user.id).order('created_at', { ascending: false });
       return res.status(200).json({ gigs: data || [] });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
@@ -830,7 +830,7 @@ RULES:
   if (action === 'admin-list-gigs') {
     if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
     try {
-      const { data } = await supabase.from('gigs').select('*, profiles!inner(username)').order('created_at', { ascending: false });
+      const { data } = await supabase.from('gigs').select('*, profiles(username)').order('created_at', { ascending: false });
       return res.status(200).json({ gigs: data || [] });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
