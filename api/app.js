@@ -57,6 +57,14 @@ const logAdminAction = async (adminId, action, targetType, targetId, details) =>
   try { await supabase.from('admin_audit_logs').insert({ admin_id: adminId, action, target_type: targetType, target_id: String(targetId), details: details ? JSON.parse(JSON.stringify(details)) : null }); } catch(e) {}
 };
 
+const attachProfiles = async (gigs) => {
+  if (!gigs || gigs.length === 0) return gigs;
+  const userIds = [...new Set(gigs.map(g => g.user_id))];
+  const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', userIds);
+  const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+  return gigs.map(g => ({ ...g, profiles: profileMap[g.user_id] || { username: 'Unknown' } }));
+};
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -740,7 +748,7 @@ RULES:
   if (action === 'search-gigs') {
     try {
       const { q, category, sort, minPrice, maxPrice } = req.query;
-      let query = supabase.from('gigs').select('*, profiles(username, avatar_url)').eq('status', 'active');
+      let query = supabase.from('gigs').select('*').eq('status', 'active');
       if (q) query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
       if (category && category !== 'All') query = query.eq('category', category);
       if (minPrice) query = query.gte('price', parseFloat(minPrice));
@@ -750,7 +758,7 @@ RULES:
       else if (sort === 'oldest') query = query.order('created_at', { ascending: true });
       else query = query.order('created_at', { ascending: false });
       const { data } = await query.limit(50);
-      return res.status(200).json({ gigs: data || [] });
+      return res.status(200).json({ gigs: await attachProfiles(data || []) });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
@@ -768,9 +776,10 @@ RULES:
     try {
       const { id } = req.query;
       if (!id) return res.status(400).json({ error: 'Missing id' });
-      const { data } = await supabase.from('gigs').select('*, profiles(username, avatar_url)').eq('id', id).maybeSingle();
+      const { data } = await supabase.from('gigs').select('*').eq('id', id).maybeSingle();
       if (!data) return res.status(404).json({ error: 'Gig not found' });
-      return res.status(200).json({ gig: data });
+      const [enriched] = await attachProfiles([data]);
+      return res.status(200).json({ gig: enriched });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
@@ -821,8 +830,8 @@ RULES:
   if (action === 'my-gigs') {
     try {
       const user = await requireUser(req);
-      const { data } = await supabase.from('gigs').select('*, profiles(username, avatar_url)').eq('user_id', user.id).order('created_at', { ascending: false });
-      return res.status(200).json({ gigs: data || [] });
+      const { data } = await supabase.from('gigs').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+      return res.status(200).json({ gigs: await attachProfiles(data || []) });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
@@ -830,8 +839,8 @@ RULES:
   if (action === 'admin-list-gigs') {
     if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
     try {
-      const { data } = await supabase.from('gigs').select('*, profiles(username)').order('created_at', { ascending: false });
-      return res.status(200).json({ gigs: data || [] });
+      const { data } = await supabase.from('gigs').select('*').order('created_at', { ascending: false });
+      return res.status(200).json({ gigs: await attachProfiles(data || []) });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
