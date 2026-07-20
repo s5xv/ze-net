@@ -736,6 +736,96 @@ RULES:
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // --- gigs: search ---
+  if (action === 'search-gigs') {
+    try {
+      const { q, category, sort, minPrice, maxPrice } = req.query;
+      let query = supabase.from('gigs').select('*, profiles!inner(username, avatar_url)').eq('status', 'active');
+      if (q) query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
+      if (category && category !== 'All') query = query.eq('category', category);
+      if (minPrice) query = query.gte('price', parseFloat(minPrice));
+      if (maxPrice) query = query.lte('price', parseFloat(maxPrice));
+      if (sort === 'price_asc') query = query.order('price', { ascending: true });
+      else if (sort === 'price_desc') query = query.order('price', { ascending: false });
+      else if (sort === 'oldest') query = query.order('created_at', { ascending: true });
+      else query = query.order('created_at', { ascending: false });
+      const { data } = await query.limit(50);
+      return res.status(200).json({ gigs: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- gigs: get categories ---
+  if (action === 'get-gig-categories') {
+    try {
+      const { data } = await supabase.from('gigs').select('category').eq('status', 'active');
+      const cats = [...new Set((data || []).map(g => g.category).filter(Boolean))].sort();
+      return res.status(200).json({ categories: cats });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- gigs: get one ---
+  if (action === 'get-gig') {
+    try {
+      const { id } = req.query;
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      const { data } = await supabase.from('gigs').select('*, profiles!inner(username, avatar_url)').eq('id', id).maybeSingle();
+      if (!data) return res.status(404).json({ error: 'Gig not found' });
+      return res.status(200).json({ gig: data });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- gigs: create ---
+  if (action === 'create-gig') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    try {
+      const user = await requireUser(req);
+      const { title, description, category, price, price_type, delivery_days, discord_username } = req.body;
+      if (!title) return res.status(400).json({ error: 'Title is required' });
+      const { data, error } = await supabase.from('gigs').insert({
+        user_id: user.id, title, description: description || '', category: category || 'Other',
+        price: parseFloat(price) || 0, price_type: price_type || 'fixed',
+        delivery_days: parseInt(delivery_days) || 7, discord_username: discord_username || ''
+      }).select().maybeSingle();
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ gig: data });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- gigs: update ---
+  if (action === 'update-gig') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    try {
+      const user = await requireUser(req);
+      const { id, title, description, category, price, price_type, delivery_days, discord_username, status } = req.body;
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      const { data: existing } = await supabase.from('gigs').select('user_id').eq('id', id).maybeSingle();
+      if (!existing) return res.status(404).json({ error: 'Gig not found' });
+      if (existing.user_id !== user.id) return res.status(403).json({ error: 'Not your gig' });
+      const updates = {};
+      if (title !== undefined) updates.title = title;
+      if (description !== undefined) updates.description = description;
+      if (category !== undefined) updates.category = category;
+      if (price !== undefined) updates.price = parseFloat(price);
+      if (price_type !== undefined) updates.price_type = price_type;
+      if (delivery_days !== undefined) updates.delivery_days = parseInt(delivery_days);
+      if (discord_username !== undefined) updates.discord_username = discord_username;
+      if (status !== undefined) updates.status = status;
+      updates.updated_at = new Date().toISOString();
+      const { data, error } = await supabase.from('gigs').update(updates).eq('id', id).select().maybeSingle();
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ gig: data });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- gigs: my gigs ---
+  if (action === 'my-gigs') {
+    try {
+      const user = await requireUser(req);
+      const { data } = await supabase.from('gigs').select('*, profiles!inner(username, avatar_url)').eq('user_id', user.id).order('created_at', { ascending: false });
+      return res.status(200).json({ gigs: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // --- lookup-user ---
   if (action === 'lookup-user') {
     const raw = req.query.username || req.body?.username;

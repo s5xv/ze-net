@@ -242,6 +242,26 @@ CREATE TABLE public.ad_requests (
 );
 CREATE INDEX idx_ad_requests_status ON public.ad_requests(status);
 
+-- Freelance gigs (Fiverr-style marketplace)
+CREATE TABLE public.gigs (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  category text NOT NULL DEFAULT 'Other',
+  price numeric NOT NULL DEFAULT 0,
+  price_type text DEFAULT 'fixed' CHECK (price_type IN ('fixed', 'hourly', 'negotiable')),
+  delivery_days integer DEFAULT 7,
+  discord_username text,
+  status text DEFAULT 'active' CHECK (status IN ('active', 'paused', 'archived')),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_gigs_category ON public.gigs(category);
+CREATE INDEX idx_gigs_price ON public.gigs(price);
+CREATE INDEX idx_gigs_status ON public.gigs(status);
+CREATE INDEX idx_gigs_user ON public.gigs(user_id);
+
 -- Review votes
 CREATE TABLE public.review_votes (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

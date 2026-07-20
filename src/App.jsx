@@ -43,6 +43,10 @@ const SubmitSite = lazy(() => import('./pages/SubmitSite'));
 const SiteEmbed = lazy(() => import('./pages/SiteEmbed'));
 const Compare = lazy(() => import('./pages/Compare'));
 const Treasury = lazy(() => import('./pages/Treasury'));
+const Marketplace = lazy(() => import('./pages/Marketplace'));
+const GigDetail = lazy(() => import('./pages/GigDetail'));
+const PostGig = lazy(() => import('./pages/PostGig'));
+const MyGigs = lazy(() => import('./pages/MyGigs'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function AuthHandler() {
@@ -112,6 +116,11 @@ function App() {
           <Route path="/site/:slug/analytics" element={<SiteAnalytics />} />
           <Route path="/compare" element={<Compare user={user} />} />
           <Route path="/treasury" element={<Treasury user={user} />} />
+          <Route path="/marketplace" element={<Marketplace user={user} />} />
+          <Route path="/marketplace/post" element={<PostGig user={user} />} />
+          <Route path="/marketplace/edit/:id" element={<PostGig user={user} />} />
+          <Route path="/marketplace/:id" element={<GigDetail user={user} />} />
+          <Route path="/my-gigs" element={<MyGigs user={user} />} />
           <Route path="/forums/new-thread/:categoryId" element={<CreateThread />} />
           <Route path="/forums/thread/:threadId" element={<ForumPost />} />
           <Route path="*" element={<NotFound />} />
