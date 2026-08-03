@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
 
-COPY index.js ./
+COPY *.js ./
 COPY .env ./
 
 CMD ["node", "index.js"]
