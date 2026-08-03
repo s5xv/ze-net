@@ -58,8 +58,19 @@ const checkWatches = async () => {
 
 client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  await client.application.commands.set(commands).catch(err => console.error('Command sync failed (try npm run deploy):', err.message));
-  console.log(`✅ Registered ${commands.length} slash commands`);
+  const GUILD_ID = process.env.GUILD_ID;
+  try {
+    if (GUILD_ID) {
+      const guild = client.guilds.cache.get(GUILD_ID) || await client.guilds.fetch(GUILD_ID);
+      await guild.commands.set(commands);
+      console.log(`✅ Registered ${commands.length} slash commands in guild ${guild.name} (instant)`);
+    } else {
+      await client.application.commands.set(commands);
+      console.log(`✅ Registered ${commands.length} slash commands globally (can take up to 1 hour to show up)`);
+    }
+  } catch (err) {
+    console.error('Command sync failed (try npm run deploy):', err.message);
+  }
   console.log(`📡 Serving ${client.guilds.cache.size} guild(s)`);
 
   setInterval(checkWatches, 5 * 60 * 1000);
