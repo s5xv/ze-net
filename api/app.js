@@ -856,6 +856,107 @@ RULES:
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // --- announcements: list (public) ---
+  if (action === 'list-announcements') {
+    try {
+      const { data } = await supabase.from('announcements').select('*, profiles:created_by(username)').eq('is_active', true).order('created_at', { ascending: false }).limit(10);
+      return res.status(200).json({ announcements: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- announcements: create (admin) ---
+  if (action === 'admin-create-announcement') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+    try {
+      const user = await getUser(req);
+      const { title, content } = req.body;
+      if (!title || !content) return res.status(400).json({ error: 'Title and content required' });
+      const { data, error } = await supabase.from('announcements').insert({ title, content, created_by: user?.id || null }).select().maybeSingle();
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ announcement: data });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- announcements: toggle/delete (admin) ---
+  if (action === 'admin-delete-announcement') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+    try {
+      const { id } = req.body;
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      await supabase.from('announcements').delete().eq('id', id);
+      return res.status(200).json({ success: true });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: list (public shows approved; admin can see all) ---
+  if (action === 'list-news') {
+    try {
+      const user = await getUser(req);
+      const isAdmin = user ? await requireAdmin(req) : false;
+      let query = supabase.from('news').select('*, profiles:user_id(username, avatar_url)').order('created_at', { ascending: false });
+      if (!isAdmin) query = query.eq('status', 'approved');
+      const { data } = await query.limit(100);
+      return res.status(200).json({ news: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: create (approved businesses only) ---
+  if (action === 'create-news') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    try {
+      const user = await requireUser(req);
+      const { title, content, category, image_url } = req.body;
+      if (!title || !content) return res.status(400).json({ error: 'Title and content required' });
+      const [sitesRes, bizRes] = await Promise.all([
+        supabase.from('sites').select('id').eq('owner_user_id', user.id).eq('status', 'approved').limit(1),
+        supabase.from('business_registrations').select('id').eq('user_id', user.id).eq('status', 'approved').limit(1)
+      ]);
+      const isBusiness = (sitesRes.data && sitesRes.data.length > 0) || (bizRes.data && bizRes.data.length > 0);
+      if (!isBusiness) return res.status(403).json({ error: 'Only approved businesses can post news' });
+      const { data, error } = await supabase.from('news').insert({
+        user_id: user.id, title, content, category: category || 'General', image_url: image_url || null, status: 'pending'
+      }).select().maybeSingle();
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ news: data });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: my news ---
+  if (action === 'my-news') {
+    try {
+      const user = await requireUser(req);
+      const { data } = await supabase.from('news').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+      return res.status(200).json({ news: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: admin approve/reject ---
+  if (action === 'admin-approve-news') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+    try {
+      const { id, status } = req.body;
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      const { data, error } = await supabase.from('news').update({ status: status === 'reject' ? 'rejected' : 'approved', updated_at: new Date().toISOString() }).eq('id', id).select().maybeSingle();
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ news: data });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: admin delete ---
+  if (action === 'admin-delete-news') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+    try {
+      const { id } = req.body;
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      await supabase.from('news').delete().eq('id', id);
+      return res.status(200).json({ success: true });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
   // --- lookup-user ---
   if (action === 'lookup-user') {
     const raw = req.query.username || req.body?.username;

@@ -7,6 +7,8 @@ export default function Footer() {
       <div className="px-4 sm:px-6 py-3 flex flex-wrap justify-center gap-4 sm:gap-6 text-sm text-gray-600 dark:text-gray-400">
         <a href="/about" className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline">About</a>
         <a href="/contact" className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline">Contact</a>
+        <a href="/news" className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline">News</a>
+        <a href="/marketplace" className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline">Marketplace</a>
         <a href="/changelog" className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline">Changelog</a>
       </div>
       <div className="px-4 sm:px-6 py-3 text-center">

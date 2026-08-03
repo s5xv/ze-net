@@ -226,6 +226,32 @@ CREATE TABLE public.site_announcements (
 );
 CREATE INDEX idx_site_announcements ON public.site_announcements(site_id);
 
+-- Global site announcements (ticker bar)
+CREATE TABLE public.announcements (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title text NOT NULL,
+  content text NOT NULL,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_announcements_active ON public.announcements(is_active, created_at DESC);
+
+-- News posts (by approved businesses)
+CREATE TABLE public.news (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  content text NOT NULL,
+  category text DEFAULT 'General',
+  image_url text,
+  status text DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+CREATE INDEX idx_news_status ON public.news(status, created_at DESC);
+CREATE INDEX idx_news_user ON public.news(user_id);
+
 -- Ad requests
 CREATE TABLE public.ad_requests (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

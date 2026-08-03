@@ -64,6 +64,11 @@ export default function Admin() {
   const [notifBody, setNotifBody] = useState('');
   const [allGigs, setAllGigs] = useState([]);
   const [gigsLoading, setGigsLoading] = useState(false);
+  const [allNews, setAllNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [announcements, setAnnouncements] = useState([]);
+  const [annTitle, setAnnTitle] = useState('');
+  const [annContent, setAnnContent] = useState('');
 
   const fetchData = async (tab) => {
     setLoading(true);
@@ -182,6 +187,14 @@ export default function Admin() {
         const { gigs } = await apiFetch('/api/app?action=admin-list-gigs');
         setAllGigs(gigs || []);
         setGigsLoading(false);
+      } else if (tab === 'news') {
+        setNewsLoading(true);
+        const { news } = await apiFetch('/api/app?action=list-news');
+        setAllNews(news || []);
+        setNewsLoading(false);
+      } else if (tab === 'announcements') {
+        const { announcements } = await apiFetch('/api/app?action=list-announcements');
+        setAnnouncements(announcements || []);
       }
     } catch (err) {
       console.error('Fetch error:', err);
@@ -507,28 +520,39 @@ export default function Admin() {
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-white mb-6">Admin Dashboard</h1>
+        <div className="bg-gradient-to-r from-[#303134] to-[#3c4043] border border-gray-700 rounded-2xl p-6 mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+            <p className="text-sm text-gray-400 mt-1">Manage Z&E Net — sites, users, economy, and content</p>
+          </div>
+          <button onClick={() => { localStorage.removeItem('admin_pw'); window.location.href = '/'; }} className="text-xs text-gray-400 hover:text-red-400 transition-colors">Lock 🔒</button>
+        </div>
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4">
-            <p className="text-gray-400 text-sm">Withdrawals</p>
+          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4 hover:border-green-500/40 transition-colors">
+            <p className="text-gray-400 text-xs mb-1">💸 Withdrawals</p>
             <p className="text-3xl font-bold text-green-400">{stats.pendingWithdrawals || 0}</p>
+            <p className="text-[10px] text-gray-500 mt-1">pending</p>
           </div>
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4">
-            <p className="text-gray-400 text-sm">Verifications</p>
+          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4 hover:border-blue-500/40 transition-colors">
+            <p className="text-gray-400 text-xs mb-1">✅ Verifications</p>
             <p className="text-3xl font-bold text-blue-400">{stats.pendingVerifications || 0}</p>
+            <p className="text-[10px] text-gray-500 mt-1">pending</p>
           </div>
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4">
-            <p className="text-gray-400 text-sm">Ad Requests</p>
+          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4 hover:border-purple-500/40 transition-colors">
+            <p className="text-gray-400 text-xs mb-1">📢 Ad Requests</p>
             <p className="text-3xl font-bold text-purple-400">{stats.pendingAds || 0}</p>
+            <p className="text-[10px] text-gray-500 mt-1">pending</p>
           </div>
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4">
-            <p className="text-gray-400 text-sm">Sites</p>
+          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4 hover:border-yellow-500/40 transition-colors">
+            <p className="text-gray-400 text-xs mb-1">🌐 Sites</p>
             <p className="text-3xl font-bold text-yellow-400">{stats.totalSites || 0}</p>
+            <p className="text-[10px] text-gray-500 mt-1">total</p>
           </div>
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4">
-            <p className="text-gray-400 text-sm">Users</p>
+          <div className="bg-[#303134] border border-gray-700 rounded-xl p-4 hover:border-cyan-500/40 transition-colors">
+            <p className="text-gray-400 text-xs mb-1">👥 Users</p>
             <p className="text-3xl font-bold text-cyan-400">{stats.totalUsers || 0}</p>
+            <p className="text-[10px] text-gray-500 mt-1">total</p>
           </div>
         </div>
 
@@ -555,25 +579,43 @@ export default function Admin() {
           {hasPerm('manage_staff') && <TabButton id="audit_log" label="Audit Log" />}
           {hasPerm('manage_staff') && <TabButton id="features" label="Features" />}
           {hasPerm('manage_staff') && <TabButton id="gigs" label="Gigs" />}
+          {hasPerm('manage_staff') && <TabButton id="news" label="News" />}
+          {hasPerm('manage_staff') && <TabButton id="announcements" label="Announcements" />}
           {hasPerm('manage_staff') && <TabButton id="treasury" label="Treasury" />}
         </div>
 
         {loading && <p className="text-center text-gray-400 py-10">Loading...</p>}
 
         {!loading && activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
-              <h3 className="text-lg font-bold text-white mb-3">Quick Actions</h3>
+              <h3 className="text-lg font-bold text-white mb-3">⚡ Quick Actions</h3>
               <div className="space-y-2">
-                <button onClick={() => setActiveTab('withdrawals')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">Review Withdrawals</button>
-                <button onClick={() => setActiveTab('verifications')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">Review Verifications</button>
-                <button onClick={() => setActiveTab('ads')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">Review Ad Requests</button>
-                <button onClick={() => setActiveTab('staff')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">Manage Staff</button>
+                <button onClick={() => setActiveTab('withdrawals')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">💸 Review Withdrawals</button>
+                <button onClick={() => setActiveTab('verifications')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">✅ Review Verifications</button>
+                <button onClick={() => setActiveTab('ads')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">📢 Review Ad Requests</button>
+                <button onClick={() => setActiveTab('news')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">📰 Moderate News</button>
+                <button onClick={() => setActiveTab('announcements')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">📣 Post Announcement</button>
+                <button onClick={() => setActiveTab('staff')} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-200">🛠️ Manage Staff</button>
               </div>
             </div>
             <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
-              <h3 className="text-lg font-bold text-white mb-3">Platform Stats</h3>
-              <p className="text-gray-400 text-sm">Hosting {stats.totalSites} sites with {stats.totalUsers} users.</p>
+              <h3 className="text-lg font-bold text-white mb-3">📊 Platform Stats</h3>
+              <p className="text-gray-400 text-sm mb-4">Hosting {stats.totalSites} sites with {stats.totalUsers} users.</p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-gray-300"><span>Pending withdrawals</span><span className="font-bold text-green-400">{stats.pendingWithdrawals || 0}</span></div>
+                <div className="flex justify-between text-gray-300"><span>Pending verifications</span><span className="font-bold text-blue-400">{stats.pendingVerifications || 0}</span></div>
+                <div className="flex justify-between text-gray-300"><span>Pending ad requests</span><span className="font-bold text-purple-400">{stats.pendingAds || 0}</span></div>
+              </div>
+            </div>
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-5">
+              <h3 className="text-lg font-bold text-white mb-3">🔧 New Tools</h3>
+              <div className="space-y-2 text-sm text-gray-300">
+                <p>🏪 Gigs Marketplace moderation</p>
+                <p>📰 News approval workflow</p>
+                <p>📣 Global announcement ticker</p>
+                <p>💠 Treasury dashboard</p>
+              </div>
             </div>
           </div>
         )}
@@ -1277,10 +1319,78 @@ export default function Admin() {
           </div>
         )}
 
+        {!loading && activeTab === 'news' && (
+          <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+            <h2 className="text-lg font-bold text-white mb-4">News Moderation</h2>
+            {newsLoading ? (
+              <p className="text-gray-500">Loading...</p>
+            ) : allNews.length === 0 ? (
+              <p className="text-gray-500">No news posts.</p>
+            ) : (
+              <div className="space-y-3">
+                {allNews.map(item => (
+                  <div key={item.id} className="bg-[#202124] rounded-lg p-4">
+                    <div className="flex items-center justify-between gap-3 mb-1">
+                      <p className="text-white font-medium">{item.title}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded flex-shrink-0 ${item.status === 'approved' ? 'bg-green-500/20 text-green-400' : item.status === 'rejected' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{item.status}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2">{item.category} · by {item.profiles?.username || 'Unknown'} · {new Date(item.created_at).toLocaleString()}</p>
+                    <p className="text-sm text-gray-300 whitespace-pre-wrap line-clamp-3 mb-3">{item.content}</p>
+                    <div className="flex items-center gap-2">
+                      {item.status !== 'approved' && (
+                        <button onClick={async () => { await apiFetch('/api/app?action=admin-approve-news', { method: 'POST', body: JSON.stringify({ id: item.id, status: 'approve' }) }); fetchData('news'); }} className="px-3 py-1 bg-green-600 text-white text-xs rounded">Approve</button>
+                      )}
+                      {item.status !== 'rejected' && (
+                        <button onClick={async () => { await apiFetch('/api/app?action=admin-approve-news', { method: 'POST', body: JSON.stringify({ id: item.id, status: 'reject' }) }); fetchData('news'); }} className="px-3 py-1 bg-yellow-600 text-white text-xs rounded">Reject</button>
+                      )}
+                      <button onClick={async () => { if (confirm('Delete this news post?')) { await apiFetch('/api/app?action=admin-delete-news', { method: 'POST', body: JSON.stringify({ id: item.id }) }); fetchData('news'); } }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!loading && activeTab === 'announcements' && (
+          <div className="space-y-6">
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-white mb-4">Post Announcement</h2>
+              <div className="space-y-3">
+                <input type="text" placeholder="Title" value={annTitle} onChange={e => setAnnTitle(e.target.value)} className="w-full px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white text-sm" />
+                <textarea placeholder="Content" value={annContent} onChange={e => setAnnContent(e.target.value)} className="w-full px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white text-sm" rows="2" />
+                <button onClick={async () => {
+                  if (!annTitle || !annContent) return;
+                  await apiFetch('/api/app?action=admin-create-announcement', { method: 'POST', body: JSON.stringify({ title: annTitle, content: annContent }) });
+                  setAnnTitle(''); setAnnContent('');
+                  fetchData('announcements');
+                }} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">Post Announcement</button>
+              </div>
+            </div>
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-white mb-4">Active Announcements</h2>
+              {announcements.length === 0 ? (
+                <p className="text-gray-500">No announcements.</p>
+              ) : (
+                <div className="space-y-2">
+                  {announcements.map(a => (
+                    <div key={a.id} className="flex items-center justify-between bg-[#202124] p-3 rounded-lg">
+                      <div>
+                        <p className="text-white text-sm font-medium">{a.title}</p>
+                        <p className="text-xs text-gray-500">{a.content}</p>
+                      </div>
+                      <button onClick={async () => { if (confirm('Delete this announcement?')) { await apiFetch('/api/app?action=admin-delete-announcement', { method: 'POST', body: JSON.stringify({ id: a.id }) }); fetchData('announcements'); } }} className="px-3 py-1 bg-red-600 text-white text-xs rounded flex-shrink-0">Delete</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {!loading && activeTab === 'gigs' && (
           <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
-            <h2 className="text-lg font-bold text-white mb-4">Gigs Marketplace</h2>
-            {gigsLoading ? (
+            <h2 className="text-lg font-bold text-white mb-4">Gigs Marketplace</h2>            {gigsLoading ? (
               <p className="text-gray-500">Loading...</p>
             ) : allGigs.length === 0 ? (
               <p className="text-gray-500">No gigs posted yet.</p>

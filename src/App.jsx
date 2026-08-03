@@ -47,6 +47,8 @@ const Marketplace = lazy(() => import('./pages/Marketplace'));
 const GigDetail = lazy(() => import('./pages/GigDetail'));
 const PostGig = lazy(() => import('./pages/PostGig'));
 const MyGigs = lazy(() => import('./pages/MyGigs'));
+const News = lazy(() => import('./pages/News'));
+const PostNews = lazy(() => import('./pages/PostNews'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 function AuthHandler() {
@@ -121,6 +123,8 @@ function App() {
           <Route path="/marketplace/edit/:id" element={<PostGig user={user} />} />
           <Route path="/marketplace/:id" element={<GigDetail user={user} />} />
           <Route path="/my-gigs" element={<MyGigs user={user} />} />
+          <Route path="/news" element={<News user={user} />} />
+          <Route path="/news/post" element={<PostNews user={user} />} />
           <Route path="/forums/new-thread/:categoryId" element={<CreateThread />} />
           <Route path="/forums/thread/:threadId" element={<ForumPost />} />
           <Route path="*" element={<NotFound />} />
