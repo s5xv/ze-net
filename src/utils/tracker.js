@@ -32,8 +32,16 @@ export const checkAndUnlockAchievements = async (userId) => {
     if (bizCount > 0) await unlockAchievement(userId, ACHIEVEMENTS.business_owner);
 
     // 5. Check Advertiser
-    const { count: adCount } = await supabase.from('ad_submissions').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+    const { count: adCount } = await supabase.from('ad_requests').select('*', { count: 'exact', head: true }).eq('user_id', userId);
     if (adCount > 0) await unlockAchievement(userId, ACHIEVEMENTS.advertiser);
+
+    // 6. Check Site Visitor
+    const { count: siteVisits } = await supabase.from('site_views').select('*', { count: 'exact', head: true }).eq('viewer_id', userId);
+    if (siteVisits >= 10) await unlockAchievement(userId, ACHIEVEMENTS.site_visitor);
+
+    // 7. Check Wiki Explorer
+    const { count: wikiCount } = await supabase.from('wiki_pages').select('*', { count: 'exact', head: true }).eq('user_id', userId);
+    if (wikiCount >= 5) await unlockAchievement(userId, ACHIEVEMENTS.wiki_explorer);
 
   } catch (err) {
     console.error('Tracker error:', err);
@@ -47,7 +55,8 @@ const unlockAchievement = async (userId, achievement) => {
     if (!existing) {
       await supabase.from('user_achievements').insert({
         user_id: userId,
-        achievement_id: achievement.id
+        achievement_id: achievement.id,
+        achievement_key: achievement.id
       });
       console.log(`Unlocked: ${achievement.title}`);
     }

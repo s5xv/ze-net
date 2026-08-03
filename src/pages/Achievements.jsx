@@ -3,19 +3,9 @@ import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
+import { ACHIEVEMENTS } from '../hooks/useAchievements';
 
-// Define the available achievements
-const ACHIEVEMENTS_LIST = [
-  { id: 'first_search', title: 'Curious Mind', description: 'Perform your first search on Z&E Net.', icon: '🔍', xp: 10 },
-  { id: 'wiki_explorer', title: 'Wiki Explorer', description: 'Visit 5 different wiki pages.', icon: '📚', xp: 25 },
-  { id: 'site_visitor', title: 'Site Surfer', description: 'Visit 10 different sites.', icon: '🌐', xp: 50 },
-  { id: 'business_owner', title: 'Entrepreneur', description: 'Register your first business.', icon: '💼', xp: 100 },
-  { id: 'advertiser', title: 'Big Spender', description: 'Purchase your first ad.', icon: '💰', xp: 150 },
-  { id: 'commenter', title: 'Chatterbox', description: 'Leave a comment on a site or wiki.', icon: '💬', xp: 20 },
-  { id: 'reviewer', title: 'Critic', description: 'Leave a review on a site.', icon: '⭐', xp: 30 },
-  { id: 'daily_challenge', title: 'Challenge Accepted', description: 'Complete a daily challenge.', icon: '🏆', xp: 75 },
-  { id: 'loyal_user', title: 'Loyal Citizen', description: 'Use Z&E Net for 7 days straight.', icon: '', xp: 200 },
-];
+const ACHIEVEMENTS_LIST = Object.entries(ACHIEVEMENTS).map(([id, a]) => ({ id, ...a }));
 
 export default function Achievements() {
   const { user } = useAuth();
@@ -35,10 +25,10 @@ export default function Achievements() {
     try {
       const { data, error } = await supabase
         .from('user_achievements')
-        .select('achievement_id')
+        .select('achievement_id, achievement_key')
         .eq('user_id', user.id);
       if (!error && data) {
-        setUnlockedIds(data.map(a => a.achievement_id));
+        setUnlockedIds(data.map(a => a.achievement_key || a.achievement_id));
       }
     } catch (err) {
       console.error('Error fetching achievements:', err);

@@ -252,6 +252,17 @@ CREATE TABLE public.news (
 CREATE INDEX idx_news_status ON public.news(status, created_at DESC);
 CREATE INDEX idx_news_user ON public.news(user_id);
 
+-- Discord bot site watches (DM alerts when a site goes offline/online)
+CREATE TABLE public.discord_watches (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  discord_user_id text NOT NULL,
+  site_slug text NOT NULL,
+  last_active boolean,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(discord_user_id, site_slug)
+);
+CREATE INDEX idx_discord_watches_slug ON public.discord_watches(site_slug);
+
 -- Ad requests
 CREATE TABLE public.ad_requests (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -34,18 +34,20 @@ export function useAchievements(user) {
     try {
       const { data } = await supabase
         .from('user_achievements')
-        .select('achievement_key')
+        .select('achievement_id, achievement_key')
         .eq('user_id', user.id);
-      setUnlocked(data?.map(d => d.achievement_key) || []);
+      const keys = data?.map(d => d.achievement_key || d.achievement_id) || [];
+      setUnlocked(keys);
     } catch (e) { console.error('Failed to fetch achievements:', e); }
   };
 
   const unlock = async (key) => {
     if (!user || unlocked.includes(key)) return false;
-    
+
     try {
       const { error } = await supabase.from('user_achievements').insert({
         user_id: user.id,
+        achievement_id: key,
         achievement_key: key
       });
       
