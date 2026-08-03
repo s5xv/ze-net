@@ -1,0 +1,14 @@
+services:
+  zenet-bot:
+    build: ./discord-bot
+    container_name: zenet-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
