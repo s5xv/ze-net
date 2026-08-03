@@ -1,13 +1,17 @@
 import { useTheme } from '../hooks/useTheme';
+import { useAppearance } from '../hooks/useAppearance';
 import { supabase } from '../services/supabase';
 import { useState, useEffect, useRef } from 'react';
 import NotificationBell from './NotificationBell';
 import Clock from './Clock';
 import AnnouncementTicker from './AnnouncementTicker';
+import ShortcutsOverlay from './ShortcutsOverlay';
 
 export default function Layout({ children, user }) {
   const { isDark, toggleTheme } = useTheme();
+  useAppearance();
   const [showMenu, setShowMenu] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [mcName, setMcName] = useState(null);
   const [balance, setBalance] = useState(0);
   const [serverStatus, setServerStatus] = useState({ online: false, players: 0 });
@@ -72,6 +76,25 @@ export default function Layout({ children, user }) {
     if (showMenu) { document.addEventListener('mousedown', handleClick); return () => document.removeEventListener('mousedown', handleClick); }
   }, [showMenu]);
 
+  useEffect(() => {
+    const handleGlobalKeys = (e) => {
+      const t = e.target;
+      const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+      if (typing) return;
+      const key = e.key.toLowerCase();
+      if (key === '?') { e.preventDefault(); setShowShortcuts(true); return; }
+      if (key === 'g') { window.location.href = '/'; }
+      else if (key === 'n') { window.location.href = '/news'; }
+      else if (key === 'm') { window.location.href = '/marketplace'; }
+      else if (key === 'a') { window.location.href = '/ask'; }
+      else if (key === 'b') { window.location.href = '/leaderboard'; }
+      else if (key === 'i') { window.location.href = '/inbox'; }
+      else if (key === 'u') { window.location.href = '/utilities'; }
+    };
+    window.addEventListener('keydown', handleGlobalKeys);
+    return () => window.removeEventListener('keydown', handleGlobalKeys);
+  }, []);
+
   const displayName = mcName || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
   const discordAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.avatar;
   const discordAvatarUrl = discordAvatar ? (discordAvatar.startsWith('http') ? discordAvatar : `https://cdn.discordapp.com/avatars/${user.id}/${discordAvatar}.png?size=128`) : null;
@@ -114,8 +137,13 @@ export default function Layout({ children, user }) {
                 <a href="/account" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Account</a>
                 <a href="/settings" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Settings</a>
                 <a href="/notifications" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Notifications</a>
+                <a href="/inbox" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Inbox</a>
                 {user && <a href={`/profile/${user.id}`} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">My Profile</a>}
                 <a href="/submit-site" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Submit Site</a>
+                <a href="/marketplace" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Marketplace</a>
+                <a href="/guides" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Guides</a>
+                <a href="/archived" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Archived Sites</a>
+                {user && <a href="/api-keys" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">API Keys</a>}
                 <a href="/link-account" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Link MC Account</a>
                 {isStaff && <a href="/admin" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]">Admin Dashboard</a>}
                 <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
@@ -151,6 +179,7 @@ export default function Layout({ children, user }) {
       <div className="flex-1 overflow-y-auto flex justify-center">
         {children}
       </div>
+      {showShortcuts && <ShortcutsOverlay onClose={() => setShowShortcuts(false)} />}
       <footer className="bg-gray-100 dark:bg-[#171717] border-t border-gray-200 dark:border-gray-800 py-3 text-center text-xs text-gray-500 mt-auto flex-shrink-0">
         <p>Z&E Net is an independent search directory not affiliated with DemocracyCraft.</p>
         <p className="mt-1">© {new Date().getFullYear()} Z&E Net</p>

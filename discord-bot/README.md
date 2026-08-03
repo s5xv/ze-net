@@ -34,6 +34,7 @@ Discord bot for Z&E Net with site search, AI assistant, marketplace, and staff m
 | `/announce <title> <content>` | Owner | Post site announcement |
 | `/moderate <slug> <action>` | Owner | Hide/show site |
 | `/news-mod <id> <decision>` | Owner | Approve/reject news |
+| `/sync-roles` | Owner/Engineer | Assign Verified Owner role to all verified site owners |
 | `/shutdown` | Owner | Stop the bot |
 
 Commands that need your Discord linked to Z&E Net (`/bookmark`, `/review`, `/verify-mc`) look up your site account via `profiles.discord_id` — just sign in on the site with Discord.

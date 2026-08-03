@@ -21,6 +21,10 @@ export default function Search() {
   const [sitesCollapsed, setSitesCollapsed] = useState(false);
   const [wikiCollapsed, setWikiCollapsed] = useState(false);
   const [promotedAds, setPromotedAds] = useState([]);
+  const [sort, setSort] = useState('relevance');
+  const [openNow, setOpenNow] = useState(false);
+  const [didYouMean, setDidYouMean] = useState(null);
+  const [didYouMeanSlug, setDidYouMeanSlug] = useState(null);
   const navigate = useNavigate();
   const searchId = useRef(0);
 
@@ -28,7 +32,7 @@ export default function Search() {
     setQ(query);
     if (query) fetchResults();
     else { setSiteResults([]); setWikiResults([]); setDeptResults([]); setAiSummary(null); setLoading(false); }
-  }, [query]);
+  }, [query, sort, openNow]);
 
   const extractSearchTerms = (q) => {
     const questionWords = ['who is ', 'what is ', 'what are ', 'where is ', 'how to ', 'how do i ', 'tell me about ', 'find ', 'search for ', 'i need ', 'looking for ', 'show me '];
@@ -50,7 +54,7 @@ export default function Search() {
       const searchTerm = extractSearchTerms(rawQuery);
       
       let sitesData = null;
-      try { const d = await apiFetch('/api/app?action=search-sites', { method: 'POST', body: JSON.stringify({ q: searchTerm }) }); sitesData = d.sites || []; } catch (e) { console.error('Site search error:', e); }
+      try { const d = await apiFetch('/api/app?action=search-sites', { method: 'POST', body: JSON.stringify({ q: searchTerm, sort, openNow }) }); sitesData = d.sites || []; if (d.didYouMean) { setDidYouMean(d.didYouMean); setDidYouMeanSlug(d.didYouMeanSlug); } else { setDidYouMean(null); setDidYouMeanSlug(null); } } catch (e) { console.error('Site search error:', e); }
       if (id === searchId.current) setSiteResults(sitesData || []);
 
       const { data: wikiData } = await supabase.from('wiki_pages').select('*').or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`).limit(20);
@@ -154,7 +158,7 @@ export default function Search() {
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-5xl mx-auto px-4 sm:px-6 py-8 w-full">
-        <form onSubmit={handleSearch} className="mb-8">
+        <form onSubmit={handleSearch} className="mb-4">
           <div className="flex gap-3">
             <input 
               type="text" 
@@ -166,6 +170,25 @@ export default function Search() {
             <button type="submit" className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium shadow-sm transition-colors">Search</button>
           </div>
         </form>
+
+        {!loading && (
+          <div className="flex flex-wrap items-center gap-3 mb-6">
+            <select value={sort} onChange={e => setSort(e.target.value)} className="px-3 py-2 bg-[#303134] border border-gray-700 rounded-lg text-white text-sm">
+              <option value="relevance">Sort: Most viewed</option>
+              <option value="newest">Sort: Newest</option>
+              <option value="name">Sort: A–Z</option>
+            </select>
+            <button onClick={() => setOpenNow(!openNow)} className={`px-3 py-2 rounded-lg text-sm border transition-colors ${openNow ? 'bg-green-600 border-green-600 text-white' : 'bg-[#303134] border-gray-700 text-gray-300 hover:border-green-500/50'}`}>
+              🕐 Open now
+            </button>
+            {didYouMean && siteResults.length === 0 && (
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Did you mean{' '}
+                <button onClick={() => { setSearchParams({ q: didYouMean }); }} className="text-blue-600 dark:text-blue-400 font-medium hover:underline">{didYouMean}</button>?
+              </span>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-12 text-gray-500">Searching...</div>
@@ -279,7 +302,7 @@ export default function Search() {
                         <div className="flex justify-between items-start">
                           <div>
                             <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-                              {site.name} {site.is_verified && <span className="text-blue-500 text-sm ml-1">✓</span>}
+                              {site.name} {site.is_verified && <span className="text-blue-500 text-sm ml-1">✓</span>} {site.business_hours && <span className="text-xs text-green-500 ml-1">🕐</span>}
                             </h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{site.description}</p>
                           </div>

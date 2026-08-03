@@ -206,6 +206,26 @@ export default function Home() {
     setShowSuggestions(false);
   };
 
+  const [highlighted, setHighlighted] = useState(-1);
+  useEffect(() => setHighlighted(-1), [suggestions]);
+
+  const handleKeyDown = (e) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlighted(h => (h + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlighted(h => (h <= 0 ? suggestions.length - 1 : h - 1));
+    } else if (e.key === 'Enter' && highlighted >= 0) {
+      e.preventDefault();
+      handleSuggestionClick(suggestions[highlighted]);
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setHighlighted(-1);
+    }
+  };
+
   const handleFeelingLucky = async () => {
     try {
       const { data } = await supabase.from('sites').select('slug').eq('status', 'approved').limit(1000);
@@ -284,13 +304,14 @@ export default function Home() {
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
                     onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                    onKeyDown={handleKeyDown}
                     placeholder="What's on your mind today?..."
                     className="w-full px-6 py-4 bg-white dark:bg-[#303134] border border-gray-300 dark:border-gray-700 rounded-full text-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                   {showSuggestions && (
                     <div ref={suggestionsRef} className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#303134] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50 max-h-96 overflow-y-auto">
                       {suggestions.map((s, i) => (
-                        <button key={i} type="button" onClick={() => handleSuggestionClick(s)} className="w-full text-left px-6 py-3 hover:bg-gray-100 dark:hover:bg-[#3c4043] flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0">
+                        <button key={i} type="button" onClick={() => handleSuggestionClick(s)} onMouseEnter={() => setHighlighted(i)} className={`w-full text-left px-6 py-3 flex items-center gap-3 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0 ${highlighted === i ? 'bg-gray-100 dark:bg-[#3c4043]' : 'hover:bg-gray-100 dark:hover:bg-[#3c4043]'}`}>
                           <span className="text-gray-700 dark:text-gray-300 flex-grow">{s.text}</span>
                         </button>
                       ))}
@@ -318,6 +339,8 @@ export default function Home() {
                   <a href="/submit-ad" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Submit Ad</a>
                   <a href="/verify-site" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Verify Site</a>
                   <a href="/marketplace" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Marketplace</a>
+                  <a href="/marketplace?tab=jobs" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Jobs</a>
+                  <a href="/news" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">News</a>
                   <a href="/achievements" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Achievements</a>
                 </div>
 

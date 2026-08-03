@@ -63,6 +63,10 @@ export default function SiteManage() {
   const [newCoupon, setNewCoupon] = useState({ code: '', discount: '', description: '', expires_at: '' });
   const [scheduledDate, setScheduledDate] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [catalog, setCatalog] = useState([]);
+  const [newCatalogItem, setNewCatalogItem] = useState({ name: '', price: '', description: '', image: '' });
+  const [businessHours, setBusinessHours] = useState({});
 
   useEffect(() => {
     if (!loading && user && slug) fetchSite();
@@ -103,6 +107,9 @@ export default function SiteManage() {
     }
 
     setSite(data);
+    setVideoUrl(data.video_url || '');
+    setCatalog(data.catalog || []);
+    setBusinessHours(data.business_hours || {});
     setFormData({
       name: data.name || '', description: data.description || '', category: data.category || '',
       subcategory: data.subcategory || '', url: data.url || '', shortcuts: data.shortcuts || '',
@@ -132,7 +139,13 @@ export default function SiteManage() {
       subcategory: formData.subcategory, url: formData.url,
       shortcuts: shortcutsArray.join(', '), keywords: keywordsArray,
       is_verified: formData.is_verified, image_url: formData.image_url,
-      customization
+      customization,
+      video_url: videoUrl || null,
+      catalog: catalog.length > 0 ? catalog : null,
+      business_hours: Object.keys(businessHours).length > 0 ? businessHours : null,
+      banner_image_url: customization.banner_url || null,
+      accent_color: customization.accent_color || null,
+      gallery_images: customization.gallery?.length > 0 ? customization.gallery : null
     }).eq('id', site.id);
 
     if (error) alert('Error saving: ' + error.message);
@@ -286,6 +299,70 @@ export default function SiteManage() {
                   <input type="checkbox" checked={customization.hours?.open24h || false} onChange={(e) => setCustomization({...customization, hours: {...customization.hours, open24h: e.target.checked}})} />
                   Open 24/7
                 </label>
+              </div>
+
+              {/* Structured Hours (open-now filter) */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Structured Hours (for "Open Now" filter)</label>
+                <p className="text-xs text-gray-500 mb-2">These make your site appear in "Open Now" search results. Leave blank to skip a day.</p>
+                {DAYS.map(day => {
+                  const slots = businessHours[day];
+                  const open = Array.isArray(slots) ? (slots[0]?.open || '') : (slots?.open || '');
+                  const close = Array.isArray(slots) ? (slots[0]?.close || '') : (slots?.close || '');
+                  return (
+                    <div key={day} className="flex items-center gap-2 mb-1">
+                      <span className="w-24 text-sm capitalize">{day}</span>
+                      <input type="time" value={open} onChange={(e) => {
+                        const cur = businessHours[day] && !Array.isArray(businessHours[day]) ? businessHours[day] : { open: '', close: '' };
+                        const val = { ...cur, open: e.target.value, close: cur.close || close };
+                        setBusinessHours({ ...businessHours, [day]: val });
+                      }} className="px-3 py-1.5 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded text-sm" />
+                      <span className="text-xs text-gray-500">to</span>
+                      <input type="time" value={close} onChange={(e) => {
+                        const cur = businessHours[day] && !Array.isArray(businessHours[day]) ? businessHours[day] : { open: '', close: '' };
+                        const val = { ...cur, close: e.target.value, open: cur.open || open };
+                        setBusinessHours({ ...businessHours, [day]: val });
+                      }} className="px-3 py-1.5 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded text-sm" />
+                      {(businessHours[day]?.open || businessHours[day]?.close) && (
+                        <button onClick={() => { const n = { ...businessHours }; delete n[day]; setBusinessHours(n); }} className="px-2 py-1 bg-red-600 text-white rounded text-xs">X</button>
+                      )}
+                    </div>
+                  );
+                })}
+                <label className="flex items-center gap-2 mt-1 text-sm">
+                  <input type="checkbox" checked={businessHours.open24h || false} onChange={(e) => setBusinessHours({ ...businessHours, open24h: e.target.checked })} />
+                  Open 24/7 (structured)
+                </label>
+              </div>
+
+              {/* Video */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Video URL (YouTube)</label>
+                <input type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} className="w-full px-4 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" placeholder="https://www.youtube.com/watch?v=..." />
+              </div>
+
+              {/* Product Catalog */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Product Catalog</label>
+                <div className="space-y-2 mb-2">
+                  {catalog.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-gray-50 dark:bg-[#202124] p-2 rounded-lg">
+                      {item.image && <img src={item.image} alt="" className="w-10 h-10 object-cover rounded" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold truncate">{item.name}</p>
+                        {item.price !== undefined && item.price !== '' && <p className="text-xs text-green-500">${parseFloat(item.price).toFixed(2)}</p>}
+                      </div>
+                      <button onClick={() => setCatalog(catalog.filter((_, j) => j !== i))} className="px-2 py-1 bg-red-600 text-white rounded text-xs">X</button>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <input type="text" value={newCatalogItem.name} onChange={(e) => setNewCatalogItem({...newCatalogItem, name: e.target.value})} placeholder="Product name" className="px-3 py-1.5 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded text-sm" />
+                  <input type="number" step="0.01" min="0" value={newCatalogItem.price} onChange={(e) => setNewCatalogItem({...newCatalogItem, price: e.target.value})} placeholder="Price $" className="px-3 py-1.5 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded text-sm" />
+                  <input type="text" value={newCatalogItem.description} onChange={(e) => setNewCatalogItem({...newCatalogItem, description: e.target.value})} placeholder="Short description" className="col-span-2 px-3 py-1.5 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded text-sm" />
+                  <input type="url" value={newCatalogItem.image} onChange={(e) => setNewCatalogItem({...newCatalogItem, image: e.target.value})} placeholder="Image URL (optional)" className="col-span-2 px-3 py-1.5 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded text-sm" />
+                </div>
+                <button onClick={() => { if (newCatalogItem.name.trim()) { setCatalog([...catalog, { ...newCatalogItem, name: newCatalogItem.name.trim() }]); setNewCatalogItem({ name: '', price: '', description: '', image: '' }); } }} className="px-3 py-1 bg-gray-600 text-white rounded text-sm">+ Add Product</button>
               </div>
 
               {/* Social Links */}

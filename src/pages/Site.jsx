@@ -48,6 +48,32 @@ export default function Site() {
   const [reviewSort, setReviewSort] = useState('newest');
   const [reviewFilter, setReviewFilter] = useState(0);
   const [reviewVotes, setReviewVotes] = useState({});
+  const [questions, setQuestions] = useState([]);
+  const [newQuestion, setNewQuestion] = useState('');
+  const [newAnswer, setNewAnswer] = useState({});
+  const [commentReactions, setCommentReactions] = useState({});
+  const [busyReaction, setBusyReaction] = useState(null);
+
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const isOpenNow = (s) => {
+    if (!s?.business_hours) return null;
+    if (s.business_hours.open24h) return true;
+    const now = new Date();
+    const day = dayNames[now.getDay()];
+    const h = s.business_hours[day];
+    if (!h) return false;
+    const mins = now.getHours() * 60 + now.getMinutes();
+    const slots = Array.isArray(h) ? h : [h];
+    return slots.some(slot => {
+      if (!slot?.open || !slot?.close) return false;
+      const [oh, om] = slot.open.split(':').map(Number);
+      const [ch, cm] = slot.close.split(':').map(Number);
+      const o = oh * 60 + om, c = ch * 60 + cm;
+      if (o === c) return true;
+      if (c < o) return mins >= o || mins < c;
+      return mins >= o && mins < c;
+    });
+  };
 
   useEffect(() => {
     fetchSite();
@@ -100,6 +126,16 @@ export default function Site() {
 
       const { data: relData } = await supabase.from('sites').select('slug, name, image_url, view_count').eq('category', data.category).neq('id', data.id).order('view_count', { ascending: false }).limit(4);
       setRelatedSites(relData || []);
+
+      const { data: qData } = await supabase.from('site_questions').select('*, user:user_id(username)').eq('site_id', data.id).order('created_at', { ascending: false }).limit(20);
+      setQuestions(qData || []);
+
+      const { data: cData } = await supabase.from('comment_reactions').select('*').eq('user_id', user?.id || '').in('comment_id', comments.map(c => c.id));
+      if (user && cData) {
+        const rMap = {};
+        cData.forEach(v => { rMap[v.comment_id] = v.reaction; });
+        setCommentReactions(rMap);
+      }
 
       if (user) {
         const { data: votes } = await supabase.from('review_votes').select('review_id, vote_type').in('review_id', reviews.map(r => r.id));
@@ -198,6 +234,46 @@ export default function Site() {
 
   const [reviewVoteBusy, setReviewVoteBusy] = useState({});
 
+  const submitQuestion = async () => {
+    if (!user || !site?.id || !newQuestion.trim()) return;
+    try {
+      const { error } = await supabase.from('site_questions').insert({ site_id: site.id, user_id: user.id, question: newQuestion.trim() });
+      if (error) throw error;
+      setNewQuestion('');
+      const { data } = await supabase.from('site_questions').select('*, user:user_id(username)').eq('site_id', site.id).order('created_at', { ascending: false });
+      setQuestions(data || []);
+    } catch (e) { alert('Error: ' + e.message); }
+  };
+
+  const submitAnswer = async (qId) => {
+    if (!site || !newAnswer[qId]?.trim()) return;
+    const isOwner = user && (site.owner_user_id === user.id || site.user_id === user.id);
+    if (!isOwner) { alert('Only the site owner can answer'); return; }
+    try {
+      const { error } = await supabase.from('site_questions').update({ answer: newAnswer[qId].trim(), answered_by: user.id, answered_at: new Date().toISOString() }).eq('id', qId);
+      if (error) throw error;
+      setNewAnswer(prev => { const n = {...prev}; delete n[qId]; return n; });
+      const { data } = await supabase.from('site_questions').select('*, user:user_id(username)').eq('site_id', site.id).order('created_at', { ascending: false });
+      setQuestions(data || []);
+    } catch (e) { alert('Error: ' + e.message); }
+  };
+
+  const toggleReaction = async (commentId, reaction) => {
+    if (!user || busyReaction === commentId) return;
+    setBusyReaction(commentId);
+    try {
+      const existing = commentReactions[commentId];
+      if (existing === reaction) {
+        await supabase.from('comment_reactions').delete().eq('comment_id', commentId).eq('user_id', user.id);
+        setCommentReactions(prev => { const n = {...prev}; delete n[commentId]; return n; });
+      } else {
+        await supabase.from('comment_reactions').upsert({ comment_id: commentId, user_id: user.id, reaction }, { onConflict: 'comment_id, user_id' });
+        setCommentReactions(prev => ({ ...prev, [commentId]: reaction }));
+      }
+    } catch (_) {}
+    setBusyReaction(null);
+  };
+
   const handleReviewVote = async (reviewId, voteType) => {
     if (!user || reviewVoteBusy[reviewId]) return;
     setReviewVoteBusy(prev => ({...prev, [reviewId]: true}));
@@ -248,18 +324,24 @@ export default function Site() {
   return (
     <Layout user={user}>
       <main className="flex-grow max-w-4xl mx-auto px-4 py-8">
-        {site.customization?.banner_url && (
+        {(site.banner_image_url || site.customization?.banner_url) && (
           <div className="mb-4 -mx-4 sm:-mx-6">
-            <img src={site.customization.banner_url} alt="" className="w-full h-48 object-cover rounded-xl border border-gray-700" />
+            <img src={site.banner_image_url || site.customization.banner_url} alt="" className="w-full h-48 object-cover rounded-xl border border-gray-700" />
           </div>
         )}
 
-        <div className="bg-[#303134] border border-gray-700 rounded-xl p-8" style={site.customization?.accent_color ? { borderColor: site.customization.accent_color } : {}}>
+        <div className="bg-[#303134] border border-gray-700 rounded-xl p-8" style={(site.accent_color || site.customization?.accent_color) ? { borderColor: site.accent_color || site.customization.accent_color } : {}}>
           <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
             <div className="flex items-center gap-3">
               {site.image_url && <img src={site.image_url} alt="" className="w-10 h-10 rounded-lg object-cover border border-gray-600" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none' }} />}
               <h1 className="text-3xl font-bold text-white">{site.name}</h1>
               {site.is_verified && <span className="px-3 py-1 bg-blue-600 text-white text-xs rounded-full">VERIFIED</span>}
+              {site.spotlight && <span className="px-3 py-1 bg-purple-600 text-white text-xs rounded-full">🌟 SPOTLIGHT</span>}
+              {isOpenNow(site) !== null && (
+                <span className={`px-3 py-1 text-xs rounded-full font-bold text-white ${isOpenNow(site) ? 'bg-green-600' : 'bg-red-600'}`}>
+                  {isOpenNow(site) ? 'OPEN NOW' : 'CLOSED'}
+                </span>
+              )}
               {site.customization?.status && (
                 <span className={`px-3 py-1 text-xs rounded-full font-bold text-white ${
                   site.customization.status === 'open' ? 'bg-green-600' :
@@ -373,21 +455,34 @@ export default function Site() {
         )}
 
         {/* Hours */}
-        {site.customization?.hours && Object.keys(site.customization.hours).filter(k => k !== 'open24h' && site.customization.hours[k]).length > 0 && (
+        {((site.business_hours && Object.keys(site.business_hours).length > 0) || (site.customization?.hours && Object.keys(site.customization.hours).filter(k => k !== 'open24h' && site.customization.hours[k]).length > 0)) && (
           <div className="mt-8 bg-[#303134] border border-gray-700 rounded-xl p-6">
-            <h2 className="text-xl font-bold text-white mb-4">Hours of Operation</h2>
-            {site.customization.hours.open24h ? (
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Hours of Operation</h2>
+              {isOpenNow(site) !== null && (
+                <span className={`px-3 py-1 text-xs rounded-full font-bold ${isOpenNow(site) ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                  {isOpenNow(site) ? '● Open Now' : '● Closed'}
+                </span>
+              )}
+            </div>
+            {site.business_hours?.open24h ? (
               <p className="text-green-400 font-bold">Open 24/7</p>
             ) : (
               <div className="space-y-1">
-                {['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map(day => (
-                  site.customization.hours[day] && (
+                {dayNames.map(day => {
+                  const hours = site.business_hours?.[day];
+                  const custom = site.customization?.hours?.[day];
+                  const display = Array.isArray(hours)
+                    ? hours.map(h => h?.open && h?.close ? `${h.open} – ${h.close}` : null).filter(Boolean).join(', ')
+                    : hours?.open && hours?.close ? `${hours.open} – ${hours.close}` : null;
+                  if (!display && !custom) return null;
+                  return (
                     <div key={day} className="flex justify-between text-sm">
-                      <span className="text-gray-400 capitalize w-32">{day}</span>
-                      <span className="text-white">{site.customization.hours[day]}</span>
+                      <span className={`capitalize w-32 ${day === dayNames[new Date().getDay()] ? 'text-blue-400 font-bold' : 'text-gray-400'}`}>{day}</span>
+                      <span className="text-white">{display || custom}</span>
                     </div>
-                  )
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -408,11 +503,11 @@ export default function Site() {
         )}
 
         {/* Gallery */}
-        {site.customization?.gallery?.length > 0 && (
+        {(site.gallery_images?.length > 0 || site.customization?.gallery?.length > 0) && (
           <div className="mt-8 bg-[#303134] border border-gray-700 rounded-xl p-6">
             <h2 className="text-xl font-bold text-white mb-4">Gallery</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {site.customization.gallery.map((img, i) => (
+              {(site.gallery_images?.length > 0 ? site.gallery_images : site.customization?.gallery).map((img, i) => (
                 <a key={i} href={img} target="_blank" rel="noopener noreferrer">
                   <img src={img} alt={`Gallery ${i+1}`} className="w-full h-32 object-cover rounded-lg border border-gray-700 hover:opacity-80 transition-opacity" />
                 </a>
@@ -450,7 +545,7 @@ export default function Site() {
                       <span className="text-white">{val}/5</span>
                     </div>
                     <div className="w-full bg-gray-700 rounded-full h-2">
-                      <div className="h-2 rounded-full transition-all" style={{ width: `${(val/5)*100}%`, backgroundColor: site.customization?.accent_color || '#3b82f6' }} />
+                      <div className="h-2 rounded-full transition-all" style={{ width: `${(val/5)*100}%`, backgroundColor: site.accent_color || site.customization?.accent_color || '#3b82f6' }} />
                     </div>
                   </div>
                 )
@@ -459,11 +554,96 @@ export default function Site() {
           </div>
         )}
 
+        {/* Product Catalog */}
+        {site.catalog?.length > 0 && (
+          <div className="mt-8 bg-[#303134] border border-gray-700 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-4">Catalog</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {site.catalog.map((item, i) => (
+                <div key={i} className="bg-[#202124] rounded-lg border border-gray-700 overflow-hidden">
+                  {item.image && <img src={item.image} alt={item.name || ''} className="w-full h-28 object-cover" onError={e => e.currentTarget.style.display = 'none'} />}
+                  <div className="p-3">
+                    <p className="text-white font-bold text-sm truncate">{item.name || 'Product'}</p>
+                    {item.price !== undefined && item.price !== null && item.price !== '' && (
+                      <p className="text-green-400 font-bold text-sm mt-1">${parseFloat(item.price).toFixed(2)}</p>
+                    )}
+                    {item.description && <p className="text-gray-500 text-xs mt-1 line-clamp-2">{item.description}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Video */}
+        {site.video_url && (
+          <div className="mt-8 bg-[#303134] border border-gray-700 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-4">Video</h2>
+            <div className="aspect-video rounded-lg overflow-hidden">
+              <iframe
+                src={site.video_url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                title="Site video"
+                className="w-full h-full"
+                allowFullScreen
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Q&A */}
+        <div className="mt-8 bg-[#303134] border border-gray-700 rounded-xl p-6">
+          <h2 className="text-xl font-bold text-white mb-4">Questions & Answers</h2>
+          {user && (
+            <div className="mb-4 flex gap-2">
+              <input
+                type="text"
+                value={newQuestion}
+                onChange={e => setNewQuestion(e.target.value)}
+                placeholder="Ask the owner a question..."
+                className="flex-grow px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white"
+                onKeyDown={e => { if (e.key === 'Enter') submitQuestion(); }}
+              />
+              <button onClick={submitQuestion} className="px-4 py-2 bg-blue-600 text-white rounded">Ask</button>
+            </div>
+          )}
+          <div className="space-y-3">
+            {questions.map(q => (
+              <div key={q.id} className="bg-[#202124] p-4 rounded-lg border border-gray-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-white font-bold text-sm">{q.profiles?.username || 'Someone'}</span>
+                  <span className="text-gray-500 text-xs">{new Date(q.created_at).toLocaleDateString()}</span>
+                </div>
+                <p className="text-gray-300 text-sm">{q.question}</p>
+                {q.answer ? (
+                  <div className="mt-3 bg-[#303134] p-3 rounded border-l-4 border-blue-500">
+                    <p className="text-xs text-blue-400 mb-1">Owner answer</p>
+                    <p className="text-gray-300 text-sm">{q.answer}</p>
+                  </div>
+                ) : user && (site.owner_user_id === user.id || site.user_id === user.id) ? (
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      type="text"
+                      value={newAnswer[q.id] || ''}
+                      onChange={e => setNewAnswer(prev => ({ ...prev, [q.id]: e.target.value }))}
+                      placeholder="Answer this question..."
+                      className="flex-grow px-3 py-2 bg-[#202124] border border-gray-700 rounded text-white text-sm"
+                      onKeyDown={e => { if (e.key === 'Enter') submitAnswer(q.id); }}
+                    />
+                    <button onClick={() => submitAnswer(q.id)} className="px-3 py-2 bg-blue-600 text-white rounded text-sm">Answer</button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+            {questions.length === 0 && <p className="text-gray-500 text-sm">No questions yet. Ask one above!</p>}
+          </div>
+        </div>
+
         {/* Custom Sections */}
         {site.customization?.custom_sections?.length > 0 && site.customization.custom_sections.map((section, i) => (
           section.title && section.content && (
             <div key={i} className="mt-8 bg-[#303134] border border-gray-700 rounded-xl p-6">
-              <h2 className="text-xl font-bold text-white mb-4" style={site.customization?.accent_color ? { color: site.customization.accent_color } : {}}>{section.title}</h2>
+              <h2 className="text-xl font-bold text-white mb-4" style={(site.accent_color || site.customization?.accent_color) ? { color: site.accent_color || site.customization.accent_color } : {}}>{section.title}</h2>
               <p className="text-gray-300 whitespace-pre-wrap">{renderRichText(section.content)}</p>
             </div>
           )
@@ -580,6 +760,24 @@ export default function Site() {
               <div key={c.id} className="bg-[#202124] p-3 rounded">
                 <p className="text-white font-bold text-sm mb-1">{c.profiles?.username}</p>
                 <p className="text-gray-300 text-sm">{c.comment}</p>
+                <div className="flex gap-1 mt-2 flex-wrap">
+                  {[['like', '👍'], ['happy', '😄'], ['heart', '❤️'], ['laugh', '😂']].map(([reaction, emoji]) => {
+                    const count = c.reaction_counts?.[reaction] || 0;
+                    return (
+                      <button
+                        key={reaction}
+                        onClick={() => toggleReaction(c.id, reaction)}
+                        className={`px-2 py-1 rounded text-xs transition-colors ${commentReactions[c.id] === reaction ? 'bg-blue-700' : 'bg-gray-700 hover:bg-gray-600'}`}
+                        title={reaction}
+                      >
+                        {emoji} {count > 0 ? count : ''}
+                      </button>
+                    );
+                  })}
+                  {commentReactions[c.id] && (
+                    <span className="text-xs text-gray-500 ml-auto self-center">You reacted: {commentReactions[c.id]}</span>
+                  )}
+                </div>
               </div>
             ))}
             {comments.length === 0 && <p className="text-gray-500">No comments yet</p>}

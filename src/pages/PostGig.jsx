@@ -14,7 +14,7 @@ export default function PostGig() {
 
   const [form, setForm] = useState({
     title: '', description: '', category: 'Building', price: '', price_type: 'fixed',
-    delivery_days: '7', discord_username: ''
+    delivery_days: '7', discord_username: '', employment_type: 'gig'
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -31,7 +31,8 @@ export default function PostGig() {
             price: String(d.gig.price || ''),
             price_type: d.gig.price_type || 'fixed',
             delivery_days: String(d.gig.delivery_days || '7'),
-            discord_username: d.gig.discord_username || ''
+            discord_username: d.gig.discord_username || '',
+            employment_type: d.gig.employment_type || 'gig'
           });
         }
       }).finally(() => setLoading(false));
@@ -59,9 +60,17 @@ export default function PostGig() {
     <Layout user={user}>
       <main className="flex-grow max-w-2xl mx-auto px-4 py-8 w-full">
         <h1 className="text-3xl font-bold text-white mb-2">{isEdit ? 'Edit Gig' : 'Post a Gig'}</h1>
-        <p className="text-gray-400 text-sm mb-8">Tell the community what service you offer and your price.</p>
+        <p className="text-gray-400 text-sm mb-8">Offer a service, or post a job if you're hiring someone.</p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="flex gap-3">
+            {[['gig', '💼 Offer a Service'], ['job', '📢 I\'m Hiring (Job)']].map(([val, label]) => (
+              <button key={val} type="button" onClick={() => setForm({...form, employment_type: val})} className={`flex-1 py-3 px-4 rounded-xl border text-sm font-medium transition-colors ${form.employment_type === val ? 'bg-blue-600 border-blue-600 text-white' : 'bg-[#202124] border-gray-700 text-gray-300 hover:border-blue-500/50'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
           <div>
             <label className="block text-sm text-gray-400 mb-1">Title *</label>
             <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. I will build your modern house" className="w-full px-4 py-2.5 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500" />

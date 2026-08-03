@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
+import crypto from 'node:crypto';
+
 const supabase = createClient(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_SERVICE_ROLE_KEY);
 
 const getUser = async (req) => {
@@ -309,12 +311,66 @@ RULES:
   if (action === 'search-sites') {
     try {
       const q = (req.body?.q || req.query?.q || '').toLowerCase().trim();
+      const { sort, openNow } = req.body || {};
       if (!q) return res.status(400).json({ error: 'Missing query' });
-      const { data: sites } = await supabase.from('sites').select('*').eq('status', 'approved')
-        .or(`name.ilike.%${q}%,description.ilike.%${q}%,shortcut.ilike.%${q}%,category.ilike.%${q}%`)
-        .order('view_count', { ascending: false }).limit(15);
-      return res.status(200).json({ sites: sites || [] });
+      const words = q.split(/\s+/).filter(w => w.length > 1);
+      const conditions = words.map(w => `name.ilike.%${w}%,description.ilike.%${w}%,shortcut.ilike.%${w}%,category.ilike.%${w}%,subcategory.ilike.%${w}%`).join(',');
+      let query = supabase.from('sites').select('*').eq('status', 'approved');
+      if (conditions) query = query.or(conditions);
+      if (sort === 'newest') query = query.order('created_at', { ascending: false });
+      else if (sort === 'name') query = query.order('name', { ascending: true });
+      else query = query.order('view_count', { ascending: false });
+      query = query.limit(50);
+      let { data: sites } = await query;
+      sites = sites || [];
+
+      if (sites.length === 0) {
+        const { data: all } = await supabase.from('sites').select('id, name, slug').eq('status', 'approved').limit(500);
+        let best = null, bestScore = 3;
+        for (const s of (all || [])) {
+          const score = editDistanceScore(q, s.name.toLowerCase());
+          if (score < bestScore) { bestScore = score; best = s; }
+        }
+        return res.status(200).json({ sites: [], didYouMean: best ? best.name : null, didYouMeanSlug: best ? best.slug : null });
+      }
+
+      if (openNow) {
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const now = new Date();
+        const day = dayNames[now.getDay()];
+        const mins = now.getHours() * 60 + now.getMinutes();
+        sites = sites.filter(s => {
+          const h = s.business_hours;
+          if (!h || !h[day]) return false;
+          const dayHours = h[day];
+          if (Array.isArray(dayHours)) {
+            return dayHours.some(({ open, close }) => {
+              if (!open || !close) return false;
+              const [oh, om] = open.split(':').map(Number);
+              const [ch, cm] = close.split(':').map(Number);
+              const o = oh * 60 + om, c = ch * 60 + cm;
+              if (o === c) return true;
+              if (c < o) return mins >= o || mins < c;
+              return mins >= o && mins < c;
+            });
+          }
+          return true;
+        });
+      }
+
+      return res.status(200).json({ sites });
     } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  function editDistanceScore(a, b) {
+    const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        dp[i][j] = Math.min(dp[i-1][j] + 1, dp[i][j-1] + 1, dp[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+      }
+    }
+    return dp[a.length][b.length] / Math.max(1, b.length);
   }
 
   // --- submit-site ---
@@ -488,12 +544,52 @@ RULES:
     const { siteId } = req.body;
     if (!siteId) return res.status(400).json({ error: 'Missing siteId' });
     try {
+      await supabase.from('ad_requests').delete().eq('site_id', siteId);
+      await supabase.from('site_verification_requests').delete().eq('site_id', siteId);
+      await supabase.from('discord_watches').delete().eq('site_slug', siteId).in('site_slug', (await supabase.from('sites').select('slug').eq('id', siteId)).data?.map(s => s.slug) || []);
       const { error } = await supabase.from('sites').delete().eq('id', siteId);
       if (error) throw error;
       return res.status(200).json({ success: true, message: 'Site deleted' });
     } catch (err) {
-      return res.status(500).json({ error: 'Delete failed' });
+      return res.status(500).json({ error: 'Delete failed: ' + (err.message || '') });
     }
+  }
+
+  // --- api keys: create ---
+  if (action === 'create-api-key') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    try {
+      const user = await requireUser(req);
+      const { name } = req.body;
+      if (!name) return res.status(400).json({ error: 'Name is required' });
+      const key = 'zn_' + [...crypto.getRandomValues(new Uint8Array(18))].map(b => b.toString(16).padStart(2, '0')).join('');
+      const key_hash = crypto.createHash('sha256').update(key).digest('hex');
+      const { error } = await supabase.from('api_keys').insert({ user_id: user.id, name: String(name).slice(0, 60), key_hash });
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ key });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- api keys: list ---
+  if (action === 'list-api-keys') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    try {
+      const user = await requireUser(req);
+      const { data } = await supabase.from('api_keys').select('id, name, created_at, last_used_at').eq('user_id', user.id).order('created_at', { ascending: false });
+      return res.status(200).json({ keys: data || [] });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- api keys: revoke ---
+  if (action === 'revoke-api-key') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    try {
+      const user = await requireUser(req);
+      const { id } = req.body;
+      const { error } = await supabase.from('api_keys').delete().eq('id', id).eq('user_id', user.id);
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ success: true });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
   // --- tip ---
@@ -651,19 +747,26 @@ RULES:
       if (!slug) { console.error('get-site-data: missing slug', req.body); return res.status(400).json({ error: 'Missing slug' }); }
       const { data: site } = await supabase.from('sites').select('id').eq('slug', slug).maybeSingle();
       if (!site) { console.error('get-site-data: site not found for slug', slug); return res.status(404).json({ error: 'Site not found' }); }
-      const [revRes, comRes, annRes, profRes] = await Promise.allSettled([
+      const [revRes, comRes, annRes, profRes, reactRes] = await Promise.allSettled([
         supabase.from('site_reviews').select('*').eq('site_id', site.id).order('created_at', { ascending: false }),
         supabase.from('site_comments').select('*').eq('site_id', site.id).order('created_at', { ascending: false }),
         supabase.from('site_announcements').select('*').eq('site_id', site.id).order('created_at', { ascending: false }),
-        supabase.from('profiles').select('id, username')
+        supabase.from('profiles').select('id, username'),
+        supabase.from('comment_reactions').select('comment_id, reaction')
       ]);
       const reviews = revRes.status === 'fulfilled' ? (revRes.value?.data || []) : (console.error('get-site-data reviews error', revRes.reason), []);
       const comments = comRes.status === 'fulfilled' ? (comRes.value?.data || []) : (console.error('get-site-data comments error', comRes.reason), []);
       const announcements = annRes.status === 'fulfilled' ? (annRes.value?.data || []) : (console.error('get-site-data announcements error', annRes.reason), []);
       const allProfiles = profRes.status === 'fulfilled' ? (profRes.value?.data || []) : [];
+      const allReactions = reactRes.status === 'fulfilled' ? (reactRes.value?.data || []) : [];
       const profileMap = Object.fromEntries(allProfiles.map(p => [p.id, p.username]));
+      const reactionCounts = {};
+      allReactions.forEach(r => {
+        reactionCounts[r.comment_id] = reactionCounts[r.comment_id] || {};
+        reactionCounts[r.comment_id][r.reaction] = (reactionCounts[r.comment_id][r.reaction] || 0) + 1;
+      });
       reviews.forEach(r => r.profiles = r.profiles || { username: profileMap[r.user_id] || 'Unknown' });
-      comments.forEach(c => c.profiles = c.profiles || { username: profileMap[c.user_id] || 'Unknown' });
+      comments.forEach(c => { c.profiles = c.profiles || { username: profileMap[c.user_id] || 'Unknown' }; c.reaction_counts = reactionCounts[c.id] || {}; });
       console.log(`get-site-data: slug=${slug}, reviews=${reviews.length}, comments=${comments.length}, announcements=${announcements.length}`);
       return res.status(200).json({ reviews, comments, announcements });
     } catch (err) { console.error('get-site-data error', err); return res.status(500).json({ error: err.message }); }
@@ -747,10 +850,11 @@ RULES:
   // --- gigs: search ---
   if (action === 'search-gigs') {
     try {
-      const { q, category, sort, minPrice, maxPrice } = req.query;
+      const { q, category, sort, minPrice, maxPrice, employmentType } = req.query;
       let query = supabase.from('gigs').select('*').eq('status', 'active');
       if (q) query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
       if (category && category !== 'All') query = query.eq('category', category);
+      if (employmentType && employmentType !== 'All') query = query.eq('employment_type', employmentType);
       if (minPrice) query = query.gte('price', parseFloat(minPrice));
       if (maxPrice) query = query.lte('price', parseFloat(maxPrice));
       if (sort === 'price_asc') query = query.order('price', { ascending: true });
@@ -788,12 +892,13 @@ RULES:
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     try {
       const user = await requireUser(req);
-      const { title, description, category, price, price_type, delivery_days, discord_username } = req.body;
+      const { title, description, category, price, price_type, delivery_days, discord_username, employment_type } = req.body;
       if (!title) return res.status(400).json({ error: 'Title is required' });
       const { data, error } = await supabase.from('gigs').insert({
         user_id: user.id, title, description: description || '', category: category || 'Other',
         price: parseFloat(price) || 0, price_type: price_type || 'fixed',
-        delivery_days: parseInt(delivery_days) || 7, discord_username: discord_username || ''
+        delivery_days: parseInt(delivery_days) || 7, discord_username: discord_username || '',
+        employment_type: employment_type === 'job' ? 'job' : 'gig'
       }).select().maybeSingle();
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ gig: data });
@@ -805,7 +910,7 @@ RULES:
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     try {
       const user = await requireUser(req);
-      const { id, title, description, category, price, price_type, delivery_days, discord_username, status } = req.body;
+      const { id, title, description, category, price, price_type, delivery_days, discord_username, status, employment_type } = req.body;
       if (!id) return res.status(400).json({ error: 'Missing id' });
       const { data: existing } = await supabase.from('gigs').select('user_id').eq('id', id).maybeSingle();
       if (!existing) return res.status(404).json({ error: 'Gig not found' });
@@ -819,6 +924,7 @@ RULES:
       if (delivery_days !== undefined) updates.delivery_days = parseInt(delivery_days);
       if (discord_username !== undefined) updates.discord_username = discord_username;
       if (status !== undefined) updates.status = status;
+      if (employment_type !== undefined) updates.employment_type = employment_type === 'job' ? 'job' : 'gig';
       updates.updated_at = new Date().toISOString();
       const { data, error } = await supabase.from('gigs').update(updates).eq('id', id).select().maybeSingle();
       if (error) return res.status(500).json({ error: error.message });
@@ -940,6 +1046,22 @@ RULES:
       const { id, status } = req.body;
       if (!id) return res.status(400).json({ error: 'Missing id' });
       const { data, error } = await supabase.from('news').update({ status: status === 'reject' ? 'rejected' : 'approved', updated_at: new Date().toISOString() }).eq('id', id).select().maybeSingle();
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ news: data });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: admin edit ---
+  if (action === 'admin-edit-news') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+    try {
+      const { id, title, content } = req.body;
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      const updates = { updated_at: new Date().toISOString() };
+      if (title !== undefined) updates.title = title;
+      if (content !== undefined) updates.content = content;
+      const { data, error } = await supabase.from('news').update(updates).eq('id', id).select().maybeSingle();
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ news: data });
     } catch (err) { return res.status(500).json({ error: err.message }); }

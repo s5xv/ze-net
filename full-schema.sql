@@ -227,7 +227,7 @@ CREATE TABLE public.site_announcements (
 CREATE INDEX idx_site_announcements ON public.site_announcements(site_id);
 
 -- Global site announcements (ticker bar)
-CREATE TABLE public.announcements (
+CREATE TABLE IF NOT EXISTS public.announcements (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   title text NOT NULL,
   content text NOT NULL,
@@ -235,10 +235,10 @@ CREATE TABLE public.announcements (
   is_active boolean DEFAULT true,
   created_at timestamptz DEFAULT now()
 );
-CREATE INDEX idx_announcements_active ON public.announcements(is_active, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_announcements_active ON public.announcements(is_active, created_at DESC);
 
 -- News posts (by approved businesses)
-CREATE TABLE public.news (
+CREATE TABLE IF NOT EXISTS public.news (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   title text NOT NULL,
@@ -249,11 +249,11 @@ CREATE TABLE public.news (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
-CREATE INDEX idx_news_status ON public.news(status, created_at DESC);
-CREATE INDEX idx_news_user ON public.news(user_id);
+CREATE INDEX IF NOT EXISTS idx_news_status ON public.news(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_news_user ON public.news(user_id);
 
 -- Discord bot site watches (DM alerts when a site goes offline/online)
-CREATE TABLE public.discord_watches (
+CREATE TABLE IF NOT EXISTS public.discord_watches (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   discord_user_id text NOT NULL,
   site_slug text NOT NULL,
@@ -261,7 +261,86 @@ CREATE TABLE public.discord_watches (
   created_at timestamptz DEFAULT now(),
   UNIQUE(discord_user_id, site_slug)
 );
-CREATE INDEX idx_discord_watches_slug ON public.discord_watches(site_slug);
+CREATE INDEX IF NOT EXISTS idx_discord_watches_slug ON public.discord_watches(site_slug);
+
+-- New site columns
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS business_hours jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS gallery_images text[] DEFAULT '{}';
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS banner_image_url text;
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS accent_color text DEFAULT '#3b82f6';
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS video_url text;
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS catalog jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS spotlight boolean DEFAULT false;
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS spotlight_until timestamptz;
+
+-- Profile extras
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS trust_score integer DEFAULT 0;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS accent_color text DEFAULT '#3b82f6';
+
+-- Comment reactions (site comments)
+CREATE TABLE IF NOT EXISTS public.comment_reactions (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  comment_id bigint NOT NULL REFERENCES public.site_comments(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  reaction text NOT NULL CHECK (reaction IN ('like', 'happy', 'heart', 'laugh')),
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(comment_id, user_id)
+);
+
+-- Site Q&A
+CREATE TABLE IF NOT EXISTS public.site_questions (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  site_id uuid NOT NULL REFERENCES public.sites(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  question text NOT NULL,
+  answer text,
+  answered_by uuid REFERENCES auth.users(id),
+  answered_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_site_questions_site ON public.site_questions(site_id);
+
+-- User inbox
+CREATE TABLE IF NOT EXISTS public.messages (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  sender_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  receiver_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  content text NOT NULL,
+  read boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver ON public.messages(receiver_id, read, created_at DESC);
+
+-- Read-only API keys (for third-party apps)
+CREATE TABLE IF NOT EXISTS public.api_keys (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  key_hash text UNIQUE NOT NULL,
+  name text NOT NULL,
+  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at timestamptz DEFAULT now(),
+  last_used_at timestamptz
+);
+
+-- Maintenance mode (singleton row)
+CREATE TABLE IF NOT EXISTS public.site_settings (
+  key text PRIMARY KEY,
+  value jsonb
+);
+
+-- User-created guides hub
+CREATE TABLE IF NOT EXISTS public.guides (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  content text NOT NULL DEFAULT '',
+  category text DEFAULT 'General',
+  status text DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected')),
+  view_count integer DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_guides_status ON public.guides(status);
+CREATE INDEX IF NOT EXISTS idx_guides_user ON public.guides(user_id);
 
 -- Ad requests
 CREATE TABLE public.ad_requests (
@@ -291,6 +370,7 @@ CREATE TABLE public.gigs (
   delivery_days integer DEFAULT 7,
   discord_username text,
   status text DEFAULT 'active' CHECK (status IN ('active', 'paused', 'archived')),
+  employment_type text DEFAULT 'gig' CHECK (employment_type IN ('gig', 'job')),
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );

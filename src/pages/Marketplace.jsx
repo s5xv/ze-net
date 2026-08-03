@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../services/api';
 import Layout from '../components/Layout';
 import { useAuth } from '../hooks/useAuth';
@@ -8,6 +8,8 @@ const CATEGORIES = ['All', 'Building', 'Redstone', 'Design', 'Writing', 'Editing
 
 export default function Marketplace() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') === 'jobs' ? 'jobs' : 'gigs';
   const [gigs, setGigs] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,7 +19,7 @@ export default function Marketplace() {
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
 
-  useEffect(() => { fetchGigs(); }, [category, sort, minPrice, maxPrice]);
+  useEffect(() => { fetchGigs(); }, [category, sort, minPrice, maxPrice, tab]);
 
   const fetchGigs = async () => {
     setLoading(true);
@@ -27,6 +29,7 @@ export default function Marketplace() {
       if (sort) params.set('sort', sort);
       if (minPrice) params.set('minPrice', minPrice);
       if (maxPrice) params.set('maxPrice', maxPrice);
+      params.set('employmentType', tab === 'jobs' ? 'job' : 'gig');
       const data = await apiFetch(`/api/app?action=search-gigs&${params}`);
       setGigs(data.gigs || []);
     } catch (e) { console.error(e); }
@@ -49,9 +52,16 @@ export default function Marketplace() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-white">Marketplace</h1>
-            <p className="text-gray-400 text-sm">Find freelancers or offer your services</p>
+            <p className="text-gray-400 text-sm">{tab === 'jobs' ? 'Job listings — someone is hiring' : 'Find freelancers or offer your services'}</p>
           </div>
-          {user && <Link to="/marketplace/post" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">Post a Gig</Link>}
+          <div className="flex items-center gap-3">
+            <div className="flex bg-[#202124] border border-gray-700 rounded-lg overflow-hidden">
+              {[['gigs', 'Gigs'], ['jobs', 'Jobs']].map(([key, label]) => (
+                <button key={key} onClick={() => setSearchParams(key === 'jobs' ? { tab: 'jobs' } : {})} className={`px-5 py-2.5 text-sm font-medium transition-colors ${tab === key ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>{label}</button>
+              ))}
+            </div>
+            {user && <Link to="/marketplace/post" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">Post {tab === 'jobs' ? 'a Job' : 'a Gig'}</Link>}
+          </div>
         </div>
 
         <div className="bg-[#303134] border border-gray-700 rounded-xl p-4 mb-6">
@@ -91,7 +101,7 @@ export default function Marketplace() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-5xl mb-4">🔍</div>
-            <p className="text-gray-400 text-lg">No gigs found</p>
+            <p className="text-gray-400 text-lg">No {tab === 'jobs' ? 'job listings' : 'gigs'} found</p>
             <p className="text-gray-500 text-sm mt-1">Try different filters or be the first to post!</p>
           </div>
         ) : (
@@ -110,6 +120,7 @@ export default function Marketplace() {
                 <p className="text-sm text-gray-400 line-clamp-2 mb-3">{gig.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs px-2 py-1 bg-gray-700 rounded text-gray-300">{gig.category}</span>
+                  {gig.employment_type === 'job' && <span className="text-xs px-2 py-1 bg-orange-600/20 text-orange-400 rounded">📢 Job</span>}
                   <div className="text-right">
                     <span className="text-lg font-bold text-green-400">${parseFloat(gig.price).toFixed(2)}</span>
                     <span className="text-xs text-gray-500 ml-1">{gig.price_type === 'hourly' ? '/hr' : gig.price_type === 'negotiable' ? 'nego' : ''}</span>

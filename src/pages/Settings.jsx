@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useAppearance } from '../hooks/useAppearance';
 import { supabase } from '../services/supabase';
 import Layout from '../components/Layout';
 import ImageUpload from '../components/ImageUpload';
 
+const PRESET_ACCENTS = ['#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#6366f1'];
+
 export default function Settings() {
   const { user } = useAuth();
+  const { accent, setAccent, bigText, setBigText } = useAppearance();
   const [bio, setBio] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [adPrefs, setAdPrefs] = useState([]);
@@ -56,6 +60,24 @@ export default function Settings() {
               <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3} maxLength={500} className="w-full px-3 py-2 bg-gray-100 dark:bg-[#202124] border border-gray-300 dark:border-gray-700 rounded-lg" />
               <p className="text-xs text-gray-500 mt-1">{bio.length}/500</p>
             </div>
+          </div>
+          <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 space-y-4">
+            <h2 className="text-lg font-semibold">Appearance</h2>
+            <div>
+              <label className="block text-sm font-medium mb-2">Accent Color (saved on this device)</label>
+              <div className="flex flex-wrap items-center gap-2">
+                {PRESET_ACCENTS.map(c => (
+                  <button key={c} type="button" onClick={() => setAccent(c)} className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110" style={{ backgroundColor: c, borderColor: accent === c ? '#fff' : 'transparent' }} />
+                ))}
+                <input type="color" value={accent} onChange={e => setAccent(e.target.value)} className="w-8 h-8 rounded cursor-pointer border border-gray-300" />
+                <span className="font-mono text-xs text-gray-500 ml-1">{accent}</span>
+              </div>
+            </div>
+            <label className="flex items-center justify-between text-sm cursor-pointer">
+              <span>Big Text Mode <span className="text-xs text-gray-500">(larger fonts site-wide)</span></span>
+              <input type="checkbox" checked={bigText} onChange={e => setBigText(e.target.checked)} className="w-5 h-5 rounded" />
+            </label>
+            <p className="text-xs text-gray-500">Press <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">?</kbd> anywhere to view keyboard shortcuts.</p>
           </div>
           <div className="bg-white dark:bg-[#303134] rounded-xl p-6 border border-gray-200 dark:border-gray-700 space-y-4">
             <h2 className="text-lg font-semibold">Ad Preferences</h2>

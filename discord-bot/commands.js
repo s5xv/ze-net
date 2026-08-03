@@ -11,6 +11,7 @@ const OWNER_ID = process.env.OWNER_ID || '1250956931447652362';
 const ROLE_TS = process.env.ROLE_TRUST_SAFETY || '1524727014106464296';
 const ROLE_AD = process.env.ROLE_AD_MANAGER || '1524726940710211704';
 const ROLE_ENG = process.env.ROLE_PLATFORM_ENGINEER || '1524726849685688483';
+const ROLE_VERIFIED_OWNER = process.env.ROLE_VERIFIED_OWNER || '1524727552776867840';
 
 const BLUE = 0x3b82f6;
 const GREEN = 0x22c55e;
@@ -475,7 +476,7 @@ addCommand(
         { name: '🛡️ Trust & Safety', value: '`/reports` — pending reports\n`/report-resolve <id> <dismiss|action>` — handle a report', inline: false },
         { name: '📢 Ad Manager', value: '`/ads-pending` — pending ad requests\n`/ads-decide <id> <approve|reject>` — decide\n`/ads-stats` — ad click stats', inline: false },
         { name: '🔧 Platform Engineer', value: '`/health` — API + database health check', inline: false },
-        { name: '👑 Owner', value: '`/announce <title> <content>` — site announcement\n`/moderate <slug> <hide|show>` — hide/show site\n`/news-mod <id> <approve|reject>` — moderate news\n`/shutdown` — stop the bot', inline: false }
+        { name: '👑 Owner', value: '`/announce <title> <content>` — site announcement\n`/moderate <slug> <hide|show>` — hide/show site\n`/news-mod <id> <approve|reject>` — moderate news\n`/sync-roles` — sync Verified Owner role\n`/shutdown` — stop the bot', inline: false }
       );
     return interaction.reply({ embeds: [embed] });
   }
@@ -681,6 +682,43 @@ addCommand(
       return interaction.reply(errorReply(`News #${id} not found.`));
     }
     return interaction.reply({ embeds: [new EmbedBuilder().setColor(GREEN).setDescription(`News **#${id} — ${data[0].title}** ${decision}d.`)] });
+  }
+);
+
+addCommand(
+  new SlashCommandBuilder()
+    .setName('sync-roles')
+    .setDescription('Sync Verified Owner roles for all verified sites (Owner/Engineer)'),
+  async (interaction) => {
+    if (!isOwner(interaction.user) && !canENG(interaction)) return denied(interaction);
+    await interaction.deferReply();
+    const { data: verifiedSites } = await supabase.from('sites').select('name, slug, owner_discord, owner_user_id').eq('status', 'approved').eq('is_verified', true).limit(500);
+    const { data: profiles } = await supabase.from('profiles').select('id, username, discord_id').not('discord_id', 'is', null);
+    const profileByDiscordId = Object.fromEntries((profiles || []).map(p => [p.discord_id, p]));
+
+    const guild = interaction.guild;
+    const verifiedRole = guild.roles.cache.get(ROLE_VERIFIED_OWNER);
+    if (!verifiedRole) return interaction.editReply({ embeds: [errorReply(`Verified Owner role not found (ID ${ROLE_VERIFIED_OWNER}).`)] });
+
+    let assigned = 0, skipped = 0;
+    const already = [];
+
+    for (const site of verifiedSites || []) {
+      const ownerDiscordId = site.owner_user_id ? profileByDiscordId[site.owner_user_id]?.discord_id : null;
+      if (!ownerDiscordId) continue;
+      try {
+        const member = await guild.members.fetch(ownerDiscordId).catch(() => null);
+        if (!member) { skipped++; continue; }
+        if (member.roles.cache.has(ROLE_VERIFIED_OWNER)) { already.push(member.user.username); continue; }
+        await member.roles.add(ROLE_VERIFIED_OWNER);
+        assigned++;
+      } catch { skipped++; }
+    }
+
+    return interaction.editReply({
+      embeds: [new EmbedBuilder().setColor(GREEN).setTitle('✅ Role Sync Complete')
+        .setDescription(`**Verified Owner** role (${verifiedRole.name}) synced.\n🆕 Assigned: ${assigned}\n👥 Already had it: ${already.length}\n🚫 Skipped (not in server): ${skipped}\n\nSites checked: ${verifiedSites?.length || 0}`)]
+    });
   }
 );
 

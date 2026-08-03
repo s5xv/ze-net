@@ -48,6 +48,7 @@ export default function GigDetail() {
               <div>
                 <h1 className="text-2xl font-bold text-white">{gig.title}</h1>
                 <p className="text-sm text-gray-400">by {gig.profiles?.username || 'Unknown'}</p>
+                {gig.employment_type === 'job' && <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-orange-600/20 text-orange-400 rounded">📢 Job listing — hiring</span>}
               </div>
             </div>
             {isOwner && (

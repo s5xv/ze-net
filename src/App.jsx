@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useTheme } from './hooks/useTheme';
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { supabase } from './services/supabase';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -50,6 +50,10 @@ const MyGigs = lazy(() => import('./pages/MyGigs'));
 const News = lazy(() => import('./pages/News'));
 const PostNews = lazy(() => import('./pages/PostNews'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const Inbox = lazy(() => import('./pages/Inbox'));
+const ApiKeys = lazy(() => import('./pages/ApiKeys'));
+const ArchivedSites = lazy(() => import('./pages/ArchivedSites'));
+const Guides = lazy(() => import('./pages/Guides'));
 
 function AuthHandler() {
   const navigate = useNavigate();
@@ -73,6 +77,28 @@ function AuthHandler() {
 function App() {
   useTheme();
   const { user, loading } = useAuth();
+  const [maintenance, setMaintenance] = useState(null);
+
+  useEffect(() => {
+    supabase.from('site_settings').select('value').eq('key', 'maintenance').maybeSingle()
+      .then(({ data }) => {
+        if (data?.value?.enabled) setMaintenance(data.value);
+        else setMaintenance(null);
+      })
+      .catch(() => {});
+  }, []);
+
+  if (maintenance && !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">🔧</div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Under Maintenance</h1>
+          <p className="text-gray-500">{maintenance.message || 'The directory is getting some upgrades. Check back soon!'}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) return <div className="min-h-screen bg-gray-50 dark:bg-[#202124] flex items-center justify-center"><div className="text-gray-500">Loading...</div></div>;
 
@@ -125,6 +151,10 @@ function App() {
           <Route path="/my-gigs" element={<MyGigs user={user} />} />
           <Route path="/news" element={<News user={user} />} />
           <Route path="/news/post" element={<PostNews user={user} />} />
+          <Route path="/inbox" element={<Inbox user={user} />} />
+          <Route path="/api-keys" element={<ApiKeys user={user} />} />
+          <Route path="/archived" element={<ArchivedSites user={user} />} />
+          <Route path="/guides" element={<Guides user={user} />} />
           <Route path="/forums/new-thread/:categoryId" element={<CreateThread />} />
           <Route path="/forums/thread/:threadId" element={<ForumPost />} />
           <Route path="*" element={<NotFound />} />

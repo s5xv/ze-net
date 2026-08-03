@@ -615,6 +615,16 @@ export default function Admin() {
                 <p>📰 News approval workflow</p>
                 <p>📣 Global announcement ticker</p>
                 <p>💠 Treasury dashboard</p>
+                <p>🌟 Site spotlight rotation</p>
+              </div>
+              <div className="mt-4 pt-4 border-t border-gray-700">
+                <button onClick={async () => {
+                  const { data } = await supabase.from('site_settings').select('value').eq('key', 'maintenance').maybeSingle();
+                  const on = !(data?.value?.enabled);
+                  const msg = on ? (prompt('Maintenance message (shown to visitors):') || 'The directory is getting some upgrades. Check back soon!') : '';
+                  await supabase.from('site_settings').upsert({ key: 'maintenance', value: { enabled: on, message: msg } });
+                  setMessage(on ? 'Maintenance mode ON' : 'Maintenance mode OFF');
+                }} className="w-full px-3 py-2 rounded text-sm font-medium bg-yellow-600 hover:bg-yellow-700 text-white">🔧 Toggle Maintenance Mode</button>
               </div>
             </div>
           </div>
@@ -797,6 +807,11 @@ export default function Admin() {
                         </td>
                         <td className="p-3 flex gap-1">
                           <button onClick={() => startEditSite(site)} className="px-2 py-1 bg-blue-600 text-white text-xs rounded">Edit</button>
+                          <button onClick={async () => {
+                            await supabase.from('sites').update({ spotlight: !site.spotlight, spotlight_until: !site.spotlight ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() : null }).eq('id', site.id);
+                            setMessage(site.spotlight ? 'Spotlight removed' : 'Spotlight added (7 days)');
+                            fetchData(activeTab);
+                          }} className={`px-2 py-1 text-xs rounded ${site.spotlight ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'}`}>{site.spotlight ? '★ On' : 'Spotlight'}</button>
                           <button onClick={() => deleteSite(site.id)} className="px-2 py-1 bg-red-600 text-white text-xs rounded">Delete</button>
                         </td>
                       </tr>
@@ -1343,6 +1358,14 @@ export default function Admin() {
                       {item.status !== 'rejected' && (
                         <button onClick={async () => { await apiFetch('/api/app?action=admin-approve-news', { method: 'POST', body: JSON.stringify({ id: item.id, status: 'reject' }) }); fetchData('news'); }} className="px-3 py-1 bg-yellow-600 text-white text-xs rounded">Reject</button>
                       )}
+                      <button onClick={async () => {
+                        const newTitle = prompt('Edit title:', item.title);
+                        if (newTitle === null) return;
+                        const newContent = prompt('Edit content:', item.content);
+                        if (newContent === null) return;
+                        await apiFetch('/api/app?action=admin-edit-news', { method: 'POST', body: JSON.stringify({ id: item.id, title: newTitle, content: newContent }) });
+                        fetchData('news');
+                      }} className="px-3 py-1 bg-blue-600 text-white text-xs rounded">Edit</button>
                       <button onClick={async () => { if (confirm('Delete this news post?')) { await apiFetch('/api/app?action=admin-delete-news', { method: 'POST', body: JSON.stringify({ id: item.id }) }); fetchData('news'); } }} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Delete</button>
                     </div>
                   </div>
