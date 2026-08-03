@@ -421,15 +421,13 @@ addCommand(
 addCommand(
   new SlashCommandBuilder()
     .setName('donate')
-    .setDescription('Support Z&E Net with ZEC'),
+    .setDescription('Support Z&E Net'),
   async (interaction) => {
-    const { data } = await supabase.from('treasury_tokens').select('account_id').limit(1);
-    const address = data?.[0]?.account_id || 'Contact staff for the donation address';
     const embed = new EmbedBuilder()
       .setColor(GREEN)
       .setTitle('💠 Support Z&E Net')
-      .setDescription('Z&E Net accepts donations in Zcash (ZEC) to keep the directory running.')
-      .addFields({ name: 'ZEC Address', value: `\`${address}\`` })
+      .setDescription('Help keep the directory running! Donations are accepted on our crowdfunding page:')
+      .addFields({ name: 'Donate', value: '[gnomefundme.org — Z&E Net](https://gnomefundme.org/c/ze-net-build-the-duckduckgo-of-democracycraft)' })
       .setFooter({ text: 'Thank you for supporting Z&E Net!' });
     return interaction.reply({ embeds: [embed] });
   }
@@ -472,7 +470,7 @@ addCommand(
       .setColor(BLUE)
       .setTitle('🤖 Z&E Net Bot Commands')
       .addFields(
-        { name: 'Public', value: '`/search <query>` — search sites\n`/ask <query>` — AI assistant\n`/site <slug>` — site details\n`/top` — trending\n`/leaderboard` — top sites\n`/fiverr <query>` — marketplace gigs\n`/bookmark <slug>` — save a site\n`/review <slug> <rating>` — review a site\n`/watch <slug>` — DM on open/close\n`/patchnotes` — latest updates\n`/faq` — questions\n`/remind <min> <text>` — reminders\n`/poll` — quick poll\n`/translate` — translate text\n`/verify-mc <name>` — link MC\n`/donate` — support with ZEC\n`/stats` — platform stats\n`/ping` — latency\n`/help` — this menu' },
+        { name: 'Public', value: '`/search <query>` — search sites\n`/ask <query>` — AI assistant\n`/site <slug>` — site details\n`/top` — trending\n`/leaderboard` — top sites\n`/fiverr <query>` — marketplace gigs\n`/bookmark <slug>` — save a site\n`/review <slug> <rating>` — review a site\n`/watch <slug>` — DM on open/close\n`/patchnotes` — latest updates\n`/faq` — questions\n`/remind <min> <text>` — reminders\n`/poll` — quick poll\n`/translate` — translate text\n`/verify-mc <name>` — link MC\n`/donate` — support Z&E Net\n`/stats` — platform stats\n`/ping` — latency\n`/help` — this menu' },
         { name: '🛡️ Trust & Safety', value: '`/reports` — pending reports\n`/report-resolve <id> <dismiss|action>` — handle a report', inline: false },
         { name: '📢 Ad Manager', value: '`/ads-pending` — pending ad requests\n`/ads-decide <id> <approve|reject>` — decide\n`/ads-stats` — ad click stats', inline: false },
         { name: '🔧 Platform Engineer', value: '`/health` — API + database health check', inline: false },
@@ -734,4 +732,7 @@ addCommand(
   }
 );
 
-export { commands, handlers };
+// Commands whose replies should be visible to everyone (all others reply only to the user who ran them)
+const PUBLIC_REPLY_COMMANDS = new Set(['poll', 'announce']);
+
+export { commands, handlers, PUBLIC_REPLY_COMMANDS };

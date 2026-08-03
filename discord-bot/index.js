@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import { commands, handlers } from './commands.js';
+import { commands, handlers, PUBLIC_REPLY_COMMANDS } from './commands.js';
 
 dotenv.config();
 
@@ -81,8 +81,20 @@ client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   const handler = handlers[interaction.commandName];
   if (!handler) return;
+  const ephemeral = !PUBLIC_REPLY_COMMANDS.has(interaction.commandName);
+  const effInteraction = ephemeral ? new Proxy(interaction, {
+    get(target, prop) {
+      const val = target[prop];
+      if (typeof val !== 'function') return val;
+      return (...args) => {
+        const opts = args[0];
+        if (opts && typeof opts === 'object') opts.ephemeral = true;
+        return val.apply(target, args);
+      };
+    }
+  }) : interaction;
   try {
-    await handler(interaction);
+    await handler(effInteraction);
   } catch (err) {
     console.error(`Error in /${interaction.commandName}:`, err);
     const reply = { embeds: [new EmbedBuilder().setColor(0xef4444).setDescription(`⚠️ Command failed: ${err.message}`)] };

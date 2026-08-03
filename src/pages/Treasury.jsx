@@ -80,7 +80,7 @@ export default function Treasury() {
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {stat('ZEC Treasury Balance', data.zecBalance !== null ? `$${parseFloat(data.zecBalance).toLocaleString()}` : '⏳', 'text-yellow-400')}
+              {stat('Treasury Balance', data.zecBalance !== null ? `$${parseFloat(data.zecBalance).toLocaleString()}` : '⏳', 'text-yellow-400')}
               {stat('User Balances Total', `$${data.totalUserBalances.toFixed(2)}`, 'text-green-400')}
               {stat('Net Revenue', `$${data.netRevenue.toFixed(2)}`, data.netRevenue >= 0 ? 'text-blue-400' : 'text-red-400')}
               {stat('Pending Withdrawals', data.pendingWithdrawals, data.pendingWithdrawals > 0 ? 'text-orange-400' : 'text-gray-400')}
