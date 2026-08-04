@@ -55,6 +55,11 @@ addCommand(
     .addStringOption(o => o.setName('query').setDescription('What are you looking for?').setRequired(true)),
   async (interaction) => {
     const q = interaction.options.getString('query');
+    fetch(`${SITE_URL}/api/app?action=log-search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q, results_count: 0 })
+    }).catch(() => {});
     const { data } = await supabase
       .from('sites')
       .select('name, slug, category, description, view_count, is_verified, is_active')

@@ -108,7 +108,11 @@ export default function Search() {
       try {
         await Promise.all([
           user ? supabase.from('search_history').insert({ user_id: user.id, query }) : Promise.resolve(),
-          supabase.from('search_analytics').insert({ query, user_id: user?.id || null, results_count: allResults.length })
+          fetch(`/api/app?action=log-search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ q: query, user_id: user?.id || null, results_count: allResults.length })
+          })
         ]);
       } catch (err) { console.error('Analytics error:', err); }
     } catch (err) {

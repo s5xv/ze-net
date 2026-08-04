@@ -510,7 +510,8 @@ export default function Admin() {
     { id: 'manage_sites', label: 'Manage Sites' },
     { id: 'manage_users', label: 'Manage Users' },
     { id: 'manage_staff', label: 'Manage Staff' },
-    { id: 'manage_businesses', label: 'Manage Businesses' }
+    { id: 'manage_businesses', label: 'Manage Businesses' },
+    { id: 'view_sites', label: 'View All Sites (View Only)' }
   ];
 
   const hasPerm = (perm) => !userPermissions || userPermissions.length === 0 || userPermissions.includes(perm);
@@ -569,7 +570,7 @@ export default function Admin() {
           {hasPerm('manage_users') && <TabButton id="users" label="Users" />}
           {hasPerm('manage_staff') && <TabButton id="transactions" label="Transactions" />}
           {hasPerm('manage_staff') && <TabButton id="staff" label="Staff" />}
-          {hasPerm('manage_businesses') && <TabButton id="businesses" label="Businesses" />}
+          {(hasPerm('manage_businesses') || hasPerm('view_sites')) && <TabButton id="businesses" label="Businesses" />}
           {hasPerm('manage_staff') && <TabButton id="moderation" label="Moderation" badge={reports.length} />}
           {hasPerm('manage_staff') && <TabButton id="messages" label="Messages" />}
           {hasPerm('manage_ads') && <TabButton id="manage-ads" label="Manage Ads" />}
@@ -897,6 +898,7 @@ export default function Admin() {
                       <button onClick={() => addStaff(p.id)} className="px-3 py-1 bg-green-600 text-white text-xs rounded">Full Staff</button>
                       <button onClick={async () => { await apiFetch('/api/app?action=admin-add-staff', { method: 'POST', body: JSON.stringify({ userId: p.id }) }); await updateStaffPermissions(p.id, ['manage_ads']); }} className="px-3 py-1 bg-purple-600 text-white text-xs rounded">Ad Manager</button>
                       <button onClick={async () => { await apiFetch('/api/app?action=admin-add-staff', { method: 'POST', body: JSON.stringify({ userId: p.id }) }); await updateStaffPermissions(p.id, ['manage_verifications', 'manage_businesses']); }} className="px-3 py-1 bg-yellow-600 text-white text-xs rounded">Trust & Safety</button>
+                      <button onClick={async () => { await apiFetch('/api/app?action=admin-add-staff', { method: 'POST', body: JSON.stringify({ userId: p.id }) }); await updateStaffPermissions(p.id, ['view_sites']); }} className="px-3 py-1 bg-blue-600 text-white text-xs rounded">Site Viewer</button>
                     </div>
                   </div>
                 ))}
@@ -945,6 +947,9 @@ export default function Admin() {
         {!loading && activeTab === 'businesses' && (
           <div>
             <h3 className="text-lg font-bold text-white mb-3">Sites & Registrations ({businessRegistrations.length})</h3>
+            {!hasPerm('manage_businesses') && (
+              <p className="text-xs text-blue-400 bg-blue-900/30 border border-blue-800 rounded-lg px-3 py-2 mb-3">🔍 View-only mode — you can browse all registered sites but cannot modify or delete them.</p>
+            )}
             {businessRegistrations.length === 0 ? (
               <p className="text-gray-500 text-sm italic">No sites yet.</p>
             ) : (
@@ -975,16 +980,16 @@ export default function Admin() {
                         {b.description && <p className="text-xs text-gray-500 mt-1">{b.description?.slice(0, 100)}</p>}
                         <p className="text-xs text-gray-600 mt-1">Added: {new Date(b.created_at).toLocaleDateString()}</p>
                       </div>
-                      {isSite && b.status === 'pending' && (
+                      {isSite && b.status === 'pending' && hasPerm('manage_businesses') && (
                         <div className="flex flex-col gap-2 shrink-0">
                           <button onClick={async () => { try { await apiFetch('/api/app?action=admin-approve-site', { method: 'POST', body: JSON.stringify({ siteId: b.id }) }); } catch (e) { setMessage('Error: ' + e.message); } fetchData(activeTab); }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
                           <button onClick={async () => { await supabase.from('sites').update({ status: 'rejected' }).eq('id', b.id); fetchData(activeTab); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>
                         </div>
                       )}
-                      {isSite && b.status === 'approved' && (
+                      {isSite && b.status === 'approved' && hasPerm('manage_businesses') && (
                         <button onClick={async () => { await supabase.from('sites').delete().eq('id', b.id); fetchData(activeTab); }} className="px-3 py-1 bg-red-600 text-white rounded text-xs shrink-0 self-start">Delete</button>
                       )}
-                      {!isSite && b.status === 'pending' && (
+                      {!isSite && b.status === 'pending' && hasPerm('manage_businesses') && (
                         <div className="flex flex-col gap-2 shrink-0">
                           <button onClick={async () => { try { await apiFetch('/api/app?action=approve-business', { method: 'POST', body: JSON.stringify({ id: b.id }) }); } catch (e) { setMessage('Error: ' + e.message); } fetchData(activeTab); }} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold">Approve</button>
                           <button onClick={async () => { await supabase.from('business_registrations').update({ status: 'rejected' }).eq('id', b.id); fetchData(activeTab); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Reject</button>

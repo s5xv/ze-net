@@ -51,6 +51,7 @@ const isSpam = (text) => {
 };
 
 const DISCORD_BOT_URL = 'https://discord.com/api/webhooks/1527818173213315245/Pp77iAVJ-Z-CMhVzqMIvJl3CoHCYIhph9M2lHHKE1lI3qwsmJuE-jKNp8F6yNgdYKBVE';
+const SEARCH_TRENDS_URL = process.env.WEBHOOK_SEARCH_TRENDS || DISCORD_BOT_URL;
 const sendDiscordAlert = async (msg) => {
   try { await fetch(DISCORD_BOT_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: msg }) }); } catch(e) {}
 };
@@ -77,6 +78,21 @@ export default async function handler(req, res) {
   const { action } = req.query;
 
   try {
+
+  // --- log-search (records analytics + posts to Discord search-trends webhook) ---
+  if (action === 'log-search') {
+    const q = (req.body?.q || '').trim().slice(0, 200);
+    if (!q) return res.status(400).json({ error: 'q required' });
+    try {
+      await supabase.from('search_analytics').insert({ query: q, user_id: req.body?.user_id || null, results_count: req.body?.results_count ?? 0 });
+      await fetch(SEARCH_TRENDS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: `🔎 **${q}**` }),
+      }).catch(() => {});
+    } catch (e) {}
+    return res.status(200).json({ ok: true });
+  }
 
   // --- get-departments ---
   if (action === 'get-departments') {
