@@ -240,6 +240,12 @@ export default function Admin() {
     if (authorized) fetchData(activeTab);
   }, [activeTab, authorized]);
 
+  useEffect(() => {
+    if (authorized && Array.isArray(userPermissions) && userPermissions.length > 0 && !userPermissions.includes('manage_staff') && activeTab !== 'businesses') {
+      setActiveTab('businesses');
+    }
+  }, [authorized, userPermissions, activeTab]);
+
   const handlePasswordSubmit = () => {
     if (passwordInput === ADMIN_PW) {
       localStorage.setItem('admin_pw', passwordInput);
@@ -515,12 +521,6 @@ export default function Admin() {
   ];
 
   const hasPerm = (perm) => !userPermissions || userPermissions.length === 0 || userPermissions.includes(perm);
-
-  useEffect(() => {
-    if (authorized && userPermissions.length > 0 && !hasPerm('manage_staff') && activeTab !== 'businesses') {
-      setActiveTab('businesses');
-    }
-  }, [authorized, userPermissions, activeTab]);
 
   if (!authorized) return <div className="min-h-screen flex items-center justify-center text-gray-400">Checking permissions...</div>;
 
