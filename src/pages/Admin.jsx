@@ -516,6 +516,12 @@ export default function Admin() {
 
   const hasPerm = (perm) => !userPermissions || userPermissions.length === 0 || userPermissions.includes(perm);
 
+  useEffect(() => {
+    if (authorized && userPermissions.length > 0 && !hasPerm('manage_staff') && activeTab !== 'businesses') {
+      setActiveTab('businesses');
+    }
+  }, [authorized, userPermissions, activeTab]);
+
   if (!authorized) return <div className="min-h-screen flex items-center justify-center text-gray-400">Checking permissions...</div>;
 
   return (
@@ -529,7 +535,7 @@ export default function Admin() {
           <button onClick={() => { localStorage.removeItem('admin_pw'); window.location.href = '/'; }} className="text-xs text-gray-400 hover:text-red-400 transition-colors">Lock 🔒</button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        {hasPerm('manage_staff') && <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-[#303134] border border-gray-700 rounded-xl p-4 hover:border-green-500/40 transition-colors">
             <p className="text-gray-400 text-xs mb-1">💸 Withdrawals</p>
             <p className="text-3xl font-bold text-green-400">{stats.pendingWithdrawals || 0}</p>
@@ -555,7 +561,7 @@ export default function Admin() {
             <p className="text-3xl font-bold text-cyan-400">{stats.totalUsers || 0}</p>
             <p className="text-[10px] text-gray-500 mt-1">total</p>
           </div>
-        </div>
+        </div>}
 
         {message && <div className="mb-4 p-3 bg-blue-900/30 border border-blue-800 rounded-lg text-blue-300">{message}</div>}
 
