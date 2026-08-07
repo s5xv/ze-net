@@ -44,7 +44,7 @@ export default function PostNews() {
 
         {status === 'approved' && (
           <>
-            <p className="text-gray-400 text-sm mb-8">Share an update with the community. Posts are reviewed by staff before going live.</p>
+            <p className="text-gray-400 text-sm mb-8">Share an update with the community. Your news appears on the News page right away.</p>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Title *</label>

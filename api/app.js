@@ -1113,7 +1113,7 @@ RULES:
       const { data: company } = await supabase.from('news_companies').select('id').eq('user_id', user.id).eq('status', 'approved').maybeSingle();
       if (!company) return res.status(403).json({ error: 'Only approved news companies can post news' });
       const { data, error } = await supabase.from('news').insert({
-        user_id: user.id, title, content, category: category || 'General', image_url: image_url || null, status: 'pending'
+        user_id: user.id, title, content, category: category || 'General', image_url: image_url || null, status: 'approved'
       }).select().maybeSingle();
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ news: data });
