@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { apiFetch } from '../services/api';
 import { useNavigate, Link } from 'react-router-dom';
 
-const CATEGORIES = ['Announcement', 'Sale', 'Event', 'Update', 'Hiring', 'General'];
+const CATEGORIES = ['Announcement', 'Election', 'Politics', 'Economy', 'Court & Law', 'Community', 'Event', 'Guide', 'Opinion', 'Hiring', 'Sale', 'Update', 'General'];
 
 export default function PostNews() {
   const { user } = useAuth();

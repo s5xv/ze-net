@@ -256,6 +256,7 @@ CREATE INDEX IF NOT EXISTS idx_news_user ON public.news(user_id);
 CREATE TABLE IF NOT EXISTS public.news_companies (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  site_id uuid REFERENCES public.sites(id) ON DELETE CASCADE,
   company_name text NOT NULL,
   description text,
   status text DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),

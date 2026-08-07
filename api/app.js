@@ -1024,20 +1024,43 @@ RULES:
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
-  // --- news: register as a news company ---
+  // --- news: companies owned by the user ---
+  if (action === 'my-companies') {
+    try {
+      const user = await requireUser(req);
+      const { data } = await supabase
+        .from('sites')
+        .select('id, name, slug')
+        .eq('status', 'approved')
+        .or(`owner_user_id.eq.${user.id},user_id.eq.${user.id}`)
+        .order('name');
+      return res.status(200).json({ companies: (data || []).map(s => ({ id: s.id, name: s.name, slug: s.slug })) });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: register as a news company (must own an approved company) ---
   if (action === 'register-news-company') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     try {
       const user = await requireUser(req);
-      const { company_name, description } = req.body;
-      if (!company_name || !company_name.trim()) return res.status(400).json({ error: 'Company name required' });
+      const { site_id } = req.body;
+      if (!site_id) return res.status(400).json({ error: 'Please select a company' });
+      const { data: site } = await supabase
+        .from('sites')
+        .select('id, name')
+        .eq('id', site_id)
+        .eq('status', 'approved')
+        .or(`owner_user_id.eq.${user.id},user_id.eq.${user.id}`)
+        .maybeSingle();
+      if (!site) return res.status(403).json({ error: 'You must own the selected company' });
       const { data: existing } = await supabase.from('news_companies').select('*').eq('user_id', user.id).maybeSingle();
       if (existing && existing.status === 'pending') return res.status(400).json({ error: 'Your application is already pending review' });
       const { data, error } = await supabase.from('news_companies').upsert({
         user_id: user.id,
-        company_name: company_name.trim().slice(0, 100),
-        description: (description || '').trim().slice(0, 500) || null,
-        status: existing && existing.status === 'rejected' ? 'pending' : 'pending',
+        site_id: site.id,
+        company_name: site.name,
+        description: (req.body.description || '').trim().slice(0, 500) || null,
+        status: 'pending',
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' }).select().maybeSingle();
       if (error) return res.status(500).json({ error: error.message });
