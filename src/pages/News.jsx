@@ -17,13 +17,38 @@ export default function News() {
   const { user } = useAuth();
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [myCompany, setMyCompany] = useState(null);
+  const [showRegister, setShowRegister] = useState(false);
+  const [regForm, setRegForm] = useState({ company_name: '', description: '' });
+  const [regSubmitting, setRegSubmitting] = useState(false);
+  const [regError, setRegError] = useState('');
 
   useEffect(() => {
     apiFetch('/api/app?action=list-news')
       .then(d => setNews(d.news || []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+    if (user) {
+      apiFetch('/api/app?action=my-news-status')
+        .then(d => setMyCompany(d.company || null))
+        .catch(() => {});
+    }
+  }, [user]);
+
+  const myStatus = myCompany?.status || (user ? 'none' : null);
+
+  const submitRegistration = async (e) => {
+    e.preventDefault();
+    if (!regForm.company_name.trim()) { setRegError('Company name is required'); return; }
+    setRegSubmitting(true);
+    setRegError('');
+    try {
+      const data = await apiFetch('/api/app?action=register-news-company', { method: 'POST', body: JSON.stringify(regForm) });
+      if (data.company) { setMyCompany(data.company); setShowRegister(false); }
+      else setRegError('Registration failed');
+    } catch (err) { setRegError(err.message); }
+    setRegSubmitting(false);
+  };
 
   return (
     <Layout user={user}>
@@ -31,10 +56,70 @@ export default function News() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">News</h1>
-            <p className="text-sm text-gray-500 mt-1">Updates from businesses across DemocracyCraft</p>
+            <p className="text-sm text-gray-500 mt-1">Updates from news companies across DemocracyCraft</p>
           </div>
-          <Link to="/news/post" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">Post News</Link>
+          {user && myStatus === 'approved' && (
+            <Link to="/news/post" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">Post News</Link>
+          )}
         </div>
+
+        {user && myStatus === 'none' && (
+          <div className="bg-[#303134] border border-gray-700 rounded-xl p-6 mb-6">
+            <h2 className="text-lg font-bold text-white mb-2">🎙️ Become a News Company</h2>
+            <p className="text-sm text-gray-400 mb-4">Register to publish news updates. Your application will be reviewed by staff before you can post.</p>
+            {!showRegister ? (
+              <button onClick={() => setShowRegister(true)} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">Register</button>
+            ) : (
+              <form onSubmit={submitRegistration} className="space-y-3 max-w-md">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Company name *</label>
+                  <input type="text" value={regForm.company_name} onChange={e => setRegForm({...regForm, company_name: e.target.value})} placeholder="e.g. DemocracyTimes" className="w-full px-4 py-2.5 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">About your news company</label>
+                  <textarea value={regForm.description} onChange={e => setRegForm({...regForm, description: e.target.value})} rows={3} placeholder="What kind of news do you cover?" className="w-full px-4 py-2.5 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500" />
+                </div>
+                {regError && <p className="text-red-400 text-sm">{regError}</p>}
+                <div className="flex gap-2">
+                  <button type="submit" disabled={regSubmitting} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg text-sm font-medium">{regSubmitting ? 'Submitting...' : 'Submit Application'}</button>
+                  <button type="button" onClick={() => setShowRegister(false)} className="px-4 py-2.5 text-sm text-gray-400 hover:text-white">Cancel</button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+
+        {user && myStatus === 'pending' && (
+          <div className="bg-yellow-900/30 border border-yellow-800 rounded-lg p-4 mb-6">
+            <p className="text-yellow-300 text-sm font-medium">⏳ Your news-company application ({myCompany?.company_name}) is pending review.</p>
+          </div>
+        )}
+
+        {user && myStatus === 'rejected' && (
+          <div className="bg-red-900/30 border border-red-800 rounded-lg p-4 mb-6">
+            <p className="text-red-300 text-sm font-medium">🚫 Your news-company application was rejected. You can submit a new application below.</p>
+            {showRegister && (
+              <form onSubmit={submitRegistration} className="space-y-3 max-w-md mt-3">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Company name *</label>
+                  <input type="text" value={regForm.company_name} onChange={e => setRegForm({...regForm, company_name: e.target.value})} placeholder="e.g. DemocracyTimes" className="w-full px-4 py-2.5 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">About your news company</label>
+                  <textarea value={regForm.description} onChange={e => setRegForm({...regForm, description: e.target.value})} rows={3} placeholder="What kind of news do you cover?" className="w-full px-4 py-2.5 bg-[#202124] border border-gray-700 rounded-lg text-white placeholder-gray-500" />
+                </div>
+                {regError && <p className="text-red-400 text-sm">{regError}</p>}
+                <div className="flex gap-2">
+                  <button type="submit" disabled={regSubmitting} className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg text-sm font-medium">{regSubmitting ? 'Submitting...' : 'Submit Application'}</button>
+                  <button type="button" onClick={() => setShowRegister(false)} className="px-4 py-2.5 text-sm text-gray-400 hover:text-white">Cancel</button>
+                </div>
+              </form>
+            )}
+            {!showRegister && (
+              <button onClick={() => setShowRegister(true)} className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded">Apply Again</button>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-12 text-gray-500">Loading...</div>

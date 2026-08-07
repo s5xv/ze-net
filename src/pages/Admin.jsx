@@ -66,6 +66,8 @@ export default function Admin() {
   const [gigsLoading, setGigsLoading] = useState(false);
   const [allNews, setAllNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
+  const [newsCompanies, setNewsCompanies] = useState([]);
+  const [newsCompaniesLoading, setNewsCompaniesLoading] = useState(false);
   const [announcements, setAnnouncements] = useState([]);
   const [annTitle, setAnnTitle] = useState('');
   const [annContent, setAnnContent] = useState('');
@@ -189,9 +191,15 @@ export default function Admin() {
         setGigsLoading(false);
       } else if (tab === 'news') {
         setNewsLoading(true);
-        const { news } = await apiFetch('/api/app?action=list-news');
-        setAllNews(news || []);
+        setNewsCompaniesLoading(true);
+        const [newsRes, companiesRes] = await Promise.all([
+          apiFetch('/api/app?action=list-news'),
+          apiFetch('/api/app?action=admin-news-companies')
+        ]);
+        setAllNews(newsRes.news || []);
+        setNewsCompanies(companiesRes.companies || []);
         setNewsLoading(false);
+        setNewsCompaniesLoading(false);
       } else if (tab === 'announcements') {
         const { announcements } = await apiFetch('/api/app?action=list-announcements');
         setAnnouncements(announcements || []);
@@ -1346,8 +1354,39 @@ export default function Admin() {
         )}
 
         {!loading && activeTab === 'news' && (
-          <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
-            <h2 className="text-lg font-bold text-white mb-4">News Moderation</h2>
+          <div className="space-y-6">
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-white mb-4">News Company Applications</h2>
+              {newsCompaniesLoading ? (
+                <p className="text-gray-500">Loading...</p>
+              ) : newsCompanies.length === 0 ? (
+                <p className="text-gray-500">No news-company applications.</p>
+              ) : (
+                <div className="space-y-3">
+                  {newsCompanies.map(c => (
+                    <div key={c.id} className="bg-[#202124] rounded-lg p-4">
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <p className="text-white font-medium">{c.company_name}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded flex-shrink-0 ${c.status === 'approved' ? 'bg-green-500/20 text-green-400' : c.status === 'rejected' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{c.status}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-2">by {c.profiles?.username || 'Unknown'} · {new Date(c.created_at).toLocaleString()}</p>
+                      {c.description && <p className="text-sm text-gray-300 mb-3">{c.description}</p>}
+                      <div className="flex items-center gap-2">
+                        {c.status !== 'approved' && (
+                          <button onClick={async () => { await apiFetch('/api/app?action=admin-approve-news-company', { method: 'POST', body: JSON.stringify({ id: c.id, status: 'approve' }) }); fetchData('news'); }} className="px-3 py-1 bg-green-600 text-white text-xs rounded">Approve</button>
+                        )}
+                        {c.status !== 'rejected' && (
+                          <button onClick={async () => { await apiFetch('/api/app?action=admin-approve-news-company', { method: 'POST', body: JSON.stringify({ id: c.id, status: 'reject' }) }); fetchData('news'); }} className="px-3 py-1 bg-yellow-600 text-white text-xs rounded">Reject</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-[#303134] border border-gray-700 rounded-xl p-6">
+              <h2 className="text-lg font-bold text-white mb-4">News Moderation</h2>
             {newsLoading ? (
               <p className="text-gray-500">Loading...</p>
             ) : allNews.length === 0 ? (
@@ -1383,6 +1422,7 @@ export default function Admin() {
                 ))}
               </div>
             )}
+            </div>
           </div>
         )}
 

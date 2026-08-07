@@ -237,7 +237,7 @@ CREATE TABLE IF NOT EXISTS public.announcements (
 );
 CREATE INDEX IF NOT EXISTS idx_announcements_active ON public.announcements(is_active, created_at DESC);
 
--- News posts (by approved businesses)
+-- News posts (by approved news companies)
 CREATE TABLE IF NOT EXISTS public.news (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -251,6 +251,24 @@ CREATE TABLE IF NOT EXISTS public.news (
 );
 CREATE INDEX IF NOT EXISTS idx_news_status ON public.news(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_news_user ON public.news(user_id);
+
+-- News companies (registration/approval to allow posting news)
+CREATE TABLE IF NOT EXISTS public.news_companies (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id uuid NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  company_name text NOT NULL,
+  description text,
+  status text DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.news_companies ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read news companies" ON public.news_companies
+  FOR SELECT TO anon, authenticated
+  USING (true);
+CREATE POLICY "Users can register their own news company" ON public.news_companies
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
 
 -- Discord bot site watches (DM alerts when a site goes offline/online)
 CREATE TABLE IF NOT EXISTS public.discord_watches (

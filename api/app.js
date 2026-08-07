@@ -1024,19 +1024,71 @@ RULES:
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
-  // --- news: create (approved businesses only) ---
+  // --- news: register as a news company ---
+  if (action === 'register-news-company') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    try {
+      const user = await requireUser(req);
+      const { company_name, description } = req.body;
+      if (!company_name || !company_name.trim()) return res.status(400).json({ error: 'Company name required' });
+      const { data: existing } = await supabase.from('news_companies').select('*').eq('user_id', user.id).maybeSingle();
+      if (existing && existing.status === 'pending') return res.status(400).json({ error: 'Your application is already pending review' });
+      const { data, error } = await supabase.from('news_companies').upsert({
+        user_id: user.id,
+        company_name: company_name.trim().slice(0, 100),
+        description: (description || '').trim().slice(0, 500) || null,
+        status: existing && existing.status === 'rejected' ? 'pending' : 'pending',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' }).select().maybeSingle();
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ company: data });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: my news-company status ---
+  if (action === 'my-news-status') {
+    try {
+      const user = await requireUser(req);
+      const { data } = await supabase.from('news_companies').select('*').eq('user_id', user.id).maybeSingle();
+      return res.status(200).json({ company: data || null });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: admin list news companies ---
+  if (action === 'admin-news-companies') {
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+    try {
+      const { data } = await supabase.from('news_companies').select('*').order('created_at', { ascending: false });
+      const userIds = [...new Set((data || []).map(c => c.user_id))];
+      const { data: profiles } = await supabase.from('profiles').select('id, username').in('id', userIds);
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p.username]));
+      const companies = (data || []).map(c => ({ ...c, profiles: { username: profileMap[c.user_id] || 'Unknown' } }));
+      return res.status(200).json({ companies });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: admin approve/reject news company ---
+  if (action === 'admin-approve-news-company') {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin only' });
+    try {
+      const { id, status } = req.body;
+      if (!id) return res.status(400).json({ error: 'Missing id' });
+      const { data, error } = await supabase.from('news_companies').update({ status: status === 'reject' ? 'rejected' : 'approved', updated_at: new Date().toISOString() }).eq('id', id).select().maybeSingle();
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ company: data });
+    } catch (err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // --- news: create (approved news companies only) ---
   if (action === 'create-news') {
     if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
     try {
       const user = await requireUser(req);
       const { title, content, category, image_url } = req.body;
       if (!title || !content) return res.status(400).json({ error: 'Title and content required' });
-      const [sitesRes, bizRes] = await Promise.all([
-        supabase.from('sites').select('id').eq('owner_user_id', user.id).eq('status', 'approved').limit(1),
-        supabase.from('business_registrations').select('id').eq('user_id', user.id).eq('status', 'approved').limit(1)
-      ]);
-      const isBusiness = (sitesRes.data && sitesRes.data.length > 0) || (bizRes.data && bizRes.data.length > 0);
-      if (!isBusiness) return res.status(403).json({ error: 'Only approved businesses can post news' });
+      const { data: company } = await supabase.from('news_companies').select('id').eq('user_id', user.id).eq('status', 'approved').maybeSingle();
+      if (!company) return res.status(403).json({ error: 'Only approved news companies can post news' });
       const { data, error } = await supabase.from('news').insert({
         user_id: user.id, title, content, category: category || 'General', image_url: image_url || null, status: 'pending'
       }).select().maybeSingle();
