@@ -192,12 +192,14 @@ export default function Admin() {
       } else if (tab === 'news') {
         setNewsLoading(true);
         setNewsCompaniesLoading(true);
-        const [newsRes, companiesRes] = await Promise.all([
-          apiFetch('/api/app?action=list-news'),
-          apiFetch('/api/app?action=admin-news-companies')
-        ]);
-        setAllNews(newsRes.news || []);
-        setNewsCompanies(companiesRes.companies || []);
+        try {
+          const [newsRes, companiesRes] = await Promise.all([
+            apiFetch('/api/app?action=list-news'),
+            apiFetch('/api/app?action=admin-news-companies')
+          ]);
+          setAllNews(newsRes.news || []);
+          setNewsCompanies(companiesRes.companies || []);
+        } catch (e) { console.error('News fetch error:', e); }
         setNewsLoading(false);
         setNewsCompaniesLoading(false);
       } else if (tab === 'announcements') {

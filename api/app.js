@@ -422,7 +422,7 @@ RULES:
   // --- admin-auth guard ---
   if (action.startsWith('admin-')) {
     if (!await requireAdmin(req)) return res.status(403).json({ error: 'Admin access required' });
-    if (req.method === 'GET' && ['admin-get-sites', 'admin-get-pending-sites', 'admin-list-gigs'].includes(action)) {} else if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+    if (req.method === 'GET' && ['admin-get-sites', 'admin-get-pending-sites', 'admin-list-gigs', 'admin-news-companies'].includes(action)) {} else if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   }
 
   // --- admin-add-site ---
