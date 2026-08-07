@@ -1017,10 +1017,14 @@ RULES:
     try {
       const user = await getUser(req);
       const isAdmin = user ? await requireAdmin(req) : false;
-      let query = supabase.from('news').select('*, profiles:user_id(username, avatar_url)').order('created_at', { ascending: false });
+      let query = supabase.from('news').select('*').order('created_at', { ascending: false });
       if (!isAdmin) query = query.eq('status', 'approved');
       const { data } = await query.limit(100);
-      return res.status(200).json({ news: data || [] });
+      const userIds = [...new Set((data || []).map(n => n.user_id).filter(Boolean))];
+      const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', userIds);
+      const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+      const news = (data || []).map(n => ({ ...n, profiles: profileMap[n.user_id] || { username: 'Unknown' } }));
+      return res.status(200).json({ news });
     } catch (err) { return res.status(500).json({ error: err.message }); }
   }
 
